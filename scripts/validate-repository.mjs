@@ -8,6 +8,7 @@ const root = process.cwd();
 const errors = [];
 const requiredFiles = [
   ".editorconfig",
+  ".gitattributes",
   ".gitignore",
   ".npmrc",
   ".github/PULL_REQUEST_TEMPLATE.md",
@@ -121,6 +122,17 @@ try {
 } catch (error) {
   if (error.code !== "ENOENT") {
     errors.push(`Cannot validate README.md (${error.message}).`);
+  }
+}
+
+try {
+  const attributes = await readFile(path.join(root, ".gitattributes"), "utf8");
+  if (!/^\*\s+text=auto\s+eol=lf$/m.test(attributes)) {
+    errors.push(".gitattributes must enforce LF for cross-platform text files.");
+  }
+} catch (error) {
+  if (error.code !== "ENOENT") {
+    errors.push(`Cannot validate .gitattributes (${error.message}).`);
   }
 }
 
