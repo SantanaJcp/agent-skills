@@ -353,11 +353,13 @@ cases:
     path.join(skillRoot, "scripts", "unsafe.mjs"),
     `import leftPad from "left-pad";
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import https from "node:https";
 import dns from "node:dns/promises";
 import "../../outside.mjs";
 import ${JSON.stringify(path.join(skillRoot, "scripts", "local.mjs"))};
 fetch("https://example.com");
+createRequire(import.meta.url)("left-pad");
 `,
   );
   await writeFile(path.join(skillRoot, "scripts", "local.mjs"), "export {};\n");
@@ -382,6 +384,7 @@ fetch("https://example.com");
   assert.equal(result.status, 1);
   assert.match(result.stderr, /runtime package import left-pad is forbidden/);
   assert.match(result.stderr, /external process module node:child_process is forbidden/);
+  assert.match(result.stderr, /dependency-loading module node:module is forbidden/);
   assert.match(result.stderr, /network module node:https requires manual review/);
   assert.match(result.stderr, /network module node:dns\/promises requires manual review/);
   assert.match(result.stderr, /global fetch requires manual network review/);
@@ -482,6 +485,42 @@ cases:
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /missing a notice section for assets\/logo\.png/);
+});
+
+test("hidden assets cannot bypass provenance validation", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
+  await writeSkill(
+    root,
+    "incubator",
+    "research-notes",
+    `---
+name: research-notes
+description: Organize research notes when an agent must synthesize multiple sources.
+license: Apache-2.0
+metadata:
+  tags: "research"
+---
+
+# Research Notes
+`,
+    `skill: research-notes
+cases:
+  - kind: trigger
+    prompt: "TODO: Add a prompt."
+    expected: "TODO: Add expected behavior."
+  - kind: non-trigger
+    prompt: "TODO: Add a prompt."
+    expected: "TODO: Add expected behavior."
+`,
+  );
+  const skillRoot = path.join(root, "incubator", "research-notes");
+  await mkdir(path.join(skillRoot, "assets"));
+  await writeFile(path.join(skillRoot, "assets", ".hidden-logo.png"), "media");
+
+  const result = runValidator(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /assets require THIRD_PARTY_NOTICES\.md/);
 });
 
 test("asset notices accept documented compatible provenance", async () => {

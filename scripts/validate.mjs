@@ -328,6 +328,12 @@ async function validateScript(source, filePath, skillDirectory, location) {
       );
       continue;
     }
+    if (specifier === "node:module") {
+      errors.push(
+        `${location}: dependency-loading module node:module is forbidden.`,
+      );
+      continue;
+    }
     if (
       [...networkModules].some(
         (networkModule) =>
@@ -376,6 +382,11 @@ async function validateScript(source, filePath, skillDirectory, location) {
       warnings.push(`${location}: global ${name} requires manual network review.`);
     }
   }
+  if (/\bgetBuiltinModule\s*\(/.test(source)) {
+    errors.push(
+      `${location}: process.getBuiltinModule is forbidden because it can bypass dependency checks.`,
+    );
+  }
 }
 
 function parseNoticeSections(source) {
@@ -421,10 +432,7 @@ async function validateBundle(skillDirectory, location) {
       }
 
       const extension = path.extname(entry.name).toLowerCase();
-      if (
-        relative.split(path.sep)[0] === "assets" &&
-        !entry.name.startsWith(".")
-      ) {
+      if (relative.split(path.sep)[0] === "assets") {
         assetPaths.push(relative.split(path.sep).join("/"));
       }
       if (forbiddenExecutableExtensions.has(extension)) {
