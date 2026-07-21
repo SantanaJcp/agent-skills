@@ -1,0 +1,22 @@
+name: Skill proposal
+description: Propose a reusable skill for the incubator.
+title: "skill: "
+labels: ["needs-triage"]
+body:
+  - type: textarea
+    attributes:
+      label: User problem
+      description: Who needs this skill, when, and why?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Portable behavior
+      description: Explain how the skill can work in both Codex and Claude Code.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Trigger and non-trigger examples
+    validations:
+      required: true

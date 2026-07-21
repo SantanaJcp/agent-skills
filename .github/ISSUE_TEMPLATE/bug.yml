@@ -1,0 +1,25 @@
+name: Bug report
+description: Report a reproducible problem in a skill or repository tooling.
+title: "bug: "
+labels: ["needs-triage"]
+body:
+  - type: textarea
+    attributes:
+      label: Problem
+      description: What happened and what did you expect?
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Affected skill or command
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Reproduction
+      description: Include the smallest safe reproduction and tested client versions.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: Do not disclose vulnerabilities or sensitive data here; follow SECURITY.md.

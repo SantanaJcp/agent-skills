@@ -1,0 +1,29 @@
+{
+  "name": "agent-skills",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Authoring, validation, and release tooling for a curated multi-runtime Agent Skills library.",
+  "engines": {
+    "node": ">=22.20.0"
+  },
+  "scripts": {
+    "catalog": "node scripts/generate-catalog.mjs",
+    "catalog:check": "node scripts/generate-catalog.mjs --check",
+    "check": "node scripts/check.mjs",
+    "new:skill": "node scripts/new-skill.mjs",
+    "release:check": "node scripts/release-check.mjs",
+    "release:notes": "node scripts/release-notes.mjs",
+    "test": "node --test \"tests/*.test.mjs\"",
+    "test:install": "node scripts/install-smoke.mjs",
+    "typecheck": "tsc -p jsconfig.json",
+    "validate": "node scripts/validate.mjs",
+    "validate:repository": "node scripts/validate-repository.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "skills": "1.5.19",
+    "typescript": "7.0.2",
+    "yaml": "2.9.0"
+  }
+}
