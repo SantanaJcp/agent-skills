@@ -97,7 +97,7 @@ cases:
   assert.match(result.stderr, /unsupported stable frontmatter field client-only/);
 });
 
-test("description must state when the skill should activate", async () => {
+test("description activation context can use clear phrasing without literal when", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
   await writeSkill(
     root,
@@ -105,7 +105,7 @@ test("description must state when the skill should activate", async () => {
     "research-notes",
     `---
 name: research-notes
-description: Organize and synthesize research notes from multiple sources.
+description: Convert CSV to JSON for data-format transformation requests.
 license: Apache-2.0
 metadata:
   tags: "research"
@@ -126,8 +126,7 @@ cases:
 
   const result = runValidator(root);
 
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /description must explain when to use the skill/);
+  assert.equal(result.status, 0, result.stderr);
 });
 
 test("maintainer cannot publish duplicate names across maturity collections", async () => {
@@ -355,8 +354,10 @@ cases:
     `import leftPad from "left-pad";
 import { spawn } from "node:child_process";
 import https from "node:https";
+import dns from "node:dns/promises";
 import "../../outside.mjs";
 import ${JSON.stringify(path.join(skillRoot, "scripts", "local.mjs"))};
+fetch("https://example.com");
 `,
   );
   await writeFile(path.join(skillRoot, "scripts", "local.mjs"), "export {};\n");
@@ -382,6 +383,8 @@ import ${JSON.stringify(path.join(skillRoot, "scripts", "local.mjs"))};
   assert.match(result.stderr, /runtime package import left-pad is forbidden/);
   assert.match(result.stderr, /external process module node:child_process is forbidden/);
   assert.match(result.stderr, /network module node:https requires manual review/);
+  assert.match(result.stderr, /network module node:dns\/promises requires manual review/);
+  assert.match(result.stderr, /global fetch requires manual network review/);
   assert.match(result.stderr, /script import escapes the skill bundle: \.\.\/\.\.\/outside\.mjs/);
   assert.match(result.stderr, /absolute script import .* is forbidden/);
   assert.match(result.stderr, /opaque executable file type \.exe is forbidden/);
@@ -439,6 +442,129 @@ cases:
   assert.match(result.stderr, /script import does not exist: \.\/missing\.mjs/);
   assert.match(result.stderr, /opaque bundled file type \.zip is forbidden/);
   assert.match(result.stderr, /assets require THIRD_PARTY_NOTICES\.md/);
+});
+
+test("asset notices require per-file provenance and compatible licenses", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
+  await writeSkill(
+    root,
+    "incubator",
+    "research-notes",
+    `---
+name: research-notes
+description: Organize research notes when an agent must synthesize multiple sources.
+license: Apache-2.0
+metadata:
+  tags: "research"
+---
+
+# Research Notes
+`,
+    `skill: research-notes
+cases:
+  - kind: trigger
+    prompt: "TODO: Add a prompt."
+    expected: "TODO: Add expected behavior."
+  - kind: non-trigger
+    prompt: "TODO: Add a prompt."
+    expected: "TODO: Add expected behavior."
+`,
+  );
+  const skillRoot = path.join(root, "incubator", "research-notes");
+  await mkdir(path.join(skillRoot, "assets"));
+  await writeFile(path.join(skillRoot, "assets", "logo.png"), "media");
+  await writeFile(
+    path.join(skillRoot, "THIRD_PARTY_NOTICES.md"),
+    "This file intentionally omits structured provenance.\n",
+  );
+
+  const result = runValidator(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /missing a notice section for assets\/logo\.png/);
+});
+
+test("asset notices accept documented compatible provenance", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
+  await writeSkill(
+    root,
+    "incubator",
+    "research-notes",
+    `---
+name: research-notes
+description: Organize research notes when an agent must synthesize multiple sources.
+license: Apache-2.0
+metadata:
+  tags: "research"
+---
+
+# Research Notes
+`,
+    `skill: research-notes
+cases:
+  - kind: trigger
+    prompt: "TODO: Add a prompt."
+    expected: "TODO: Add expected behavior."
+  - kind: non-trigger
+    prompt: "TODO: Add a prompt."
+    expected: "TODO: Add expected behavior."
+`,
+  );
+  const skillRoot = path.join(root, "incubator", "research-notes");
+  await mkdir(path.join(skillRoot, "assets"));
+  await writeFile(path.join(skillRoot, "assets", "logo.png"), "media");
+  await writeFile(
+    path.join(skillRoot, "THIRD_PARTY_NOTICES.md"),
+    `# Asset notices
+
+## assets/logo.png
+
+- Source: Created for this project.
+- Copyright: The agent-skills contributors.
+- License: Apache-2.0
+`,
+  );
+
+  const result = runValidator(root);
+
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test("secret detection scans auditable files with unknown extensions", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
+  await writeSkill(
+    root,
+    "incubator",
+    "research-notes",
+    `---
+name: research-notes
+description: Organize research notes when an agent must synthesize multiple sources.
+license: Apache-2.0
+metadata:
+  tags: "research"
+---
+
+# Research Notes
+`,
+    `skill: research-notes
+cases:
+  - kind: trigger
+    prompt: "TODO: Add a prompt."
+    expected: "TODO: Add expected behavior."
+  - kind: non-trigger
+    prompt: "TODO: Add a prompt."
+    expected: "TODO: Add expected behavior."
+`,
+  );
+  await writeFile(
+    path.join(root, "incubator", "research-notes", "credentials.toml"),
+    "token = 'github_pat_1234567890_abcdefghijklmnopqrstuvwxyz'\n",
+  );
+
+  const result = runValidator(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /credentials\.toml: possible GitHub token/);
 });
 
 test(

@@ -15,6 +15,7 @@
 - [ ] I ran `npm run catalog` when metadata or maturity changed.
 - [ ] I ran `npm run check` successfully.
 - [ ] I reviewed bundled scripts, assets, links, and network behavior.
+- [ ] Each changed skill description explains both its capability and activation context.
 - [ ] I confirm this change does not import personal or private skill content.
 
 ## Promotion evidence

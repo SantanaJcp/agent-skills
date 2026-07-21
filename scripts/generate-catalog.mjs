@@ -2,18 +2,10 @@
 
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { parse } from "yaml";
+import { parseSkillFrontmatter } from "./lib/parse-skill-frontmatter.mjs";
 
 const root = process.cwd();
 const checkOnly = process.argv.includes("--check");
-
-function parseFrontmatter(source, location) {
-  const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
-  if (!match) {
-    throw new Error(`${location} has no YAML frontmatter.`);
-  }
-  return parse(match[1]);
-}
 
 async function readCollection(collection) {
   const directory = path.join(root, collection);
@@ -34,7 +26,7 @@ async function readCollection(collection) {
     }
     const location = `${collection}/${entry.name}/SKILL.md`;
     const source = await readFile(path.join(root, location), "utf8");
-    const frontmatter = parseFrontmatter(source, location);
+    const frontmatter = parseSkillFrontmatter(source, location);
     const tags = String(frontmatter.metadata?.tags ?? "")
       .split(",")
       .map((tag) => tag.trim())

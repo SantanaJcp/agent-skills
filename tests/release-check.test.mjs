@@ -57,9 +57,9 @@ test("release manager receives all actionable release failures", async () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /package\.json version 1\.0\.0 does not match 2\.0\.0/);
   assert.match(result.stderr, /CHANGELOG\.md has no dated 2\.0\.0 release section/);
-  assert.match(result.stderr, /concrete Codex version/);
-  assert.match(result.stderr, /concrete Claude Code version/);
-  assert.match(result.stderr, /concrete skills CLI version/);
+  assert.match(result.stderr, /exact semantic Codex version/);
+  assert.match(result.stderr, /exact semantic Claude Code version/);
+  assert.match(result.stderr, /exact semantic skills CLI version/);
   assert.match(result.stderr, /clean working tree/);
   assert.match(result.stderr, /Tag v2\.0\.0 already exists/);
 });
@@ -90,4 +90,26 @@ test("release manager can publish a later version after v1.0.0 exists", async ()
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Release v2\.0\.0 is ready/);
+});
+
+test("release manager rejects malformed client version evidence", async () => {
+  const root = await createReleaseCandidate();
+  await writeFile(
+    path.join(root, "docs", "compatibility.md"),
+    `# Compatibility
+
+| Client | Version |
+| --- | --- |
+| Codex | banana |
+| Claude Code | current |
+| skills CLI | one-five |
+`,
+  );
+
+  const result = run(process.execPath, [releaseCheck, "1.0.0"], root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /exact semantic Codex version/);
+  assert.match(result.stderr, /exact semantic Claude Code version/);
+  assert.match(result.stderr, /exact semantic skills CLI version/);
 });

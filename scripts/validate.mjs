@@ -3,6 +3,7 @@
 import { access, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { parse } from "yaml";
+import { parseSkillFrontmatter } from "./lib/parse-skill-frontmatter.mjs";
 
 const root = process.cwd();
 const collections = ["skills", "incubator"];
@@ -75,6 +76,20 @@ const networkModules = new Set([
   "node:net",
   "node:tls",
 ]);
+const compatibleAssetLicenses = new Set([
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "CC-BY-4.0",
+  "CC0-1.0",
+  "MIT",
+]);
+/** @type {Array<[string, RegExp]>} */
+const networkGlobals = [
+  ["fetch", /\bfetch\s*\(/],
+  ["WebSocket", /\bWebSocket\s*\(/],
+  ["EventSource", /\bEventSource\s*\(/],
+];
 const secretPatterns = [
   {
     label: "private key",
@@ -93,16 +108,10 @@ const seenNames = new Map();
 let skillCount = 0;
 
 function parseSkillDocument(source, location) {
-  const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/);
-  if (!match) {
-    errors.push(`${location}: SKILL.md must begin with YAML frontmatter.`);
-    return null;
-  }
-
   try {
-    return parse(match[1]);
+    return parseSkillFrontmatter(source, location);
   } catch (error) {
-    errors.push(`${location}: invalid YAML frontmatter (${error.message}).`);
+    errors.push(error.message);
     return null;
   }
 }
@@ -136,8 +145,6 @@ function validateFrontmatter(frontmatter, collection, directoryName, location) {
     errors.push(`${location}: description must be a non-empty string.`);
   } else if (frontmatter.description.length > 1024) {
     errors.push(`${location}: description must be at most 1024 characters.`);
-  } else if (!/\bwhen\b/i.test(frontmatter.description)) {
-    errors.push(`${location}: description must explain when to use the skill.`);
   }
   if (frontmatter.license !== "Apache-2.0") {
     errors.push(`${location}: license must be Apache-2.0.`);
@@ -321,7 +328,12 @@ async function validateScript(source, filePath, skillDirectory, location) {
       );
       continue;
     }
-    if (networkModules.has(specifier)) {
+    if (
+      [...networkModules].some(
+        (networkModule) =>
+          specifier === networkModule || specifier.startsWith(`${networkModule}/`),
+      )
+    ) {
       warnings.push(
         `${location}: network module ${specifier} requires manual review.`,
       );
@@ -358,11 +370,34 @@ async function validateScript(source, filePath, skillDirectory, location) {
     }
     errors.push(`${location}: runtime package import ${specifier} is forbidden.`);
   }
+
+  for (const [name, pattern] of networkGlobals) {
+    if (pattern.test(source)) {
+      warnings.push(`${location}: global ${name} requires manual network review.`);
+    }
+  }
+}
+
+function parseNoticeSections(source) {
+  const sections = new Map();
+  let current = null;
+  for (const line of source.split(/\r?\n/)) {
+    const heading = line.match(/^##\s+`?(.+?)`?\s*$/);
+    if (heading?.[1] !== undefined) {
+      current = heading[1];
+      sections.set(current, []);
+    } else if (current !== null) {
+      sections.get(current).push(line);
+    }
+  }
+  return new Map(
+    [...sections].map(([heading, lines]) => [heading, lines.join("\n")]),
+  );
 }
 
 async function validateBundle(skillDirectory, location) {
   const pending = [skillDirectory];
-  let hasAsset = false;
+  const assetPaths = [];
 
   while (pending.length > 0) {
     const directory = pending.pop();
@@ -390,7 +425,7 @@ async function validateBundle(skillDirectory, location) {
         relative.split(path.sep)[0] === "assets" &&
         !entry.name.startsWith(".")
       ) {
-        hasAsset = true;
+        assetPaths.push(relative.split(path.sep).join("/"));
       }
       if (forbiddenExecutableExtensions.has(extension)) {
         errors.push(
@@ -402,15 +437,14 @@ async function validateBundle(skillDirectory, location) {
           `${itemLocation}: opaque bundled file type ${extension} is forbidden.`,
         );
       }
-      if (!textExtensions.has(extension)) {
-        continue;
-      }
-
       const source = await readFile(filePath, "utf8");
       for (const secret of secretPatterns) {
         if (secret.pattern.test(source)) {
           errors.push(`${itemLocation}: possible ${secret.label}.`);
         }
+      }
+      if (!textExtensions.has(extension)) {
+        continue;
       }
       if (relative.startsWith(`scripts${path.sep}`)) {
         if (extension !== ".mjs") {
@@ -431,11 +465,40 @@ async function validateBundle(skillDirectory, location) {
     }
   }
 
-  if (hasAsset) {
+  if (assetPaths.length > 0) {
     const notices = path.join(skillDirectory, "THIRD_PARTY_NOTICES.md");
     try {
-      if ((await readFile(notices, "utf8")).trim().length === 0) {
+      const noticeSource = await readFile(notices, "utf8");
+      if (noticeSource.trim().length === 0) {
         errors.push(`${location}: THIRD_PARTY_NOTICES.md must not be empty.`);
+      } else {
+        const sections = parseNoticeSections(noticeSource);
+        for (const assetPath of assetPaths.sort()) {
+          const section = sections.get(assetPath);
+          if (section === undefined) {
+            errors.push(
+              `${location}: THIRD_PARTY_NOTICES.md is missing a notice section for ${assetPath}.`,
+            );
+            continue;
+          }
+          const source = section.match(/^- Source:\s*(\S.*)$/m)?.[1];
+          const copyright = section.match(/^- Copyright:\s*(\S.*)$/m)?.[1];
+          const license = section.match(/^- License:\s*(\S.*)$/m)?.[1];
+          if (
+            source === undefined ||
+            copyright === undefined ||
+            license === undefined ||
+            /\bTODO\b/i.test(`${source} ${copyright} ${license}`)
+          ) {
+            errors.push(
+              `${location}: notice for ${assetPath} must include concrete Source, Copyright, and License fields.`,
+            );
+          } else if (!compatibleAssetLicenses.has(license)) {
+            errors.push(
+              `${location}: notice for ${assetPath} uses unsupported license ${license}.`,
+            );
+          }
+        }
       }
     } catch (error) {
       if (error.code === "ENOENT") {

@@ -13,7 +13,7 @@ The command rejects invalid names, duplicate stable/incubator names, and existin
 Required fields:
 
 - `name` — 1–64 lowercase letters, digits, and single hyphens; equal to the directory name.
-- `description` — 1–1024 characters describing what the skill does and explicitly using `when` to state its activation context.
+- `description` — 1–1024 characters explaining both what the skill does and the requests or situations in which agents should use it.
 - `license` — `Apache-2.0`.
 - `metadata.tags` — a comma-separated string of topical kebab-case tags.
 
@@ -27,7 +27,7 @@ Keep `SKILL.md` concise and put optional resources in conventional directories:
 - `references/` for supporting documents linked directly from `SKILL.md`; supporting Markdown must not chain to more Markdown;
 - `assets/` for necessary licensed media, accompanied by a root `THIRD_PARTY_NOTICES.md` that records provenance and license for every asset;
 - `agents/openai.yaml` for optional nonessential Codex presentation metadata;
-- `THIRD_PARTY_NOTICES.md` for asset provenance; original assets identify the project as creator and Apache-2.0, while third-party entries include source, copyright holder, and compatible license.
+- `THIRD_PARTY_NOTICES.md` for asset provenance. Add one `## assets/path.ext` section per asset with non-placeholder `Source`, `Copyright`, and `License` list fields. Allowed SPDX licenses are `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `CC-BY-4.0`, `CC0-1.0`, and `MIT`. Original assets identify the project as creator and use `Apache-2.0`.
 
 References must be relative, resolve, and stay inside the skill. Do not depend on sibling skills or repository-root runtime files.
 

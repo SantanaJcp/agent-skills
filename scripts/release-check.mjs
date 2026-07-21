@@ -49,12 +49,17 @@ try {
     "utf8",
   );
   for (const client of ["Codex", "Claude Code", "skills CLI"]) {
-    const row = new RegExp(
-      `^\\|\\s*${client.replace(" ", "\\s+")}\\s*\\|\\s*(?!TBD|TODO|latest|Not\\s+yet|pre-release|N\\/?A)[^|\\s][^|]*\\|$`,
-      "im",
+    const row = compatibility.match(
+      new RegExp(
+        `^\\|\\s*${client.replaceAll(" ", "\\s+")}\\s*\\|\\s*([^|]+?)\\s*\\|$`,
+        "im",
+      ),
     );
-    if (!row.test(compatibility)) {
-      errors.push(`Compatibility guide must record a concrete ${client} version.`);
+    const recordedVersion = row?.[1]?.trim();
+    if (!/^v?\d+\.\d+\.\d+$/.test(recordedVersion ?? "")) {
+      errors.push(
+        `Compatibility guide must record an exact semantic ${client} version.`,
+      );
     }
   }
 } catch (error) {
