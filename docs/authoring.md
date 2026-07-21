@@ -13,7 +13,7 @@ The command rejects invalid names, duplicate stable/incubator names, and existin
 Required fields:
 
 - `name` — 1–64 lowercase letters, digits, and single hyphens; equal to the directory name.
-- `description` — 1–1024 characters describing what the skill does and when to use it.
+- `description` — 1–1024 characters describing what the skill does and explicitly using `when` to state its activation context.
 - `license` — `Apache-2.0`.
 - `metadata.tags` — a comma-separated string of topical kebab-case tags.
 
@@ -24,10 +24,10 @@ Optional `compatibility` may describe a concrete environment requirement in at m
 Keep `SKILL.md` concise and put optional resources in conventional directories:
 
 - `scripts/` for `.mjs` Node standard-library automation;
-- `references/` for shallow supporting documents;
-- `assets/` for necessary licensed media;
+- `references/` for supporting documents linked directly from `SKILL.md`; supporting Markdown must not chain to more Markdown;
+- `assets/` for necessary licensed media, accompanied by a root `THIRD_PARTY_NOTICES.md` that records provenance and license for every asset;
 - `agents/openai.yaml` for optional nonessential Codex presentation metadata;
-- `THIRD_PARTY_NOTICES.md` when bundled third-party material requires attribution.
+- `THIRD_PARTY_NOTICES.md` for asset provenance; original assets identify the project as creator and Apache-2.0, while third-party entries include source, copyright holder, and compatible license.
 
 References must be relative, resolve, and stay inside the skill. Do not depend on sibling skills or repository-root runtime files.
 

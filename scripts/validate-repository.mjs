@@ -21,12 +21,14 @@ const requiredFiles = [
   "CATALOG.md",
   "CHANGELOG.md",
   "CODE_OF_CONDUCT.md",
+  "CONTEXT.md",
   "CONTRIBUTING.md",
   "INCUBATOR.md",
   "LICENSE",
   "README.md",
   "SECURITY.md",
   "docs/architecture.md",
+  "docs/adr/0001-portable-skill-publisher.md",
   "docs/authoring.md",
   "docs/compatibility.md",
   "docs/releasing.md",
@@ -35,7 +37,7 @@ const requiredFiles = [
   "package.json",
   "templates/skill/SKILL.md.tmpl",
 ];
-const requiredDirectories = ["skills", "incubator", "tests/smoke"];
+const requiredDirectories = ["docs/adr", "skills", "incubator", "tests/smoke"];
 const yamlFiles = [
   ".github/ISSUE_TEMPLATE/bug.yml",
   ".github/ISSUE_TEMPLATE/skill-proposal.yml",
@@ -109,6 +111,35 @@ try {
   errors.push(`Cannot validate package.json (${error.message}).`);
 }
 
+try {
+  const readme = await readFile(path.join(root, "README.md"), "utf8");
+  if (!/npx skills add .*--skill ["']\*["'].* -g .*--agent codex claude-code/.test(readme)) {
+    errors.push(
+      "README.md must document a global whole-collection install for Codex and Claude Code.",
+    );
+  }
+} catch (error) {
+  if (error.code !== "ENOENT") {
+    errors.push(`Cannot validate README.md (${error.message}).`);
+  }
+}
+
+try {
+  const releaseWorkflow = await readFile(
+    path.join(root, ".github", "workflows", "release.yml"),
+    "utf8",
+  );
+  if (/run:\s*[^\n]*\$\{\{\s*inputs\./.test(releaseWorkflow)) {
+    errors.push(
+      "Release workflow inputs must pass through environment variables before shell use.",
+    );
+  }
+} catch (error) {
+  if (error.code !== "ENOENT") {
+    errors.push(`Cannot validate release workflow safety (${error.message}).`);
+  }
+}
+
 async function markdownFiles(directory) {
   const files = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -116,7 +147,9 @@ async function markdownFiles(directory) {
       continue;
     }
     const target = path.join(directory, entry.name);
-    if (entry.isDirectory()) {
+    if (entry.isSymbolicLink()) {
+      errors.push(`${path.relative(root, target)}: symlinks are forbidden.`);
+    } else if (entry.isDirectory()) {
       files.push(...(await markdownFiles(target)));
     } else if (entry.isFile() && entry.name.endsWith(".md")) {
       files.push(target);
@@ -138,7 +171,15 @@ for (const file of await markdownFiles(root)) {
     if (/^(?:[a-z]+:|#)/i.test(link)) {
       continue;
     }
-    const target = decodeURIComponent(link.split("#", 1)[0] ?? "");
+    let target;
+    try {
+      target = decodeURIComponent(link.split("#", 1)[0] ?? "");
+    } catch {
+      errors.push(
+        `${path.relative(root, file)} contains invalid URI syntax in ${link}.`,
+      );
+      continue;
+    }
     if (target.length === 0) {
       continue;
     }

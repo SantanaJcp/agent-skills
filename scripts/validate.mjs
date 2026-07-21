@@ -57,8 +57,10 @@ const textExtensions = new Set([
   ".html",
   ".js",
   ".json",
+  ".key",
   ".md",
   ".mjs",
+  ".pem",
   ".svg",
   ".txt",
   ".yaml",
@@ -134,6 +136,8 @@ function validateFrontmatter(frontmatter, collection, directoryName, location) {
     errors.push(`${location}: description must be a non-empty string.`);
   } else if (frontmatter.description.length > 1024) {
     errors.push(`${location}: description must be at most 1024 characters.`);
+  } else if (!/\bwhen\b/i.test(frontmatter.description)) {
+    errors.push(`${location}: description must explain when to use the skill.`);
   }
   if (frontmatter.license !== "Apache-2.0") {
     errors.push(`${location}: license must be Apache-2.0.`);
@@ -253,6 +257,7 @@ function validateSmoke(smoke, collection, directoryName, location) {
 
 async function validateLinks(
   source,
+  sourceFile,
   sourceDirectory,
   skillDirectory,
   location,
@@ -280,6 +285,15 @@ async function validateLinks(
     const relative = path.relative(skillDirectory, resolved);
     if (relative.startsWith("..") || path.isAbsolute(relative)) {
       errors.push(`${location}: reference escapes the skill bundle: ${target}.`);
+      continue;
+    }
+    if (
+      path.basename(sourceFile) !== "SKILL.md" &&
+      path.extname(resolved).toLowerCase() === ".md"
+    ) {
+      errors.push(
+        `${location}: Markdown references must stay one hop from SKILL.md: ${target}.`,
+      );
       continue;
     }
 
@@ -316,7 +330,11 @@ async function validateScript(source, filePath, skillDirectory, location) {
     if (specifier.startsWith("node:")) {
       continue;
     }
-    if (specifier.startsWith(".") || specifier.startsWith("/")) {
+    if (path.posix.isAbsolute(specifier) || path.win32.isAbsolute(specifier)) {
+      errors.push(`${location}: absolute script import ${specifier} is forbidden.`);
+      continue;
+    }
+    if (specifier.startsWith(".")) {
       const resolved = path.resolve(path.dirname(filePath), specifier);
       const relative = path.relative(skillDirectory, resolved);
       if (relative.startsWith("..") || path.isAbsolute(relative)) {
@@ -344,6 +362,7 @@ async function validateScript(source, filePath, skillDirectory, location) {
 
 async function validateBundle(skillDirectory, location) {
   const pending = [skillDirectory];
+  let hasAsset = false;
 
   while (pending.length > 0) {
     const directory = pending.pop();
@@ -367,6 +386,12 @@ async function validateBundle(skillDirectory, location) {
       }
 
       const extension = path.extname(entry.name).toLowerCase();
+      if (
+        relative.split(path.sep)[0] === "assets" &&
+        !entry.name.startsWith(".")
+      ) {
+        hasAsset = true;
+      }
       if (forbiddenExecutableExtensions.has(extension)) {
         errors.push(
           `${itemLocation}: opaque executable file type ${extension} is forbidden.`,
@@ -397,6 +422,7 @@ async function validateBundle(skillDirectory, location) {
       if (extension === ".md") {
         await validateLinks(
           source,
+          filePath,
           path.dirname(filePath),
           skillDirectory,
           itemLocation,
@@ -404,12 +430,41 @@ async function validateBundle(skillDirectory, location) {
       }
     }
   }
+
+  if (hasAsset) {
+    const notices = path.join(skillDirectory, "THIRD_PARTY_NOTICES.md");
+    try {
+      if ((await readFile(notices, "utf8")).trim().length === 0) {
+        errors.push(`${location}: THIRD_PARTY_NOTICES.md must not be empty.`);
+      }
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        errors.push(`${location}: assets require THIRD_PARTY_NOTICES.md.`);
+      } else {
+        throw error;
+      }
+    }
+  }
 }
 
-async function directoriesAt(directory) {
+async function directoriesAt(directory, collection) {
   try {
     const entries = await readdir(directory, { withFileTypes: true });
-    return entries.filter((entry) => entry.isDirectory() && !entry.name.startsWith("."));
+    const directories = [];
+    for (const entry of entries) {
+      if (entry.name.startsWith(".")) {
+        continue;
+      }
+      const location = `${collection}/${entry.name}`;
+      if (entry.isSymbolicLink()) {
+        errors.push(`${location}: symlinks are forbidden.`);
+      } else if (entry.isDirectory()) {
+        directories.push(entry);
+      } else {
+        errors.push(`${location}: collection entries must be skill directories.`);
+      }
+    }
+    return directories;
   } catch (error) {
     if (error.code === "ENOENT") {
       return [];
@@ -420,7 +475,7 @@ async function directoriesAt(directory) {
 
 for (const collection of collections) {
   const collectionDirectory = path.join(root, collection);
-  for (const entry of await directoriesAt(collectionDirectory)) {
+  for (const entry of await directoriesAt(collectionDirectory, collection)) {
     const relative = `${collection}/${entry.name}`;
     let source;
     try {

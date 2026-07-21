@@ -72,3 +72,22 @@ test("release manager cannot publish a prerelease foundation", async () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Public releases must begin at v1\.0\.0 or later/);
 });
+
+test("release manager must publish v1.0.0 before a later major version", async () => {
+  const root = await createReleaseCandidate("2.0.0");
+
+  const result = run(process.execPath, [releaseCheck, "2.0.0"], root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /First public release must be v1\.0\.0/);
+});
+
+test("release manager can publish a later version after v1.0.0 exists", async () => {
+  const root = await createReleaseCandidate("2.0.0");
+  assert.equal(run("git", ["tag", "v1.0.0"], root).status, 0);
+
+  const result = run(process.execPath, [releaseCheck, "2.0.0"], root);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Release v2\.0\.0 is ready/);
+});

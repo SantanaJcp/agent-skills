@@ -80,6 +80,22 @@ if (tag.status === 0) {
   errors.push(`Tag v${version} already exists.`);
 }
 
+const releaseTags = spawnSync(
+  "git",
+  ["tag", "--list", "v[0-9]*.[0-9]*.[0-9]*"],
+  { cwd: root, encoding: "utf8" },
+);
+if (releaseTags.status !== 0) {
+  errors.push(`Cannot inspect release tags (${releaseTags.stderr.trim()}).`);
+} else {
+  const hasPublicRelease = releaseTags.stdout
+    .split(/\r?\n/)
+    .some((candidate) => /^v\d+\.\d+\.\d+$/.test(candidate));
+  if (!hasPublicRelease && version !== "1.0.0") {
+    errors.push("First public release must be v1.0.0.");
+  }
+}
+
 if (errors.length > 0) {
   console.error(errors.map((error) => `ERROR: ${error}`).join("\n"));
   process.exit(1);

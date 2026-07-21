@@ -97,6 +97,39 @@ cases:
   assert.match(result.stderr, /unsupported stable frontmatter field client-only/);
 });
 
+test("description must state when the skill should activate", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
+  await writeSkill(
+    root,
+    "incubator",
+    "research-notes",
+    `---
+name: research-notes
+description: Organize and synthesize research notes from multiple sources.
+license: Apache-2.0
+metadata:
+  tags: "research"
+---
+
+# Research Notes
+`,
+    `skill: research-notes
+cases:
+  - kind: trigger
+    prompt: Organize these research notes.
+    expected: The skill activates.
+  - kind: non-trigger
+    prompt: What time is it?
+    expected: The skill remains inactive.
+`,
+  );
+
+  const result = runValidator(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /description must explain when to use the skill/);
+});
+
 test("maintainer cannot publish duplicate names across maturity collections", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
   const skill = `---
@@ -240,6 +273,53 @@ cases:
   assert.equal(result.status, 0, result.stderr);
 });
 
+test("supporting documents cannot create deep reference chains", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
+  await writeSkill(
+    root,
+    "incubator",
+    "research-notes",
+    `---
+name: research-notes
+description: Organize research notes when an agent must synthesize multiple sources.
+license: Apache-2.0
+metadata:
+  tags: "research"
+---
+
+# Research Notes
+
+Read [the workflow](references/workflow.md).
+`,
+    `skill: research-notes
+cases:
+  - kind: trigger
+    prompt: "TODO: Add a prompt."
+    expected: "TODO: Add expected behavior."
+  - kind: non-trigger
+    prompt: "TODO: Add a prompt."
+    expected: "TODO: Add expected behavior."
+`,
+  );
+  const references = path.join(
+    root,
+    "incubator",
+    "research-notes",
+    "references",
+  );
+  await mkdir(references);
+  await writeFile(
+    path.join(references, "workflow.md"),
+    "Continue to [details](details.md).\n",
+  );
+  await writeFile(path.join(references, "details.md"), "# Details\n");
+
+  const result = runValidator(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Markdown references must stay one hop from SKILL\.md/);
+});
+
 test("unsafe or nonportable bundled files are rejected with review signals", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
   await writeSkill(
@@ -276,9 +356,15 @@ cases:
 import { spawn } from "node:child_process";
 import https from "node:https";
 import "../../outside.mjs";
+import ${JSON.stringify(path.join(skillRoot, "scripts", "local.mjs"))};
 `,
   );
+  await writeFile(path.join(skillRoot, "scripts", "local.mjs"), "export {};\n");
   await writeFile(path.join(skillRoot, "assets", "tool.exe"), "MZ");
+  await writeFile(
+    path.join(skillRoot, "assets", "secret.pem"),
+    "-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----\n",
+  );
   await writeFile(
     path.join(skillRoot, "references", "secret.txt"),
     "-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----\nghp_abcdefghijklmnopqrstuvwxyzABCDEFGHIJ\n",
@@ -297,6 +383,7 @@ import "../../outside.mjs";
   assert.match(result.stderr, /external process module node:child_process is forbidden/);
   assert.match(result.stderr, /network module node:https requires manual review/);
   assert.match(result.stderr, /script import escapes the skill bundle: \.\.\/\.\.\/outside\.mjs/);
+  assert.match(result.stderr, /absolute script import .* is forbidden/);
   assert.match(result.stderr, /opaque executable file type \.exe is forbidden/);
   assert.match(result.stderr, /possible private key/);
   assert.match(result.stderr, /possible GitHub token/);
@@ -342,6 +429,7 @@ cases:
     `import "./missing.mjs";\n`,
   );
   await writeFile(path.join(skillRoot, "assets", "bundle.zip"), "opaque");
+  await writeFile(path.join(skillRoot, "assets", "third-party-logo.png"), "media");
 
   const result = runValidator(root);
 
@@ -350,7 +438,25 @@ cases:
   assert.match(result.stderr, /SKILL\.md must not exceed 500 lines/);
   assert.match(result.stderr, /script import does not exist: \.\/missing\.mjs/);
   assert.match(result.stderr, /opaque bundled file type \.zip is forbidden/);
+  assert.match(result.stderr, /assets require THIRD_PARTY_NOTICES\.md/);
 });
+
+test(
+  "top-level skill symlinks are rejected",
+  { skip: process.platform === "win32" },
+  async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
+    const outside = path.join(root, "outside-skill");
+    await mkdir(outside);
+    await mkdir(path.join(root, "skills"));
+    await symlink(outside, path.join(root, "skills", "linked-skill"));
+
+    const result = runValidator(root);
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /skills\/linked-skill: symlinks are forbidden/);
+  },
+);
 
 test("supporting Markdown references cannot escape the skill", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));

@@ -14,6 +14,12 @@ Select skills interactively and install them for both supported clients:
 npx skills add <github-user>/agent-skills -g --agent codex claude-code
 ```
 
+Install the complete collection globally without interactive skill selection:
+
+```bash
+npx skills add <github-user>/agent-skills --skill "*" -g --agent codex claude-code
+```
+
 Install one named skill:
 
 ```bash

@@ -15,6 +15,8 @@ jobs:
   release:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -30,14 +32,14 @@ jobs:
       - name: Run repository acceptance seam
         run: npm run check
       - name: Validate release candidate
-        run: npm run release:check -- "${{ inputs.version }}"
+        run: npm run release:check -- "$RELEASE_VERSION"
       - name: Prepare matching release notes
-        run: npm run release:notes -- "${{ inputs.version }}" release-notes.md
+        run: npm run release:notes -- "$RELEASE_VERSION" release-notes.md
       - name: Create annotated tag
-        run: git tag -a "v${{ inputs.version }}" -m "agent-skills v${{ inputs.version }}"
+        run: git tag -a "v$RELEASE_VERSION" -m "agent-skills v$RELEASE_VERSION"
       - name: Push tag
-        run: git push origin "v${{ inputs.version }}"
+        run: git push origin "v$RELEASE_VERSION"
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "v${{ inputs.version }}" --verify-tag --title "agent-skills v${{ inputs.version }}" --notes-file release-notes.md
+        run: gh release create "v$RELEASE_VERSION" --verify-tag --title "agent-skills v$RELEASE_VERSION" --notes-file release-notes.md
