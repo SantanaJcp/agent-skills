@@ -360,6 +360,8 @@ import "../../outside.mjs";
 import ${JSON.stringify(path.join(skillRoot, "scripts", "local.mjs"))};
 fetch("https://example.com");
 createRequire(import.meta.url)("left-pad");
+const packageName = "left-pad";
+import(packageName);
 `,
   );
   await writeFile(path.join(skillRoot, "scripts", "local.mjs"), "export {};\n");
@@ -385,6 +387,7 @@ createRequire(import.meta.url)("left-pad");
   assert.match(result.stderr, /runtime package import left-pad is forbidden/);
   assert.match(result.stderr, /external process module node:child_process is forbidden/);
   assert.match(result.stderr, /dependency-loading module node:module is forbidden/);
+  assert.match(result.stderr, /dynamic imports must use one literal specifier/);
   assert.match(result.stderr, /network module node:https requires manual review/);
   assert.match(result.stderr, /network module node:dns\/promises requires manual review/);
   assert.match(result.stderr, /global fetch requires manual network review/);

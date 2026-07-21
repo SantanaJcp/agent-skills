@@ -317,6 +317,16 @@ async function validateLinks(
 }
 
 async function validateScript(source, filePath, skillDirectory, location) {
+  const dynamicImports = source.matchAll(/\bimport\s*\(([^)]*)\)/g);
+  for (const match of dynamicImports) {
+    const expression = match[1]?.trim() ?? "";
+    if (!/^(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')$/.test(expression)) {
+      errors.push(
+        `${location}: dynamic imports must use one literal specifier.`,
+      );
+    }
+  }
+
   const imports = source.matchAll(
     /(?:import\s+(?:[^'"]*?\s+from\s+)?|export\s+[^'"]*?\s+from\s+|import\s*\()\s*["']([^"']+)["']/g,
   );
