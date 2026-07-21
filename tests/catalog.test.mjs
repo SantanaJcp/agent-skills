@@ -57,7 +57,7 @@ test("visitor receives deterministic stable and incubator catalogs", async () =>
 
   const stable = await readFile(path.join(root, "CATALOG.md"), "utf8");
   assert.match(stable, /\[research-notes\]\(skills\/research-notes\/SKILL\.md\)/);
-  assert.match(stable, /<github-user>\/agent-skills@research-notes/);
+  assert.match(stable, /SantanaJcp\/agent-skills@research-notes/);
   assert.match(stable, /## Topics[\s\S]*### documentation[\s\S]*### research/);
 
   const incubator = await readFile(path.join(root, "INCUBATOR.md"), "utf8");

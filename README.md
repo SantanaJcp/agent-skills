@@ -11,19 +11,19 @@ The primary distribution interface is [`npx skills add`](https://github.com/verc
 Select skills interactively and install them for both supported clients:
 
 ```bash
-npx skills add <github-user>/agent-skills -g --agent codex claude-code
+npx skills add SantanaJcp/agent-skills -g --agent codex claude-code
 ```
 
 Install the complete collection globally without interactive skill selection:
 
 ```bash
-npx skills add <github-user>/agent-skills --skill "*" -g --agent codex claude-code
+npx skills add SantanaJcp/agent-skills --skill "*" -g --agent codex claude-code
 ```
 
 Install one named skill:
 
 ```bash
-npx skills add <github-user>/agent-skills@<skill-name> -g --agent codex claude-code
+npx skills add SantanaJcp/agent-skills@<skill-name> -g --agent codex claude-code
 ```
 
 For a project-local installation, omit `-g`. A consuming project may commit its generated `skills-lock.json`; this publisher repository does not.
@@ -61,13 +61,14 @@ See [architecture](docs/architecture.md) and [compatibility](docs/compatibility.
 
 Skills execute with the permissions of the client that invokes them. Review instructions, scripts, assets, and updates before use. See [SECURITY.md](SECURITY.md) for the reporting policy and repository safety guarantees.
 
-## Publishing checklist
+## Publication status
 
-Before the repository becomes public, the maintainer must:
+The repository is published from the personal `SantanaJcp` account with these safeguards:
 
-1. Replace `<github-user>` in install examples and generated catalogs.
-2. Configure protected `main`, required CI, squash merges, and an emergency bypass.
-3. Enable GitHub private vulnerability reporting.
-4. Add the documented skills.sh badge and verify the public owner/repository listing without promising an indexing deadline.
+- protected `main` with pull requests and required Linux/Windows CI;
+- squash merges only, with a maintainer emergency bypass;
+- private vulnerability reporting enabled.
+
+After the first real skill is public, add the documented skills.sh badge and verify the public owner/repository listing without promising an indexing deadline.
 
 The first public release will be `v1.0.0` when the maintainer judges the collection and governance mature.

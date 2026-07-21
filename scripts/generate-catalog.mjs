@@ -87,7 +87,7 @@ function renderStable(skills) {
   );
   for (const skill of skills) {
     lines.push(
-      `| [${skill.name}](skills/${skill.name}/SKILL.md) | ${escapeTable(skill.description)} | ${skill.tags.map((tag) => `\`${tag}\``).join(", ")} | \`npx skills add <github-user>/agent-skills@${skill.name} -g -a codex -a claude-code\` |`,
+      `| [${skill.name}](skills/${skill.name}/SKILL.md) | ${escapeTable(skill.description)} | ${skill.tags.map((tag) => `\`${tag}\``).join(", ")} | \`npx skills add SantanaJcp/agent-skills@${skill.name} -g -a codex -a claude-code\` |`,
     );
   }
   lines.push("", renderTopics(skills, "skills"));
