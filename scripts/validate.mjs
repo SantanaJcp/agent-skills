@@ -2,6 +2,7 @@
 
 import { access, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { parse as parseJavaScript } from "acorn";
 import { parse } from "yaml";
 import { parseSkillFrontmatter } from "./lib/parse-skill-frontmatter.mjs";
 
@@ -84,12 +85,7 @@ const compatibleAssetLicenses = new Set([
   "CC0-1.0",
   "MIT",
 ]);
-/** @type {Array<[string, RegExp]>} */
-const networkGlobals = [
-  ["fetch", /\bfetch\s*\(/],
-  ["WebSocket", /\bWebSocket\s*\(/],
-  ["EventSource", /\bEventSource\s*\(/],
-];
+const networkGlobals = new Set(["fetch", "WebSocket", "EventSource"]);
 const secretPatterns = [
   {
     label: "private key",
@@ -317,21 +313,80 @@ async function validateLinks(
 }
 
 async function validateScript(source, filePath, skillDirectory, location) {
-  const dynamicImports = source.matchAll(/\bimport\s*\(([^)]*)\)/g);
-  for (const match of dynamicImports) {
-    const expression = match[1]?.trim() ?? "";
-    if (!/^(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')$/.test(expression)) {
-      errors.push(
-        `${location}: dynamic imports must use one literal specifier.`,
-      );
-    }
+  let program;
+  try {
+    program = parseJavaScript(source, {
+      allowHashBang: true,
+      ecmaVersion: "latest",
+      sourceType: "module",
+    });
+  } catch (error) {
+    errors.push(`${location}: invalid JavaScript (${error.message}).`);
+    return;
   }
 
-  const imports = source.matchAll(
-    /(?:import\s+(?:[^'"]*?\s+from\s+)?|export\s+[^'"]*?\s+from\s+|import\s*\()\s*["']([^"']+)["']/g,
-  );
-  for (const match of imports) {
-    const specifier = match[1];
+  const specifiers = [];
+  const usedNetworkGlobals = new Set();
+  /** @param {any} node */
+  function visit(node) {
+    if (
+      ["ImportDeclaration", "ExportNamedDeclaration", "ExportAllDeclaration"].includes(
+        node.type,
+      ) &&
+      typeof node.source?.value === "string"
+    ) {
+      specifiers.push(node.source.value);
+    } else if (node.type === "ImportExpression") {
+      if (node.source?.type === "Literal" && typeof node.source.value === "string") {
+        specifiers.push(node.source.value);
+      } else {
+        errors.push(`${location}: dynamic imports must use one literal specifier.`);
+      }
+    }
+
+    if (["CallExpression", "NewExpression"].includes(node.type)) {
+      let calledName;
+      if (node.callee?.type === "Identifier") {
+        calledName = node.callee.name;
+      } else if (node.callee?.type === "MemberExpression") {
+        if (!node.callee.computed && node.callee.property?.type === "Identifier") {
+          calledName = node.callee.property.name;
+        } else if (
+          node.callee.computed &&
+          node.callee.property?.type === "Literal" &&
+          typeof node.callee.property.value === "string"
+        ) {
+          calledName = node.callee.property.value;
+        }
+      }
+      if (networkGlobals.has(calledName)) {
+        usedNetworkGlobals.add(calledName);
+      }
+      if (calledName === "getBuiltinModule") {
+        errors.push(
+          `${location}: process.getBuiltinModule is forbidden because it can bypass dependency checks.`,
+        );
+      }
+      if (calledName === "require") {
+        errors.push(`${location}: CommonJS require calls are forbidden.`);
+      }
+    }
+
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) {
+        for (const child of value) {
+          if (child?.type !== undefined) {
+            visit(child);
+          }
+        }
+      } else if (value?.type !== undefined) {
+        visit(value);
+      }
+    }
+  }
+  visit(program);
+
+  for (const specifier of specifiers) {
     if (specifier === "node:child_process") {
       errors.push(
         `${location}: external process module node:child_process is forbidden.`,
@@ -387,15 +442,8 @@ async function validateScript(source, filePath, skillDirectory, location) {
     errors.push(`${location}: runtime package import ${specifier} is forbidden.`);
   }
 
-  for (const [name, pattern] of networkGlobals) {
-    if (pattern.test(source)) {
-      warnings.push(`${location}: global ${name} requires manual network review.`);
-    }
-  }
-  if (/\bgetBuiltinModule\s*\(/.test(source)) {
-    errors.push(
-      `${location}: process.getBuiltinModule is forbidden because it can bypass dependency checks.`,
-    );
+  for (const name of usedNetworkGlobals) {
+    warnings.push(`${location}: global ${name} requires manual network review.`);
   }
 }
 

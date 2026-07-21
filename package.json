@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@types/node": "22.20.1",
+    "acorn": "8.17.0",
     "skills": "1.5.19",
     "typescript": "7.0.2",
     "yaml": "2.9.0"

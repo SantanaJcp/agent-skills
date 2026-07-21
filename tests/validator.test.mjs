@@ -361,7 +361,7 @@ import ${JSON.stringify(path.join(skillRoot, "scripts", "local.mjs"))};
 fetch("https://example.com");
 createRequire(import.meta.url)("left-pad");
 const packageName = "left-pad";
-import(packageName);
+import /* comment cannot hide a nonliteral import */ (packageName);
 `,
   );
   await writeFile(path.join(skillRoot, "scripts", "local.mjs"), "export {};\n");
