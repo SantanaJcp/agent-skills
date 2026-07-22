@@ -1,0 +1,4 @@
+interface:
+  display_name: "Learning Workbench"
+  short_description: "Run a durable source-grounded curriculum"
+  default_prompt: "Use $learning-workbench to create or continue my learning workspace for this topic."

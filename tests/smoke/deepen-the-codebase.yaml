@@ -1,0 +1,14 @@
+skill: deepen-the-codebase
+cases:
+  - kind: trigger
+    prompt: "Analyze our recent hot spots for modules that should become deeper, but do not refactor yet."
+    expected: "Uses domain/architecture vocabulary to compare evidence-backed deepening candidates."
+  - kind: trigger
+    prompt: "Our tests need too many artificial seams. Show the strongest architectural directions and let me choose."
+    expected: "Maps current interfaces, locality, leverage, and test effects, then exports a blueprint seed."
+  - kind: non-trigger
+    prompt: "Refactor this module now."
+    expected: "Immediate mutation belongs to an implementation skill."
+  - kind: non-trigger
+    prompt: "Find why this specific test is failing."
+    expected: "Bug diagnosis belongs to find-the-cause."

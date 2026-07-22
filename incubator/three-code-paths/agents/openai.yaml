@@ -1,0 +1,4 @@
+interface:
+  display_name: "Three Code Paths"
+  short_description: "Compare three real implementation shapes"
+  default_prompt: "Use $three-code-paths to compare three structural approaches to this change."

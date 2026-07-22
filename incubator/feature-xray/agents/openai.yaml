@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feature X-Ray"
+  short_description: "Explain a feature from source evidence"
+  default_prompt: "Use $feature-xray to explain how this feature works in the current codebase."

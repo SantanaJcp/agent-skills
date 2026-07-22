@@ -1,0 +1,14 @@
+skill: what-just-happened
+cases:
+  - kind: trigger
+    prompt: "Capture what we know about the outage while response is still active, but do not direct mitigation."
+    expected: "Maintains a factual draft timeline and leaves cause/ownership unresolved until stabilization."
+  - kind: trigger
+    prompt: "The incident is stable. Turn logs, deploys, and notes into an evidence-backed postmortem."
+    expected: "Completes the incident record with sourced cause, impact, hypotheses, and real owners."
+  - kind: non-trigger
+    prompt: "Debug why this request is failing and identify the cause."
+    expected: "Diagnosis belongs to find-the-cause."
+  - kind: non-trigger
+    prompt: "Coordinate the live incident and tell each responder what to do."
+    expected: "Incident command is explicitly outside this reporting skill."

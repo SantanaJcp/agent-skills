@@ -1,0 +1,14 @@
+skill: build-with-notes
+cases:
+  - kind: trigger
+    prompt: "Implement the approved change blueprint and keep live notes as each slice lands."
+    expected: "Edits the repository test-first, refreshes Acta notes, stops on contract changes, and asks separately before commit."
+  - kind: trigger
+    prompt: "Build this ticket even though there is no blueprint; derive the minimal contract and show progress."
+    expected: "Uses the explicit implementation request as edit authorization and records the missing blueprint provenance."
+  - kind: non-trigger
+    prompt: "Compare three possible code shapes before we decide."
+    expected: "Preimplementation comparison belongs to three-code-paths."
+  - kind: non-trigger
+    prompt: "Diagnose this failure but do not fix anything."
+    expected: "Diagnosis-only work belongs to find-the-cause."

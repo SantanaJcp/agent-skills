@@ -1,0 +1,72 @@
+{
+  "three-code-paths": {
+    "title": "Three code paths",
+    "family": "Compare",
+    "lede": "Compare three structurally distinct implementation approaches at equal fidelity before choosing one."
+  },
+  "interface-directions": {
+    "title": "Interface directions",
+    "family": "Compare",
+    "lede": "Compare genuinely distinct product interface directions inside an Acta decision record."
+  },
+  "change-blueprint": {
+    "title": "Change blueprint",
+    "family": "Document",
+    "lede": "Review a compact specification and a separate implementation plan through two explicit gates."
+  },
+  "build-with-notes": {
+    "title": "Build with notes",
+    "family": "Edit",
+    "lede": "Follow implementation progress, checks, deviations, and human STOP gates from one session record."
+  },
+  "do-i-understand-this": {
+    "title": "Do I understand this?",
+    "family": "Edit",
+    "lede": "A diagnostic understanding check grounded in the actual change; never a merge gate."
+  },
+  "feel-the-flow": {
+    "title": "Feel the flow",
+    "family": "Explore",
+    "lede": "Manipulate a disposable interaction prototype and export every parameter and conclusion."
+  },
+  "feature-xray": {
+    "title": "Feature X-ray",
+    "family": "Document",
+    "lede": "Trace an existing feature from source evidence, operational flow, and verifiable locations."
+  },
+  "concept-lab": {
+    "title": "Concept lab",
+    "family": "Explore",
+    "lede": "Explore a trustworthy conceptual model while keeping pedagogical simplification separate from production behavior."
+  },
+  "what-just-happened": {
+    "title": "What just happened?",
+    "family": "Document",
+    "lede": "Build an evidence-backed incident record without directing active mitigation or inventing ownership."
+  },
+  "draw-the-flow": {
+    "title": "Draw the flow",
+    "family": "Explore",
+    "lede": "Show an overview before stage detail, including normal, decision, failure, and recovery paths."
+  },
+  "draw-it-in-svg": {
+    "title": "Draw it in SVG",
+    "family": "Explore",
+    "lede": "Create a figure sheet whose SVGs remain accessible and reusable outside the report."
+  },
+  "deepen-the-codebase": {
+    "title": "Deepen the codebase",
+    "family": "Compare",
+    "lede": "Compare evidence-backed module-deepening opportunities without refactoring the repository."
+  },
+  "find-the-cause": {
+    "title": "Find the cause",
+    "family": "Document",
+    "lede": "Record a tight feedback loop, falsifiable hypotheses, and a validated cause without applying the production fix."
+  },
+  "learning-workbench": {
+    "title": "Learning workbench",
+    "family": "Explore",
+    "lede": "Connect a durable learning mission to trusted sources, retrieval practice, and spaced review."
+  }
+}

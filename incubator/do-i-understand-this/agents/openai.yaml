@@ -1,0 +1,4 @@
+interface:
+  display_name: "Do I Understand This"
+  short_description: "Diagnose understanding of a real change"
+  default_prompt: "Use $do-i-understand-this to test my understanding of this completed change."

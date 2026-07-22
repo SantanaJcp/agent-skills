@@ -8,6 +8,8 @@
     "node": ">=22.20.0"
   },
   "scripts": {
+    "acta": "node scripts/materialize-acta.mjs",
+    "acta:check": "node scripts/materialize-acta.mjs --check",
     "catalog": "node scripts/generate-catalog.mjs",
     "catalog:check": "node scripts/generate-catalog.mjs --check",
     "check": "node scripts/check.mjs",
@@ -18,11 +20,13 @@
     "test:install": "node scripts/install-smoke.mjs",
     "typecheck": "tsc -p jsconfig.json",
     "validate": "node scripts/validate.mjs",
+    "validate:acta": "node scripts/validate-acta.mjs",
     "validate:repository": "node scripts/validate-repository.mjs"
   },
   "devDependencies": {
     "@types/node": "22.20.1",
     "acorn": "8.17.0",
+    "parse5": "8.0.1",
     "skills": "1.5.19",
     "typescript": "7.0.2",
     "yaml": "2.9.0"

@@ -1,0 +1,30 @@
+version: 1
+cases:
+  - left: make-me-realize
+    right: change-blueprint
+    prompt: "I have a fuzzy idea for safer imports, but I cannot yet state the real risk or acceptance boundary."
+    expected: "$make-me-realize should expose unknowns before $change-blueprint is proposed."
+  - left: three-code-paths
+    right: interface-directions
+    prompt: "Compare three structural APIs for the catalog module; the product UI is already fixed."
+    expected: "$three-code-paths should activate; $interface-directions should not."
+  - left: feel-the-flow
+    right: build-with-notes
+    prompt: "Make a disposable interaction model for a tag filter so we can learn before touching production."
+    expected: "$feel-the-flow should activate; $build-with-notes should wait for an approved plan."
+  - left: feature-xray
+    right: concept-lab
+    prompt: "Trace how this repository's catalog generation works using concrete file and line evidence."
+    expected: "$feature-xray should explain the existing feature; $concept-lab should not replace source evidence."
+  - left: what-just-happened
+    right: find-the-cause
+    prompt: "The release failed five minutes ago; preserve the timeline and known impact while investigation continues."
+    expected: "$what-just-happened should capture facts; $find-the-cause remains the separate diagnostic path."
+  - left: deepen-the-codebase
+    right: build-with-notes
+    prompt: "Identify architecture-deepening candidates and compare their seams, but do not refactor anything."
+    expected: "$deepen-the-codebase should analyze only; $build-with-notes must not implement."
+  - left: draw-the-flow
+    right: draw-it-in-svg
+    prompt: "Show the normal, failure, and recovery paths for catalog publishing as a process diagram."
+    expected: "$draw-the-flow should own process semantics; $draw-it-in-svg is for a general standalone illustration."

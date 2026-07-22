@@ -1,41 +1,52 @@
 # agent-skills
 
-A curated, Apache-2.0 library of self-contained [Agent Skills](https://agentskills.io/) for current stable Codex and Claude Code.
+A bundle-first, Apache-2.0 development system of fifteen portable [Agent Skills](https://agentskills.io/) for current stable Codex and Claude Code.
 
-> **Pre-release:** the repository foundation is available, but no skill has been promoted and no public release has been published.
+> **Pre-release:** all fifteen skills are incubating. None carries the stable compatibility promise until the complete suite passes the joint client, browser, and accessibility gates.
 
-## Install
+## Install the complete suite
 
-The primary distribution interface is [`npx skills add`](https://github.com/vercel-labs/skills). Global installation is shown first because this collection is intended for reuse across projects.
+The recommended experience installs the whole development cycle and its autonomous tools globally for both supported clients:
 
-Select skills interactively and install them for both supported clients:
+```bash
+npx skills add SantanaJcp/agent-skills --skill '*' -g --agent codex claude-code
+```
+
+For a reviewed, reproducible CLI version, use `npx skills@1.5.19`. Avoid `-y` until you have inspected the skills and scripts. Set `DO_NOT_TRACK=1` or `DISABLE_TELEMETRY=1` to disable install telemetry.
+
+Advanced consumers may select skills interactively:
 
 ```bash
 npx skills add SantanaJcp/agent-skills -g --agent codex claude-code
 ```
 
-Install the complete collection globally without interactive skill selection:
-
-```bash
-npx skills add SantanaJcp/agent-skills --skill "*" -g --agent codex claude-code
-```
-
-Install one named skill:
+Or install one self-contained skill:
 
 ```bash
 npx skills add SantanaJcp/agent-skills@<skill-name> -g --agent codex claude-code
 ```
 
-For a project-local installation, omit `-g`. A consuming project may commit its generated `skills-lock.json`; this publisher repository does not.
+For a project-local installation, omit `-g`. A consumer may commit its generated `skills-lock.json`; this publisher does not.
 
-For a reviewed, reproducible CLI version, replace `npx skills` with `npx skills@1.5.19`. Avoid `-y` until you have inspected the skill and scripts. CLI audit results are advisory rather than a security guarantee. Set `DO_NOT_TRACK=1` or `DISABLE_TELEMETRY=1` to disable install telemetry.
+## Development cycle
+
+1. `make-me-realize` — expose blind spots and own every unknown.
+2. `three-code-paths` — compare three structural implementation choices.
+3. `interface-directions` — conditionally choose a product-interface direction.
+4. `change-blueprint` — approve a compact spec and implementation plan.
+5. `build-with-notes` — implement test-first with live notes and STOP gates.
+6. `do-i-understand-this` — diagnose understanding of the completed change.
+
+The bundle also includes `feel-the-flow`, `feature-xray`, `concept-lab`, `what-just-happened`, `draw-the-flow`, `draw-it-in-svg`, `deepen-the-codebase`, `find-the-cause`, and `learning-workbench`.
+
+Skills may recommend a handoff, but never invoke the next stage automatically. Markdown/JSON is canonical; Acta HTML is an offline, printable human interface.
 
 ## Browse
 
 - [Stable catalog](CATALOG.md)
 - [Incubator](INCUBATOR.md)
-
-Stable skills pass the portable-format, security, deterministic, and manual Codex/Claude promotion gates. Incubator skills are experiments and carry no stable compatibility promise.
+- [Acta architecture](docs/architecture.md)
+- [Acta promotion evidence](docs/qa/acta-suite-0.1.0.md)
 
 ## Author
 
@@ -44,31 +55,21 @@ Requirements: Node `>=22.20.0` and npm.
 ```bash
 npm ci
 npm run new:skill -- my-skill
+npm run acta
+npm run catalog
 npm run check
 ```
 
-The generator creates the skill in the incubator and a matching trigger/non-trigger smoke-case definition. Fill every placeholder before submitting a pull request.
+Acta authoring sources are publisher-only. Materialized protocol and HTML scaffolds are committed inside skill bundles so whole-collection and isolated installs work without network, runtime packages, sibling skills, renderers, watchers, or servers.
 
 Read the [authoring guide](docs/authoring.md), [testing guide](docs/testing.md), and [contribution guide](CONTRIBUTING.md) before promotion.
 
-## Architecture
-
-The repository intentionally publishes portable skill directories rather than native plugins. `npx skills add` installs skill folders; it does not install plugin hooks, MCP servers, agents, or lifecycle behavior. Native plugin manifests can be added later without moving the canonical collection if those capabilities become necessary.
-
-See [architecture](docs/architecture.md) and [compatibility](docs/compatibility.md) for the detailed model.
-
 ## Security
 
-Skills execute with the permissions of the client that invokes them. Review instructions, scripts, assets, and updates before use. See [SECURITY.md](SECURITY.md) for the reporting policy and repository safety guarantees.
+Skills execute with the invoking client's permissions. Review instructions, scripts, artifacts, and updates before use. HTML views do not write canonical files or persist browser storage. See [SECURITY.md](SECURITY.md).
 
 ## Publication status
 
-The repository is published from the personal `SantanaJcp` account with these safeguards:
+The repository is published from the personal `SantanaJcp` account with protected `main`, required Linux/Windows CI, squash merges, a maintainer emergency bypass, and private vulnerability reporting.
 
-- protected `main` with pull requests and required Linux/Windows CI;
-- squash merges only, with a maintainer emergency bypass;
-- private vulnerability reporting enabled.
-
-After the first real skill is public, add the documented skills.sh badge and verify the public owner/repository listing without promising an indexing deadline.
-
-The first public release will be `v1.0.0` when the maintainer judges the collection and governance mature.
+The first public release will be `v1.0.0` only after the fifteen-skill cohort is promoted. This repository prepares but does not automatically dispatch that release.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Make Me Realize"
+  short_description: "Expose blind spots before solution design"
+  default_prompt: "Use $make-me-realize to expose the unknowns and decisions in this idea."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Change Blueprint"
+  short_description: "Approve a spec and implementation plan"
+  default_prompt: "Use $change-blueprint to produce the gated spec and implementation plan for this change."

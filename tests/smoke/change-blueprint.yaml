@@ -1,0 +1,14 @@
+skill: change-blueprint
+cases:
+  - kind: trigger
+    prompt: "Our requirements and preferred approach are settled. Write the spec and implementation plan with approval gates."
+    expected: "Produces separate compact spec and decision-complete plan, each gated and publishable only explicitly."
+  - kind: trigger
+    prompt: "Turn this clarified feature discussion into acceptance criteria, test seams, slices, risks, and rollout."
+    expected: "Runs readiness, Gate A, then Gate B without implementing."
+  - kind: non-trigger
+    prompt: "I only know that onboarding feels bad. Help me figure out the problem."
+    expected: "Broad ambiguity belongs to make-me-realize."
+  - kind: non-trigger
+    prompt: "The plan is approved; implement it now."
+    expected: "Execution belongs to build-with-notes."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Interface Directions"
+  short_description: "Compare distinct product interface directions"
+  default_prompt: "Use $interface-directions to explore distinct interface directions for this experience."

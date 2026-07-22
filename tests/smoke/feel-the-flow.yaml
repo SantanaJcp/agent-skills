@@ -1,0 +1,14 @@
+skill: feel-the-flow
+cases:
+  - kind: trigger
+    prompt: "Make a quick interactive prototype so I can feel whether this retry flow is too aggressive."
+    expected: "Creates an offline disposable prototype and exports parameters and conclusions."
+  - kind: trigger
+    prompt: "We cannot decide this animation timing from prose; let me manipulate it first."
+    expected: "Builds the smallest interaction model needed to answer the timing decision."
+  - kind: non-trigger
+    prompt: "Show three static visual directions for the landing page."
+    expected: "Static interface comparison belongs to interface-directions."
+  - kind: non-trigger
+    prompt: "Implement the approved production component."
+    expected: "Production work belongs to build-with-notes."

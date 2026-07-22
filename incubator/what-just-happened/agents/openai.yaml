@@ -1,0 +1,4 @@
+interface:
+  display_name: "What Just Happened"
+  short_description: "Record an incident without inventing facts"
+  default_prompt: "Use $what-just-happened to build an evidence-backed record of this incident."

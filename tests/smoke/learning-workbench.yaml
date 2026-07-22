@@ -1,0 +1,14 @@
+skill: learning-workbench
+cases:
+  - kind: trigger
+    prompt: "Create a long-term workspace to teach me distributed systems with sources, practice, and spaced review."
+    expected: "Establishes a durable mission-based learning workspace and produces source-grounded lessons."
+  - kind: trigger
+    prompt: "Continue my Spanish learning workspace from the records and choose the next lesson."
+    expected: "Reads durable state, estimates the learning zone, teaches one small lesson, and schedules retrieval."
+  - kind: non-trigger
+    prompt: "Make one interactive model of consensus."
+    expected: "A focused one-off model belongs to concept-lab."
+  - kind: non-trigger
+    prompt: "Quiz me on the pull request we just implemented."
+    expected: "Post-change diagnosis belongs to do-i-understand-this."

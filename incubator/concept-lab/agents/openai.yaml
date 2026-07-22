@@ -1,0 +1,4 @@
+interface:
+  display_name: "Concept Lab"
+  short_description: "Explore a concept with a trustworthy model"
+  default_prompt: "Use $concept-lab to build an interactive model of this concept."

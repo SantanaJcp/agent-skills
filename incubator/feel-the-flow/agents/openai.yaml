@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feel The Flow"
+  short_description: "Prototype an interaction before production"
+  default_prompt: "Use $feel-the-flow to prototype this interaction and capture what we learn."

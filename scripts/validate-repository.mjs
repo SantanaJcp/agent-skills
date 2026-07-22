@@ -30,12 +30,24 @@ const requiredFiles = [
   "SECURITY.md",
   "docs/architecture.md",
   "docs/adr/0001-portable-skill-publisher.md",
+  "docs/adr/0002-acta-development-suite.md",
+  "docs/design/acta/provenance/README.md",
+  "docs/qa/acta-suite-0.1.0.md",
   "docs/authoring.md",
   "docs/compatibility.md",
   "docs/releasing.md",
   "docs/testing.md",
   "package-lock.json",
   "package.json",
+  "design/acta/VERSION",
+  "design/acta/README.md",
+  "design/acta/acta.css",
+  "design/acta/acta.js",
+  "design/acta/components.md",
+  "design/acta/protocol.md",
+  "design/acta/recipes.json",
+  "scripts/materialize-acta.mjs",
+  "scripts/validate-acta.mjs",
   "templates/skill/SKILL.md.tmpl",
 ];
 const requiredDirectories = ["docs/adr", "skills", "incubator", "tests/smoke"];
@@ -85,6 +97,8 @@ try {
     errors.push("package.json must remain private.");
   }
   for (const script of [
+    "acta",
+    "acta:check",
     "catalog",
     "catalog:check",
     "check",
@@ -95,6 +109,7 @@ try {
     "test:install",
     "typecheck",
     "validate",
+    "validate:acta",
     "validate:repository",
   ]) {
     if (typeof packageMetadata.scripts?.[script] !== "string") {

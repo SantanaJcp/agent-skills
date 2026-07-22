@@ -464,6 +464,48 @@ function parseNoticeSections(source) {
   );
 }
 
+function validateOpenAiSidecar(sidecar, name, location) {
+  if (sidecar === null || typeof sidecar !== "object" || Array.isArray(sidecar)) {
+    errors.push(location + ": sidecar must be a YAML mapping.");
+    return;
+  }
+  for (const field of Object.keys(sidecar)) {
+    if (field !== "interface") {
+      errors.push(location + ": unsupported top-level field " + field + ".");
+    }
+  }
+  const presentation = sidecar.interface;
+  if (
+    presentation === null ||
+    typeof presentation !== "object" ||
+    Array.isArray(presentation)
+  ) {
+    errors.push(location + ": interface must be a mapping.");
+    return;
+  }
+  for (const field of ["display_name", "short_description", "default_prompt"]) {
+    if (
+      typeof presentation[field] !== "string" ||
+      presentation[field].trim().length === 0
+    ) {
+      errors.push(location + ": interface." + field + " must be a non-empty string.");
+    }
+  }
+  if (
+    typeof presentation.short_description === "string" &&
+    (presentation.short_description.length < 25 ||
+      presentation.short_description.length > 64)
+  ) {
+    errors.push(location + ": short_description must be 25–64 characters.");
+  }
+  if (
+    typeof presentation.default_prompt === "string" &&
+    !presentation.default_prompt.includes("$" + name)
+  ) {
+    errors.push(location + ": default_prompt must mention $" + name + ".");
+  }
+}
+
 async function validateBundle(skillDirectory, location) {
   const pending = [skillDirectory];
   const assetPaths = [];
@@ -528,6 +570,20 @@ async function validateBundle(skillDirectory, location) {
           itemLocation,
         );
       }
+    }
+  }
+
+  try {
+    const sidecarPath = path.join(skillDirectory, "agents", "openai.yaml");
+    const sidecar = parse(await readFile(sidecarPath, "utf8"));
+    validateOpenAiSidecar(
+      sidecar,
+      path.basename(skillDirectory),
+      location + "/agents/openai.yaml",
+    );
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      errors.push(location + "/agents/openai.yaml: " + error.message + ".");
     }
   }
 

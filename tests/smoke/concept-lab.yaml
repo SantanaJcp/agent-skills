@@ -1,0 +1,14 @@
+skill: concept-lab
+cases:
+  - kind: trigger
+    prompt: "Build me an interactive mental model of backpressure with trustworthy sources."
+    expected: "Researches the concept and produces a manipulable, cited model with declared simplifications."
+  - kind: trigger
+    prompt: "Help me understand cache invalidation by changing inputs and seeing consequences."
+    expected: "Creates a focused concept lab rather than a codebase-specific walkthrough."
+  - kind: non-trigger
+    prompt: "Explain how caching is implemented in this repository."
+    expected: "Repository feature tracing belongs to feature-xray."
+  - kind: non-trigger
+    prompt: "Create a three-month course for learning distributed systems."
+    expected: "Long-lived curriculum belongs to learning-workbench."

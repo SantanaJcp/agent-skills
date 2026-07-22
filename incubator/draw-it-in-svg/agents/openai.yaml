@@ -1,0 +1,4 @@
+interface:
+  display_name: "Draw It In SVG"
+  short_description: "Create reusable accessible SVG figures"
+  default_prompt: "Use $draw-it-in-svg to create accessible standalone SVG figures for this idea."

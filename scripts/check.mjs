@@ -16,6 +16,8 @@ const commands = [
     ],
   ],
   ["node", ["scripts/validate-repository.mjs"]],
+  ["node", ["scripts/materialize-acta.mjs", "--check"]],
+  ["node", ["scripts/validate-acta.mjs"]],
   ["node", ["scripts/validate.mjs"]],
   ["node", ["scripts/generate-catalog.mjs", "--check"]],
 ];

@@ -6,32 +6,42 @@
 npm run check
 ```
 
-This command runs behavior-focused tests, JavaScript typechecking, strict repository validation, catalog freshness checks, and isolated skills CLI discovery/install tests. CI invokes the same command on Linux and Windows.
+The command runs behavior tests, typechecking, repository validation, skill validation, Acta freshness and static contracts, catalog freshness, and isolated installation. CI invokes the same seam on Linux and Windows.
 
-Good tests exercise public commands and observable files rather than private helpers. Expected results must come from the repository contract and worked examples, not by reproducing implementation logic inside assertions.
+Tests observe public commands and installed files rather than private helpers. Expected results come from the repository contract and worked examples.
 
-## Smoke definitions
+## Acta deterministic checks
 
-Each skill has a YAML smoke definition containing at least one `trigger` and one `non-trigger` case. Each case records a prompt and expected behavior. Stable cases cannot contain placeholders.
+CI is static-only and credential-free. It validates deterministic materialization, protocol equality, all fourteen recipe structures, offline resources, safe DOM behavior, no browser storage, native controls, no-script content, print/reduced-motion declarations, token and contrast contracts, sidecars, provenance checksums, and catalog/install behavior. It does not install browsers, Axe, or pixel-snapshot tooling.
 
-## Promotion evidence
+Realistic recipe artifacts live in test fixtures, never installed bundles. Visual review uses component contracts and the immutable component sheet rather than golden screenshots.
 
-Public CI does not call paid models or receive model credentials. A promotion pull request records manual execution of the committed smoke cases in current stable Codex and Claude Code, including:
+## Smoke and collision definitions
 
-- exact client versions;
-- whether each trigger activated the skill;
-- whether each non-trigger remained inactive;
-- observed result compared with the expected behavior;
-- confirmation that optional sidecars were not required.
+Every skill has committed trigger and adjacent non-trigger cases. The initial suite also records cross-skill collision cases for discovery versus blueprinting, code versus interface alternatives, prototyping versus implementation, codebase explanation versus concept teaching, incidents versus diagnosis, architecture analysis versus implementation, and flow versus general SVG illustration.
+
+Public CI validates definitions but does not call paid models. Promotion records manual results in current Codex and Claude Code.
+
+## Initial suite promotion evidence
+
+Before moving any initial skill to stable:
+
+- run every committed trigger/non-trigger case in both clients;
+- run the complete six-stage scenario in the public synthetic fixture in both clients;
+- exercise all fourteen recipes in current Chrome;
+- exercise representative Document, Compare, Explore, Edit artifacts and critical interactions in current Safari and Firefox;
+- verify keyboard, 320px, actual 400% zoom, print/PDF, no-JS, reduced motion, VoiceOver, and NVDA.
+
+Record exact versions and results in the versioned Acta suite QA report. Windows CI is blocking; real-Windows serif rendering is documented but not blocking.
 
 ## Focused commands
 
 ```bash
 npm test
 npm run typecheck
+npm run acta:check
+npm run validate:acta
 npm run validate
 npm run catalog:check
 npm run test:install
 ```
-
-Run focused tests while developing and the full acceptance seam once at the end.

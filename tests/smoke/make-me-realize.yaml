@@ -1,0 +1,14 @@
+skill: make-me-realize
+cases:
+  - kind: trigger
+    prompt: "I have a fuzzy idea for changing our onboarding. Help me uncover what I have not considered before we design it."
+    expected: "Researches project facts, maps blind spots, and interviews the complete decision frontier into realization.md."
+  - kind: trigger
+    prompt: "We want offline support but the requirements are vague. Grill me on every decision we need to own first."
+    expected: "Combines a blind-spot pass with dependency-ordered frontier questions and stops before solution design."
+  - kind: non-trigger
+    prompt: "The requirements are settled. Turn this conversation into a specification and implementation plan."
+    expected: "Requirements synthesis belongs to change-blueprint, so make-me-realize should remain inactive."
+  - kind: non-trigger
+    prompt: "Implement ticket 42 and keep live notes."
+    expected: "An explicit implementation request belongs to build-with-notes."

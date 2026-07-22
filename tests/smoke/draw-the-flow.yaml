@@ -1,0 +1,14 @@
+skill: draw-the-flow
+cases:
+  - kind: trigger
+    prompt: "Diagram how a payment moves through normal, declined, retry, and recovery paths."
+    expected: "Produces an overview-first accessible flow and complete textual equivalent."
+  - kind: trigger
+    prompt: "Show the decision and failure flow across these modules with timings."
+    expected: "Builds evidence-grounded SVG flow figures plus Markdown description."
+  - kind: non-trigger
+    prompt: "Create a decorative SVG hero illustration."
+    expected: "General vector illustration belongs to draw-it-in-svg."
+  - kind: non-trigger
+    prompt: "Write the implementation slices and test plan for this feature."
+    expected: "Implementation planning belongs to change-blueprint."

@@ -1,0 +1,14 @@
+skill: do-i-understand-this
+cases:
+  - kind: trigger
+    prompt: "Quiz me on why this change works and what would break it."
+    expected: "Builds an evidence-grounded diagnostic quiz from the actual change and exports learning gaps."
+  - kind: trigger
+    prompt: "I reviewed the implementation but want to check my understanding of rollback and failure behavior."
+    expected: "Tests causality and operations, explains gaps, and offers a retry without becoming a gate."
+  - kind: non-trigger
+    prompt: "Review this diff for bugs and standards violations."
+    expected: "A code review is not an understanding diagnostic."
+  - kind: non-trigger
+    prompt: "Teach me networking from scratch over several weeks."
+    expected: "Long-lived teaching belongs to learning-workbench."

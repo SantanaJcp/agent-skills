@@ -1,0 +1,14 @@
+skill: three-code-paths
+cases:
+  - kind: trigger
+    prompt: "Show me three different code architectures for adding optimistic updates before we choose one."
+    expected: "Produces three structurally distinct, equal-fidelity paths with code evidence and a choice gate."
+  - kind: trigger
+    prompt: "We know the requirement but not whether this belongs in the domain module, adapter, or caller. Compare three approaches."
+    expected: "Frames one structural decision and compares exactly three code paths without implementing."
+  - kind: non-trigger
+    prompt: "Give me three visual styles for the settings page."
+    expected: "Visual product directions belong to interface-directions."
+  - kind: non-trigger
+    prompt: "The implementation plan is approved; start coding."
+    expected: "Direct implementation belongs to build-with-notes."

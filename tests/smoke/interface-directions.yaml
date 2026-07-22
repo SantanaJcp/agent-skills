@@ -1,0 +1,14 @@
+skill: interface-directions
+cases:
+  - kind: trigger
+    prompt: "Explore three genuinely different interfaces for reviewing deployment risk before we plan the UI."
+    expected: "Builds distinct product mockups in an Acta comparison and waits for an explicit direction choice."
+  - kind: trigger
+    prompt: "We chose the code shape, but need to decide the layout, density, and behavior of the new dashboard."
+    expected: "Runs the conditional interface-direction stage and exports the selected direction."
+  - kind: non-trigger
+    prompt: "Compare three database schemas for this feature."
+    expected: "Data and code structure belongs to three-code-paths."
+  - kind: non-trigger
+    prompt: "Add a CLI flag with no user interface."
+    expected: "A nonvisual change should not activate interface-directions."

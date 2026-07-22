@@ -1,0 +1,4 @@
+interface:
+  display_name: "Find The Cause"
+  short_description: "Validate a cause without applying the fix"
+  default_prompt: "Use $find-the-cause to build a tight repro and validate the actual cause."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deepen The Codebase"
+  short_description: "Compare evidence-backed module deepening"
+  default_prompt: "Use $deepen-the-codebase to find and compare the strongest deepening opportunities."

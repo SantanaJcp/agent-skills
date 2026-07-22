@@ -671,3 +671,50 @@ cases:
   assert.equal(result.status, 1);
   assert.match(result.stderr, /reference escapes the skill bundle: \.\.\/\.\.\/outside\.md/);
 });
+
+test("Codex sidecars remain complete presentation-only metadata", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
+  await writeSkill(
+    root,
+    "incubator",
+    "research-notes",
+    `---
+name: research-notes
+description: Organize research notes when an agent must synthesize multiple sources.
+license: Apache-2.0
+metadata:
+  tags: "research"
+---
+
+# Research Notes
+`,
+    `skill: research-notes
+cases:
+  - kind: trigger
+    prompt: Organize these notes.
+    expected: The skill activates.
+  - kind: non-trigger
+    prompt: What time is it?
+    expected: The skill remains inactive.
+`,
+  );
+  const agents = path.join(root, "incubator", "research-notes", "agents");
+  await mkdir(agents, { recursive: true });
+  await writeFile(
+    path.join(agents, "openai.yaml"),
+    `interface:
+  display_name: "Research Notes"
+  short_description: "Too short"
+  default_prompt: "Organize these notes."
+dependencies:
+  tools: []
+`,
+  );
+
+  const result = runValidator(root);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /agents\/openai\.yaml: unsupported top-level field dependencies/);
+  assert.match(result.stderr, /short_description must be 25–64 characters/);
+  assert.match(result.stderr, /default_prompt must mention \$research-notes/);
+});

@@ -1,0 +1,1487 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tres direcciones — design system para Agent Skills</title>
+<style>
+/* ================= BASE / CHROME DEL COMPARADOR ================= */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:#232528;color:#E8E6E1;font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.chrome{max-width:1180px;margin:0 auto;padding:40px 24px 20px}
+.chrome h1{font-size:26px;line-height:1.2;margin:0 0 10px;font-weight:650;letter-spacing:-.01em}
+.chrome p{max-width:78ch;color:#C9C6BF;margin:6px 0}
+.chrome .jump{display:flex;flex-wrap:wrap;gap:10px;margin:22px 0 8px}
+.chrome .jump a{color:#F0EEE8;text-decoration:none;border:1px solid #5A5D63;border-radius:6px;padding:7px 14px;font-size:13.5px}
+.chrome .jump a:hover{border-color:#9FA3AA}
+.chrome .jump a:focus-visible{outline:2px solid #F0B429;outline-offset:2px}
+.chrome kbd{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#3A3D42;border-radius:4px;padding:1px 6px}
+.dir-wrap{margin:34px 0 0}
+.dir-head{max-width:1180px;margin:0 auto;padding:0 24px}
+.dir-head .tag{font:600 12px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;color:#9FA3AA}
+.dir-head h2{font-size:22px;margin:6px 0 14px;color:#fff}
+.meta{max-width:1180px;margin:0 auto 18px;padding:0 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.meta .cell{background:#2C2F33;border:1px solid #3E4147;border-radius:8px;padding:14px 16px;font-size:13.5px}
+.meta h3{margin:0 0 8px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#9FA3AA;font-weight:600}
+.meta ul{margin:0;padding-left:17px;color:#D6D3CC}
+.meta li{margin:3px 0}
+.meta p{margin:0;color:#D6D3CC}
+.sw{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.sw span{display:inline-flex;align-items:center;gap:6px;font:11.5px/1 ui-monospace,Menlo,monospace;color:#C9C6BF}
+.sw i{width:16px;height:16px;border-radius:4px;display:inline-block;border:1px solid rgba(255,255,255,.25)}
+.demo-frame{border-top:1px solid #3E4147;border-bottom:1px solid #3E4147}
+.demo-note{max-width:1180px;margin:10px auto 40px;padding:0 24px;font-size:12.5px;color:#9FA3AA}
+.matrix{max-width:1180px;margin:36px auto;padding:0 24px}
+.matrix table{border-collapse:collapse;width:100%;font-size:13.5px}
+.matrix th,.matrix td{border:1px solid #3E4147;padding:9px 12px;text-align:left;vertical-align:top}
+.matrix th{background:#2C2F33;font-weight:600}
+.matrix td b{color:#fff}
+.reco{max-width:1180px;margin:0 auto 60px;padding:20px 24px;border-left:3px solid #F0B429}
+.reco h2{margin:0 0 8px;font-size:18px}
+:focus-visible{outline:2px solid #F0B429;outline-offset:2px}
+.skip{position:absolute;left:-9999px}
+.skip:focus{position:fixed;left:12px;top:12px;background:#F0B429;color:#1B1C1E;padding:8px 12px;border-radius:6px;z-index:99}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+@media print{
+  body{background:#fff;color:#111}
+  .chrome,.dir-head,.meta,.demo-note,.matrix,.reco{color:#111}
+  .meta .cell{background:#fff;border-color:#bbb}
+  .jump,.skip{display:none}
+  .artifact-demo button,.artifact-demo .segbar,[data-copy-status]{display:none!important}
+  .demo-frame{break-before:page}
+  .dA .call,.dB .call,.dC .call,.dA .dreg .drow,.dB .gate,.dC .signpost,.dC .specimen,figure{break-inside:avoid}
+}
+/* Cada demo se aisla visualmente del chrome */
+.artifact-demo{padding:46px 24px 60px}
+.artifact-demo .page{max-width:1060px;margin:0 auto}
+button{font:inherit;cursor:pointer}
+code,pre,kbd,samp{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace}
+pre{margin:0;overflow-x:auto}
+.codewrap{overflow-x:auto}
+.tablewrap{overflow-x:auto}
+svg text{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ================= DIRECCIÓN A — «ACTA» ================= */
+.dA{
+  --a-paper:#FDFDFB; --a-ink:#1D1F24; --a-ink2:#50545C; --a-rule:#D8D6CC; --a-rule2:#B9B6A8;
+  --a-tint:#F4F3EC; --a-accent:#2B4C7E; --a-accent-ink:#24406A;
+  --a-ok:#276140; --a-warn:#7A5600; --a-danger:#8C2F23;
+  --a-serif:Charter,"Iowan Old Style","Palatino Linotype",Georgia,"Times New Roman",serif;
+  --a-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  background:var(--a-paper);color:var(--a-ink);
+  font:16px/1.62 var(--a-serif);
+}
+.dA .page{max-width:880px}
+.dA :focus-visible{outline:2px solid var(--a-accent);outline-offset:2px}
+/* colofón de procedencia */
+.dA .prov{border-top:3px double var(--a-rule2);border-bottom:1px solid var(--a-rule);
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));font-family:var(--a-mono)}
+.dA .prov div{padding:9px 14px 9px 0;border-right:1px solid var(--a-rule);margin-right:14px}
+.dA .prov div:last-child{border-right:0}
+.dA .prov dt{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--a-ink2);margin:0 0 3px}
+.dA .prov dd{margin:0;font-size:12px;color:var(--a-ink)}
+.dA .prov-note{font:12px/1.5 var(--a-mono);color:var(--a-ink2);border-bottom:1px solid var(--a-rule);padding:7px 0}
+.dA .titleblock{padding:30px 0 6px}
+.dA h1{font:400 36px/1.15 var(--a-serif);letter-spacing:-.005em;margin:0 0 12px}
+.dA .lede{font-size:18.5px;line-height:1.55;color:var(--a-ink2);max-width:64ch;margin:0 0 8px;font-style:italic}
+.dA .status-line{font:12px/1 var(--a-mono);letter-spacing:.1em;margin:14px 0 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.dA .stamp{border:1.5px solid currentColor;padding:4px 9px;text-transform:uppercase;font-weight:600}
+.dA .stamp.draft{color:var(--a-warn)}
+.dA .stamp.ok{color:var(--a-ok)}
+.dA .stamp.blocked{color:var(--a-danger)}
+.dA .stamp.info{color:var(--a-accent)}
+.dA .stamp.neutral{color:var(--a-ink2)}
+/* resumen */
+.dA .summary{border-top:1px solid var(--a-rule);border-bottom:1px solid var(--a-rule);margin:26px 0;padding:18px 0}
+.dA .summary .k{font:600 11px/1 var(--a-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--a-accent);margin:0 0 8px}
+.dA .summary p{margin:0;max-width:70ch}
+.dA .metrics{display:flex;flex-wrap:wrap;gap:0;margin-top:16px;border-top:1px solid var(--a-rule)}
+.dA .metric{padding:10px 22px 2px 0;margin-right:22px;border-right:1px solid var(--a-rule)}
+.dA .metric:last-child{border-right:0}
+.dA .metric .mk{font:10.5px/1 var(--a-mono);letter-spacing:.13em;text-transform:uppercase;color:var(--a-ink2)}
+.dA .metric .mv{font:15px/1.3 var(--a-mono);margin-top:4px}
+.dA .metric .mv.warn{color:var(--a-warn)}
+/* índice */
+.dA .toc{margin:26px 0;font-family:var(--a-mono);font-size:13px;column-width:240px;column-gap:40px}
+.dA .toc a{color:var(--a-ink);text-decoration:none;border-bottom:1px dotted var(--a-rule2)}
+.dA .toc a:hover{color:var(--a-accent)}
+.dA .toc li{margin:4px 0;list-style:none}
+.dA .toc ol{margin:0;padding:0}
+.dA .toc .n{color:var(--a-accent);margin-right:8px}
+/* secciones § */
+.dA section.sec{border-top:1px solid var(--a-rule);padding:26px 0 30px;position:relative}
+.dA h2{font:400 24px/1.25 var(--a-serif);margin:0 0 14px}
+.dA h2 .sn{font:600 13px/1 var(--a-mono);color:var(--a-accent);margin-right:12px;letter-spacing:.05em}
+.dA p{max-width:70ch}
+/* evidencia: cita numerada + fuente */
+.dA .evidence{margin:18px 0;padding:0 0 0 18px;border-left:2px solid var(--a-rule2)}
+.dA .evidence .claim{font-size:16.5px;margin:0 0 8px}
+.dA .evidence .ref{font:600 11px/1 var(--a-mono);color:var(--a-accent);vertical-align:super;font-size:10px}
+.dA .evidence .src{font:12px/1.6 var(--a-mono);color:var(--a-ink2);margin:8px 0 0}
+.dA .tagline{display:inline-block;font:600 10px/1 var(--a-mono);letter-spacing:.12em;padding:3px 7px;border:1px solid currentColor;margin-right:8px;text-transform:uppercase}
+.dA .tag-fact{color:var(--a-ok)}
+.dA .tag-inf{color:var(--a-accent)}
+.dA .tag-simp{color:var(--a-warn)}
+.dA .codebox{background:var(--a-tint);border:1px solid var(--a-rule);margin:12px 0;font-size:13px;line-height:1.6}
+.dA .codebox .path{font:11px/1 var(--a-mono);letter-spacing:.06em;color:var(--a-ink2);border-bottom:1px solid var(--a-rule);padding:8px 12px}
+.dA .codebox pre{padding:12px 14px}
+.dA .codebox .add{color:var(--a-ok)}
+.dA .codebox .del{color:var(--a-danger);text-decoration:line-through;text-decoration-thickness:1px}
+.dA .codebox .lineno{color:var(--a-rule2);user-select:none}
+/* registro de decisiones */
+.dA .dreg{border:1px solid var(--a-rule);margin:16px 0}
+.dA .dreg .drow{display:grid;grid-template-columns:88px 1fr;border-bottom:1px solid var(--a-rule)}
+.dA .dreg .drow:last-child{border-bottom:0}
+.dA .dreg .did{font:600 13px/1.4 var(--a-mono);color:var(--a-accent);padding:14px;border-right:1px solid var(--a-rule);background:var(--a-tint)}
+.dA .dreg .dbody{padding:14px 16px;min-width:0}
+.dA .dreg h3{font:600 16px/1.3 var(--a-serif);margin:0 0 6px}
+.dA .dreg p{margin:6px 0}
+.dA .dreg .dmeta{font:12px/1.6 var(--a-mono);color:var(--a-ink2)}
+.dA details{margin:10px 0 4px}
+.dA summary{cursor:pointer;font:600 13px/1.4 var(--a-mono);color:var(--a-accent)}
+.dA summary:hover{text-decoration:underline}
+.dA .alt{border:1px dashed var(--a-rule2);padding:10px 14px;margin-top:8px;background:#fff}
+/* comparación */
+.dA .compare{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--a-rule);margin:16px 0}
+.dA .copt{padding:16px 18px;border-right:1px solid var(--a-rule)}
+.dA .copt:last-child{border-right:0}
+.dA .copt h3{font:600 16px/1.3 var(--a-serif);margin:0 0 4px}
+.dA .copt .cn{font:600 11px/1 var(--a-mono);color:var(--a-accent);letter-spacing:.1em}
+.dA .copt ul{margin:8px 0;padding-left:18px}
+.dA .copt li{margin:4px 0;font-size:14.5px}
+.dA .copt .when{font-size:14px;border-top:1px solid var(--a-rule);padding-top:8px;margin-top:10px}
+.dA .cmatrix{width:100%;border-collapse:collapse;font:12.5px/1.5 var(--a-mono);margin:10px 0}
+.dA .cmatrix th,.dA .cmatrix td{border:1px solid var(--a-rule);padding:7px 10px;text-align:left}
+.dA .cmatrix th{background:var(--a-tint);font-weight:600}
+/* timeline */
+.dA .timeline{margin:14px 0;border-left:1px solid var(--a-rule2);padding-left:0;list-style:none}
+.dA .timeline li{position:relative;padding:2px 0 16px 26px}
+.dA .timeline li::before{content:"";position:absolute;left:-4.5px;top:9px;width:8px;height:8px;background:var(--a-paper);border:1.5px solid var(--a-ink2)}
+.dA .timeline li.now::before{background:var(--a-accent);border-color:var(--a-accent)}
+.dA .timeline li.done::before{background:var(--a-ok);border-color:var(--a-ok)}
+.dA .timeline .td{font:600 12px/1 var(--a-mono);letter-spacing:.06em;color:var(--a-ink2)}
+.dA .timeline .tt{margin:4px 0 0;font-size:15.5px}
+/* figura */
+.dA figure{margin:18px 0;border:1px solid var(--a-rule);padding:18px}
+.dA figcaption{font:12.5px/1.6 var(--a-mono);color:var(--a-ink2);margin-top:10px;border-top:1px solid var(--a-rule);padding-top:10px}
+.dA figcaption b{color:var(--a-ink)}
+/* callouts */
+.dA .call{border:1px solid;padding:12px 16px;margin:14px 0;font-size:15px;max-width:none}
+.dA .call .ct{font:600 11px/1 var(--a-mono);letter-spacing:.13em;text-transform:uppercase;display:block;margin-bottom:6px}
+.dA .call.warn{border-color:var(--a-warn);color:var(--a-ink)}
+.dA .call.warn .ct{color:var(--a-warn)}
+.dA .call.ok{border-color:var(--a-ok)}
+.dA .call.ok .ct{color:var(--a-ok)}
+/* quiz */
+.dA .quiz{border:1px solid var(--a-rule);padding:18px;margin:14px 0}
+.dA .quiz legend{font:600 11px/1 var(--a-mono);letter-spacing:.13em;text-transform:uppercase;color:var(--a-accent);padding:0 6px}
+.dA .quiz fieldset{border:0;margin:0;padding:0}
+.dA .qopt{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border:1px solid var(--a-rule);margin:8px 0;font-size:15px}
+.dA .qopt:hover{background:var(--a-tint)}
+.dA .qopt input{margin-top:4px;accent-color:var(--a-accent)}
+.dA .qcheck{margin-top:10px}
+.dA .qfb{margin-top:12px;padding:10px 14px;border-left:3px solid;font-size:14.5px;display:none}
+.dA .qfb.show{display:block}
+.dA .qfb.good{border-color:var(--a-ok)}
+.dA .qfb.bad{border-color:var(--a-danger)}
+.dA .qfb a{color:var(--a-accent)}
+/* export / botones */
+.dA .btn{background:none;border:1px solid var(--a-ink);color:var(--a-ink);padding:8px 16px;font:600 12.5px/1 var(--a-mono);letter-spacing:.05em;border-radius:2px;transition:background 120ms,color 120ms}
+.dA .btn:hover{background:var(--a-ink);color:var(--a-paper)}
+.dA .btn.primary{border-color:var(--a-accent);color:var(--a-accent)}
+.dA .btn.primary:hover{background:var(--a-accent);color:#fff}
+.dA .exportbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-top:3px double var(--a-rule2);padding:18px 0;margin-top:10px}
+.dA .exportbar .live{font:12px/1.4 var(--a-mono);color:var(--a-ok)}
+.dA .sources{font:13px/1.7 var(--a-mono);color:var(--a-ink2);border-top:1px solid var(--a-rule);padding-top:14px}
+.dA .sources li{margin:3px 0}
+.dA .colophon{font:12px/1.7 var(--a-mono);color:var(--a-ink2);border-top:3px double var(--a-rule2);margin-top:34px;padding-top:12px}
+@media (max-width:720px){
+  .dA h1{font-size:29px}
+  .dA .compare{grid-template-columns:1fr}
+  .dA .copt{border-right:0;border-bottom:1px solid var(--a-rule)}
+  .dA .copt:last-child{border-bottom:0}
+  .dA .dreg .drow{grid-template-columns:1fr}
+  .dA .dreg .did{border-right:0;border-bottom:1px solid var(--a-rule);padding:8px 14px}
+  .dA .prov div{border-right:0;margin-right:0}
+}
+/* ================= DIRECCIÓN B — «CONSOLA» ================= */
+.dB{
+  --b-base:#E8EDEE; --b-panel:#FBFDFD; --b-ink:#141A1C; --b-ink2:#445256;
+  --b-line:#C4CFD2; --b-line2:#9DACB0; --b-grid:#D7E0E2;
+  --b-accent:#0A6C5D; --b-accent-bg:#0A6C5D; --b-head:#1B2A2E; --b-head-ink:#D7E4E1;
+  --b-ok:#15702F; --b-warn:#8F5F00; --b-danger:#A62A1E; --b-info:#215E8C;
+  --b-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --b-sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,sans-serif;
+  background:var(--b-base);color:var(--b-ink);
+  font:14px/1.5 var(--b-sans);
+}
+.dB .page{max-width:1120px}
+.dB :focus-visible{outline:2px solid var(--b-accent);outline-offset:2px}
+/* barra de estado superior */
+.dB .statusbar{background:var(--b-head);color:var(--b-head-ink);display:flex;flex-wrap:wrap;gap:0;align-items:stretch;font:12px/1.3 var(--b-mono)}
+.dB .statusbar .sb{padding:10px 14px;border-right:1px solid rgba(215,228,225,.22)}
+.dB .statusbar .sk{display:block;font-size:9.5px;letter-spacing:.14em;opacity:.62;text-transform:uppercase;margin-bottom:3px}
+.dB .statusbar .led{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:baseline}
+.dB .statusbar .led.warn{background:#E8B44C}
+.dB .statusbar .flex{flex:1}
+/* layout con rail */
+.dB .cols{display:grid;grid-template-columns:198px 1fr;gap:22px;margin-top:22px}
+.dB .cols > *{min-width:0}
+.dB .rail{position:sticky;top:12px;align-self:start;border:1px solid var(--b-line);background:var(--b-panel)}
+.dB .rail .rt{font:600 10px/1 var(--b-mono);letter-spacing:.14em;color:var(--b-ink2);padding:10px 12px;border-bottom:1px solid var(--b-line);text-transform:uppercase}
+.dB .rail a{display:flex;gap:9px;align-items:center;padding:8px 12px;color:var(--b-ink);text-decoration:none;font:12.5px/1.3 var(--b-sans);border-bottom:1px solid var(--b-grid)}
+.dB .rail a:hover{background:var(--b-base)}
+.dB .rail kbd{font:600 10.5px/1 var(--b-mono);border:1px solid var(--b-line2);border-radius:3px;padding:2px 5px;color:var(--b-ink2);background:var(--b-panel)}
+.dB .rail .hint{font:10.5px/1.5 var(--b-mono);color:var(--b-ink2);padding:8px 12px}
+/* título */
+.dB .titleblock{margin:20px 0 4px}
+.dB h1{font:650 24px/1.2 var(--b-sans);letter-spacing:-.01em;margin:0 0 8px}
+.dB .lede{font-size:14.5px;color:var(--b-ink2);max-width:74ch;margin:0}
+/* paneles */
+.dB .panel{border:1px solid var(--b-line);background:var(--b-panel);margin:16px 0}
+.dB .phead{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--b-line);padding:8px 12px;background:linear-gradient(var(--b-panel),var(--b-base))}
+.dB .phead h2{font:600 12px/1 var(--b-mono);letter-spacing:.12em;text-transform:uppercase;margin:0}
+.dB .phead .pnum{font:600 10.5px/1 var(--b-mono);color:var(--b-panel);background:var(--b-ink);padding:3px 6px}
+.dB .phead .pmeta{margin-left:auto;font:10.5px/1 var(--b-mono);color:var(--b-ink2)}
+.dB .pbody{padding:14px}
+.dB .pbody > p{max-width:78ch;margin:0 0 10px}
+/* chips y badges */
+.dB .badge{display:inline-block;font:600 10.5px/1 var(--b-mono);letter-spacing:.08em;padding:4px 8px;border:1px solid;text-transform:uppercase}
+.dB .badge.draft{color:var(--b-warn);border-color:var(--b-warn);background:#FBF3DF}
+.dB .badge.ok{color:var(--b-ok);border-color:var(--b-ok);background:#E5F3E8}
+.dB .badge.blocked{color:var(--b-danger);border-color:var(--b-danger);background:#FBE9E6}
+.dB .badge.info{color:var(--b-info);border-color:var(--b-info);background:#E7F0F7}
+.dB .badge.neutral{color:var(--b-ink2);border-color:var(--b-line2);background:var(--b-base)}
+/* métricas */
+.dB .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));border:1px solid var(--b-line);background:var(--b-panel);margin:14px 0}
+.dB .metric{padding:10px 14px;border-right:1px solid var(--b-grid)}
+.dB .metric:last-child{border-right:0}
+.dB .metric .mk{font:600 9.5px/1 var(--b-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--b-ink2)}
+.dB .metric .mv{font:600 16px/1.3 var(--b-mono);margin-top:4px}
+.dB .metric .mv.warn{color:var(--b-warn)}
+/* log de evidencia */
+.dB .log{font:12.5px/1.65 var(--b-mono);border:1px solid var(--b-line);background:var(--b-panel)}
+.dB .log .lrow{display:grid;grid-template-columns:118px 92px minmax(0,1fr);border-bottom:1px solid var(--b-grid)}
+.dB .log .lrow:last-child{border-bottom:0}
+.dB .log .lts{padding:9px 10px;color:var(--b-ink2);border-right:1px solid var(--b-grid)}
+.dB .log .ltag{padding:9px 10px;border-right:1px solid var(--b-grid);font-weight:600}
+.dB .log .ltag.fact{color:var(--b-ok)}
+.dB .log .ltag.inf{color:var(--b-info)}
+.dB .log .lmsg{padding:9px 12px}
+.dB .log .lmsg .trace{color:var(--b-info);text-decoration:underline dotted}
+/* código */
+.dB .codebox{background:#10181A;color:#D5E2E0;border:1px solid var(--b-line);font-size:12.5px;line-height:1.6}
+.dB .codebox .path{font:11px/1 var(--b-mono);color:#8FA6A2;border-bottom:1px solid #243438;padding:8px 12px;display:flex;justify-content:space-between;gap:10px}
+.dB .codebox pre{padding:12px 14px}
+.dB .codebox .add{color:#7BD8A2}
+.dB .codebox .del{color:#F09B8E}
+.dB .codebox .cm{color:#7E938F}
+/* gate de decisión */
+.dB .gate{border:1px solid var(--b-line);margin:14px 0;background:var(--b-panel)}
+.dB .gate .ghead{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--b-line)}
+.dB .gate .gid{font:700 13px/1 var(--b-mono);color:var(--b-accent)}
+.dB .gate h3{font:600 14.5px/1.3 var(--b-sans);margin:0;flex:1}
+.dB .gate .gstate{font:700 10.5px/1 var(--b-mono);letter-spacing:.1em;border:1.5px solid var(--b-warn);color:var(--b-warn);padding:5px 9px;background:#FBF3DF}
+.dB .gate .gbody{padding:12px 14px}
+.dB .gate .gbody p{margin:0 0 8px;max-width:76ch}
+.dB .gate .gmeta{display:flex;flex-wrap:wrap;gap:14px;font:11px/1.5 var(--b-mono);color:var(--b-ink2);border-top:1px dashed var(--b-line);padding-top:9px;margin-top:6px}
+.dB details{margin:8px 0 2px}
+.dB summary{cursor:pointer;font:600 12px/1.4 var(--b-mono);color:var(--b-accent)}
+.dB summary:hover{text-decoration:underline}
+.dB .alt{border-left:3px solid var(--b-line2);padding:8px 12px;margin-top:8px;background:var(--b-base);font-size:13px}
+/* comparación segmentada */
+.dB .segbar{display:flex;gap:0;border:1px solid var(--b-line);width:max-content;max-width:100%;margin:0 0 12px}
+.dB .segbar button{border:0;border-right:1px solid var(--b-line);background:var(--b-panel);padding:7px 14px;font:600 12px/1 var(--b-mono);color:var(--b-ink2)}
+.dB .segbar button:last-child{border-right:0}
+.dB .segbar button[aria-pressed=true]{background:var(--b-accent-bg);color:#fff}
+.dB .compare{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.dB .copt{border:1px solid var(--b-line);background:var(--b-panel)}
+.dB .copt .ch{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-bottom:1px solid var(--b-grid);font:600 11px/1 var(--b-mono);letter-spacing:.08em;text-transform:uppercase}
+.dB .copt .ch .pick{color:var(--b-accent)}
+.dB .copt h3{font:600 14px/1.3 var(--b-sans);margin:0;padding:10px 12px 0}
+.dB .copt ul{margin:8px 0 10px;padding:0 12px 0 28px}
+.dB .copt li{margin:4px 0;font-size:13px}
+.dB .copt .when{font:12px/1.5 var(--b-mono);border-top:1px dashed var(--b-line);margin:0;padding:9px 12px;color:var(--b-ink2)}
+.dB .cmatrix{width:100%;border-collapse:collapse;font:12px/1.5 var(--b-mono);margin:12px 0 2px}
+.dB .cmatrix th,.dB .cmatrix td{border:1px solid var(--b-line);padding:6px 10px;text-align:left;background:var(--b-panel)}
+.dB .cmatrix th{background:var(--b-base);font-weight:600}
+/* timeline tabular */
+.dB .timeline{list-style:none;margin:0;padding:0;font:12.5px/1.55 var(--b-mono);counter-reset:tl}
+.dB .timeline li{display:grid;grid-template-columns:110px 96px 1fr;border-bottom:1px solid var(--b-grid);padding:8px 4px}
+.dB .timeline li:last-child{border-bottom:0}
+.dB .timeline .td{color:var(--b-ink2)}
+.dB .timeline .ts{font-weight:700}
+.dB .timeline .ts.done{color:var(--b-ok)}
+.dB .timeline .ts.now{color:var(--b-accent)}
+.dB .timeline .ts.next{color:var(--b-ink2)}
+.dB .timeline .tt{font-family:var(--b-sans);font-size:13.5px}
+/* diagrama sobre grid */
+.dB .flowpanel .pbody{background-image:linear-gradient(var(--b-grid) 1px,transparent 1px),linear-gradient(90deg,var(--b-grid) 1px,transparent 1px);background-size:20px 20px;background-position:0 0}
+.dB .flowwrap{overflow-x:auto}
+/* callouts */
+.dB .call{border:1px solid;border-left-width:4px;padding:10px 14px;margin:12px 0;font-size:13.5px;background:var(--b-panel)}
+.dB .call .ct{font:700 10.5px/1 var(--b-mono);letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:5px}
+.dB .call.warn{border-color:var(--b-warn)}
+.dB .call.warn .ct{color:var(--b-warn)}
+.dB .call.ok{border-color:var(--b-ok)}
+.dB .call.ok .ct{color:var(--b-ok)}
+/* quiz */
+.dB .qopt{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--b-line);margin:7px 0;font-size:13.5px;background:var(--b-panel)}
+.dB .qopt:hover{border-color:var(--b-accent)}
+.dB .qopt input{margin-top:3px;accent-color:var(--b-accent)}
+.dB .qopt kbd{font:600 10.5px/1 var(--b-mono);border:1px solid var(--b-line2);border-radius:3px;padding:2px 5px;color:var(--b-ink2)}
+.dB .qfb{margin-top:10px;padding:9px 12px;border:1px solid;font-size:13px;display:none}
+.dB .qfb.show{display:block}
+.dB .qfb.good{border-color:var(--b-ok);background:#E5F3E8}
+.dB .qfb.bad{border-color:var(--b-danger);background:#FBE9E6}
+.dB .qfb a{color:var(--b-info)}
+/* botones */
+.dB .btn{background:var(--b-panel);border:1px solid var(--b-ink);color:var(--b-ink);padding:7px 14px;font:600 12px/1 var(--b-mono);letter-spacing:.04em;border-radius:0;transition:background 100ms,color 100ms}
+.dB .btn:hover{background:var(--b-ink);color:var(--b-panel)}
+.dB .btn.primary{background:var(--b-accent-bg);border-color:var(--b-accent-bg);color:#fff}
+.dB .btn.primary:hover{background:#085548}
+.dB .exportbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 14px;border-top:1px solid var(--b-line);background:var(--b-base)}
+.dB .exportbar .live{font:11.5px/1.4 var(--b-mono);color:var(--b-ok)}
+.dB .colophon{font:11px/1.7 var(--b-mono);color:var(--b-ink2);margin-top:20px;border-top:1px solid var(--b-line);padding-top:10px}
+@media (max-width:860px){
+  .dB .cols{grid-template-columns:1fr}
+  .dB .rail{position:static;display:flex;flex-wrap:wrap}
+  .dB .rail .rt,.dB .rail .hint{display:none}
+  .dB .rail a{border-bottom:0;border-right:1px solid var(--b-grid)}
+  .dB .compare{grid-template-columns:1fr}
+  .dB .log .lrow{grid-template-columns:1fr}
+  .dB .log .lts,.dB .log .ltag{border-right:0;padding-bottom:0}
+  .dB .timeline li{grid-template-columns:1fr;gap:2px}
+}
+/* ================= DIRECCIÓN C — «EXPEDICIÓN» ================= */
+.dC{
+  --c-base:#F4F6F1; --c-card:#FFFFFF; --c-ink:#243029; --c-ink2:#55635B;
+  --c-line:#DDE3DA; --c-line2:#B9C4B9; --c-route:#2A648A; --c-route-soft:#E3EDF3;
+  --c-ok:#2F6E44; --c-ok-soft:#E4F0E6; --c-warn:#8F6400; --c-warn-soft:#F7EFDA;
+  --c-danger:#A63D3D; --c-danger-soft:#F7E7E5;
+  --c-sans:Seravek,"Segoe UI","Trebuchet MS",system-ui,-apple-system,sans-serif;
+  --c-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  background:var(--c-base);color:var(--c-ink);
+  font:15.5px/1.6 var(--c-sans);
+}
+.dC .page{max-width:960px}
+.dC :focus-visible{outline:2.5px solid var(--c-route);outline-offset:3px;border-radius:4px}
+/* ficha de expedición */
+.dC .prov{background:var(--c-card);border:1px solid var(--c-line);border-radius:16px;padding:16px 20px;display:flex;flex-wrap:wrap;gap:8px 26px}
+.dC .prov .pi{font-size:13px}
+.dC .prov .pk{display:block;font:600 10.5px/1 var(--c-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--c-ink2);margin-bottom:3px}
+.dC .prov .pv{font-family:var(--c-mono);font-size:12.5px}
+.dC .prov-note{font-size:12.5px;color:var(--c-ink2);margin:10px 4px 0}
+.dC .titleblock{margin:26px 0 8px}
+.dC h1{font:700 32px/1.16 var(--c-sans);letter-spacing:-.015em;margin:0 0 10px}
+.dC .lede{font-size:17px;color:var(--c-ink2);max-width:62ch;margin:0}
+.dC .pill{display:inline-flex;align-items:center;gap:6px;font:600 12px/1 var(--c-sans);border-radius:999px;padding:6px 12px;margin:14px 8px 0 0}
+.dC .pill .dot{width:8px;height:8px;border-radius:50%}
+.dC .pill.draft{background:var(--c-warn-soft);color:var(--c-warn)}
+.dC .pill.draft .dot{background:var(--c-warn)}
+.dC .pill.ok{background:var(--c-ok-soft);color:var(--c-ok)}
+.dC .pill.ok .dot{background:var(--c-ok)}
+.dC .pill.blocked{background:var(--c-danger-soft);color:var(--c-danger)}
+.dC .pill.blocked .dot{background:var(--c-danger)}
+.dC .pill.info{background:var(--c-route-soft);color:var(--c-route)}
+.dC .pill.info .dot{background:var(--c-route)}
+/* mapa de ruta */
+.dC .mapa{background:var(--c-card);border:1px solid var(--c-line);border-radius:16px;padding:18px 20px;margin:20px 0}
+.dC .mapa h2{font:700 13px/1 var(--c-sans);letter-spacing:.09em;text-transform:uppercase;color:var(--c-ink2);margin:0 0 12px}
+.dC .mapa ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px 4px;align-items:center}
+.dC .mapa li{display:flex;align-items:center}
+.dC .mapa a{display:inline-flex;align-items:center;gap:8px;color:var(--c-ink);text-decoration:none;font-size:13.5px;font-weight:600;padding:7px 12px;border-radius:999px;border:1px solid transparent}
+.dC .mapa a:hover{background:var(--c-route-soft);color:var(--c-route)}
+.dC .mapa .wp{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--c-ink);color:#fff;font:700 11.5px/1 var(--c-mono)}
+.dC .mapa li::after{content:"";width:26px;height:0;border-top:2px dotted var(--c-line2);margin:0 2px}
+.dC .mapa li:last-child::after{display:none}
+.dC .mapa .resumen{font-size:14px;color:var(--c-ink2);margin:12px 0 0;max-width:74ch}
+/* métricas */
+.dC .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0}
+.dC .metric{background:var(--c-card);border:1px solid var(--c-line);border-radius:14px;padding:12px 16px}
+.dC .metric .mk{font:600 10.5px/1 var(--c-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--c-ink2)}
+.dC .metric .mv{font:700 17px/1.3 var(--c-sans);margin-top:5px}
+.dC .metric .mv.warn{color:var(--c-warn)}
+/* estaciones con ruta */
+.dC .ruta{position:relative;margin:26px 0 0;padding-left:44px}
+.dC .ruta::before{content:"";position:absolute;left:14px;top:8px;bottom:8px;border-left:3px dotted var(--c-line2)}
+.dC .estacion{position:relative;margin:0 0 26px}
+.dC .estacion .wp{position:absolute;left:-44px;top:0;width:30px;height:30px;border-radius:50%;background:var(--c-ink);color:#fff;font:700 14px/30px var(--c-mono);text-align:center;z-index:1}
+.dC .estacion.reached .wp{background:var(--c-ok)}
+.dC .estacion h2{font:700 20px/1.25 var(--c-sans);letter-spacing:-.01em;margin:2px 0 12px}
+.dC .card{background:var(--c-card);border:1px solid var(--c-line);border-radius:16px;padding:16px 20px;margin:12px 0}
+.dC .card p{max-width:72ch}
+/* specimen (evidencia) */
+.dC .specimen{display:grid;grid-template-columns:auto 1fr;gap:0;background:var(--c-card);border:1px solid var(--c-line);border-radius:16px;overflow:hidden;margin:12px 0}
+.dC .specimen .stag{writing-mode:vertical-rl;transform:rotate(180deg);font:700 10.5px/1 var(--c-mono);letter-spacing:.16em;text-transform:uppercase;padding:14px 8px;text-align:center}
+.dC .specimen.fact .stag{background:var(--c-ok-soft);color:var(--c-ok)}
+.dC .specimen.inf .stag{background:var(--c-route-soft);color:var(--c-route)}
+.dC .specimen .sbody{padding:14px 18px;min-width:0}
+.dC .specimen .sclaim{font-size:15.5px;font-weight:600;margin:0 0 6px}
+.dC .specimen .ssrc{font:12px/1.6 var(--c-mono);color:var(--c-ink2);margin:8px 0 0}
+.dC .codebox{background:#22302B;color:#DEE9E2;border-radius:12px;font-size:13px;line-height:1.6;margin:10px 0}
+.dC .codebox .path{font:11.5px/1 var(--c-mono);color:#9DB4A8;border-bottom:1px solid #35463F;padding:9px 14px}
+.dC .codebox pre{padding:12px 16px}
+.dC .codebox .add{color:#8FD9A8}
+.dC .codebox .del{color:#EBA79B}
+.dC .codebox .cm{color:#8CA396}
+/* señalpost (decisión) */
+.dC .signpost{background:var(--c-card);border:1px solid var(--c-line);border-radius:16px;padding:16px 20px;margin:12px 0}
+.dC .signpost .sid{display:inline-block;font:700 11px/1 var(--c-mono);letter-spacing:.1em;background:var(--c-ink);color:#fff;border-radius:999px;padding:5px 10px;margin-bottom:8px}
+.dC .signpost h3{font:700 17px/1.3 var(--c-sans);margin:0 0 8px}
+.dC .rutas{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0}
+.dC .rcamino{border-radius:12px;padding:12px 14px;border:2px solid var(--c-route);position:relative}
+.dC .rcamino .rlabel{font:700 10.5px/1 var(--c-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--c-route);display:block;margin-bottom:6px}
+.dC .rcamino.alt{border:2px dashed var(--c-line2);color:var(--c-ink2)}
+.dC .rcamino.alt .rlabel{color:var(--c-ink2)}
+.dC .rcamino p{margin:0;font-size:13.5px;max-width:none}
+.dC .signpost .smeta{font-size:13px;color:var(--c-ink2);margin:8px 0 0}
+/* comparación */
+.dC .compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:12px 0}
+.dC .copt{background:var(--c-card);border:1px solid var(--c-line);border-radius:16px;padding:16px 18px;position:relative}
+.dC .copt.pick{border:2px solid var(--c-route)}
+.dC .copt .flag{position:absolute;top:-11px;left:16px;background:var(--c-route);color:#fff;font:700 10.5px/1 var(--c-mono);letter-spacing:.1em;border-radius:999px;padding:5px 10px;text-transform:uppercase}
+.dC .copt h3{font:700 16px/1.3 var(--c-sans);margin:2px 0 8px}
+.dC .copt ul{margin:8px 0;padding-left:20px}
+.dC .copt li{margin:5px 0;font-size:14px}
+.dC .copt .when{font-size:13.5px;background:var(--c-base);border-radius:10px;padding:9px 12px;margin:10px 0 0}
+.dC .cmatrix{width:100%;border-collapse:collapse;font:12.5px/1.5 var(--c-mono);margin:12px 0}
+.dC .cmatrix th,.dC .cmatrix td{border:1px solid var(--c-line);padding:8px 12px;text-align:left;background:var(--c-card)}
+.dC .cmatrix th{background:var(--c-base);font-weight:700}
+/* timeline como etapas */
+.dC .timeline{list-style:none;margin:12px 0;padding:0;display:grid;gap:10px}
+.dC .timeline li{display:grid;grid-template-columns:104px minmax(0,1fr);gap:14px;background:var(--c-card);border:1px solid var(--c-line);border-radius:12px;padding:11px 14px}
+.dC .timeline .td{font:700 12px/1.5 var(--c-mono);color:var(--c-ink2)}
+.dC .timeline li.done .td,.dC .timeline li.done .tt::before{color:var(--c-ok)}
+.dC .timeline li.now{border:2px solid var(--c-route)}
+.dC .timeline .tt{font-size:14.5px;margin:0}
+/* figura */
+.dC figure{background:var(--c-card);border:1px solid var(--c-line);border-radius:16px;padding:18px;margin:12px 0}
+.dC figcaption{font-size:13px;color:var(--c-ink2);margin-top:10px}
+.dC .flowwrap{overflow-x:auto}
+.dC .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--c-ink2);margin-top:8px}
+.dC .legend .li{display:inline-flex;align-items:center;gap:7px}
+.dC .legend .sw-line{width:26px;height:0;border-top:2.5px solid var(--c-ink)}
+.dC .legend .sw-dash{width:26px;height:0;border-top:2.5px dashed var(--c-danger)}
+.dC .legend .sw-new{width:14px;height:14px;border-radius:5px;border:2.5px solid var(--c-route)}
+/* callouts */
+.dC .call{border-radius:14px;padding:13px 16px;margin:12px 0;font-size:14.5px}
+.dC .call .ct{font:700 11px/1 var(--c-mono);letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:6px}
+.dC .call.warn{background:var(--c-warn-soft)}
+.dC .call.warn .ct{color:var(--c-warn)}
+.dC .call.ok{background:var(--c-ok-soft)}
+.dC .call.ok .ct{color:var(--c-ok)}
+/* quiz */
+.dC .qopt{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1.5px solid var(--c-line);border-radius:12px;margin:9px 0;font-size:14.5px;background:var(--c-card);transition:border-color 180ms ease,background 180ms ease}
+.dC .qopt:hover{border-color:var(--c-route);background:var(--c-route-soft)}
+.dC .qopt input{margin-top:4px;accent-color:var(--c-route);width:16px;height:16px}
+.dC .qfb{margin-top:12px;padding:12px 15px;border-radius:12px;font-size:14px;display:none}
+.dC .qfb.show{display:block}
+.dC .qfb.good{background:var(--c-ok-soft)}
+.dC .qfb.bad{background:var(--c-danger-soft)}
+.dC .qfb a{color:var(--c-route);font-weight:600}
+/* botones */
+.dC .btn{background:var(--c-card);border:1.5px solid var(--c-ink);color:var(--c-ink);padding:10px 18px;font:600 13.5px/1 var(--c-sans);border-radius:999px;transition:background 180ms ease,color 180ms ease,transform 120ms ease}
+.dC .btn:hover{background:var(--c-ink);color:var(--c-card)}
+.dC .btn:active{transform:scale(.985)}
+.dC .btn.primary{background:var(--c-route);border-color:var(--c-route);color:#fff}
+.dC .btn.primary:hover{background:#215272}
+.dC .exportbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;background:var(--c-card);border:1px solid var(--c-line);border-radius:16px;padding:16px 20px;margin:12px 0}
+.dC .exportbar .live{font:12px/1.4 var(--c-mono);color:var(--c-ok)}
+.dC details{margin:10px 0 2px}
+.dC summary{cursor:pointer;font-weight:700;font-size:13.5px;color:var(--c-route)}
+.dC summary:hover{text-decoration:underline}
+.dC .alt-details{border:1.5px dashed var(--c-line2);border-radius:12px;padding:10px 14px;margin-top:8px;font-size:13.5px;color:var(--c-ink2)}
+.dC .colophon{font:12px/1.7 var(--c-mono);color:var(--c-ink2);margin-top:26px;border-top:1px solid var(--c-line);padding-top:12px}
+@media (max-width:720px){
+  .dC h1{font-size:26px}
+  .dC .compare,.dC .rutas{grid-template-columns:1fr}
+  .dC .ruta{padding-left:36px}
+  .dC .estacion .wp{left:-36px}
+  .dC .timeline li{grid-template-columns:1fr;gap:4px}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#dir-a">Saltar a las direcciones</a>
+
+<header class="chrome">
+  <h1>Tres direcciones para el design system de la colección de Agent Skills</h1>
+  <p>El mismo artefacto de ejemplo —un plan de cambio del proyecto ficticio <strong>meridian</strong> (idempotencia de webhooks)— renderizado en tres sistemas visuales radicalmente distintos. Los tres cumplen el mismo quality bar: autocontenidos, legibles sin JavaScript, navegables por teclado, AA, reflow a 320&nbsp;px, print e impresión monocroma, reduced motion y exports que cierran el loop.</p>
+  <p>Evalúa cada dirección de arriba a abajo: procedencia → título → resumen → evidencia → decisión → comparación → código → timeline → diagrama → estados → export → quiz. Después hay una matriz comparativa y una recomendación.</p>
+  <nav class="jump" aria-label="Saltar a una dirección">
+    <a href="#dir-a">A · Acta</a>
+    <a href="#dir-b">B · Consola</a>
+    <a href="#dir-c">C · Expedición</a>
+    <a href="#matriz">Matriz y recomendación</a>
+  </nav>
+</header>
+
+<!-- ============================================================ -->
+<!-- DIRECCIÓN A                                                   -->
+<!-- ============================================================ -->
+<div class="dir-wrap" id="dir-a">
+  <div class="dir-head">
+    <span class="tag">DIRECCIÓN A</span>
+    <h2>«Acta» — el artefacto como documento de registro</h2>
+  </div>
+  <div class="meta">
+    <div class="cell"><h3>Tesis</h3>
+      <p>Un artefacto durable es un acta de ingeniería: papel primero, pantalla después. La procedencia abre el documento como un colofón; la evidencia se cita y se registra; las decisiones se numeran y se firman. Nada compite con el texto.</p></div>
+    <div class="cell"><h3>Principios</h3>
+      <ul><li>Print-first: la versión impresa es la de referencia.</li><li>Jerarquía por reglas tipográficas, no por cajas.</li><li>Evidencia citable: cada afirmación remite a un registro de fuentes.</li><li>Decisiones como registro numerado con estado.</li><li>Motion ≈ 0; la interacción es sobria y secundaria.</li></ul></div>
+    <div class="cell"><h3>Tokens (muestra)</h3>
+      <div class="sw">
+        <span><i style="background:#FDFDFB"></i>papel</span>
+        <span><i style="background:#1D1F24"></i>tinta</span>
+        <span><i style="background:#F4F3EC"></i>tinte</span>
+        <span><i style="background:#2B4C7E"></i>acción</span>
+        <span><i style="background:#276140"></i>positivo</span>
+        <span><i style="background:#7A5600"></i>aviso</span>
+        <span><i style="background:#8C2F23"></i>peligro</span>
+      </div>
+      <p style="margin-top:8px">Radius 0–2 px · reglas 1 px y dobles · sombras: ninguna · motion 0–100 ms</p></div>
+    <div class="cell"><h3>Tipografía</h3>
+      <p>Serif de texto (Charter/Iowan/Georgia) como voz de lectura, también en títulos. Mono para procedencia, datos, labels y código. Sans casi ausente (sólo controles).</p></div>
+    <div class="cell"><h3>Fortalezas</h3>
+      <ul><li>Lectura larga y revisión: la mejor de las tres.</li><li>Print y monocromo impecables por construcción.</li><li>Procedencia y auditabilidad como identidad, no como pie.</li><li>Envejece bien; cero dependencia de moda visual.</li></ul></div>
+    <div class="cell"><h3>Debilidades</h3>
+      <ul><li>Los editores interactivos se sienten «de papel».</li><li>Menos affordance lúdica para explorar (concept-lab).</li><li>Densidad de datos media: tableros grandes piden más grid.</li></ul></div>
+    <div class="cell"><h3>Dónde brilla</h3>
+      <p>change-blueprint (spec y plan), what-just-happened, feature-xray, deepen-the-codebase, three-code-paths en modo lectura.</p></div>
+    <div class="cell"><h3>Riesgos</h3>
+      <p>Puede leerse como «documento estático» y desincentivar la interacción; los instrumentos muy dinámicos (build-with-notes vivo, quiz) necesitan disciplina para no romper la sobriedad.</p></div>
+    <div class="cell"><h3>Qué la hace original</h3>
+      <p>Ningún artefacto del upstream trata la procedencia como colofón notarial ni ofrece registro de fuentes y de decisiones numerado. El print-first como contrato (no como afterthought) es una postura propia.</p></div>
+  </div>
+
+  <div class="demo-frame dA">
+  <div class="artifact-demo"><div class="page">
+
+    <dl class="prov">
+      <div><dt>Artefacto</dt><dd>Plan de implementación · fase B</dd></div>
+      <div><dt>Proyecto</dt><dd>meridian</dd></div>
+      <div><dt>Ámbito</dt><dd>src/webhooks/** · migrations/</dd></div>
+      <div><dt>Fecha</dt><dd>2026-07-21</dd></div>
+      <div><dt>Commits</dt><dd>3f2c91a‥b7d04e2</dd></div>
+    </dl>
+    <p class="prov-note">Entradas: spec.md aprobada · 14 archivos leídos · git log 90 días · logs 2026-05-12. Válido mientras HEAD = b7d04e2; verificar si la rama avanza.</p>
+
+    <div class="titleblock">
+      <h1>Entrega de webhooks: reintentos con presupuesto e idempotencia</h1>
+      <p class="lede">Los reintentos actuales duplican entregas bajo fallo parcial. Este plan introduce claves de idempotencia y un presupuesto de reintentos con backoff, en tres slices reversibles.</p>
+      <div class="status-line" role="group" aria-label="Estado del documento">
+        <span class="stamp draft">Borrador — pendiente de aprobación</span>
+        <span class="stamp info">Gate: fase B</span>
+      </div>
+    </div>
+
+    <div class="summary">
+      <p class="k">Resumen</p>
+      <p>El dispatcher reintenta sin registrar intentos: un timeout después de una entrega exitosa produce duplicados <span class="ref">[E1]</span>. Añadimos la tabla <code>webhook_attempts</code> (aditiva), clave de idempotencia por header y backoff con jitter bajo un presupuesto de 6 intentos/24&nbsp;h. La primera slice se despliega detrás de flag y es reversible con una migración down.</p>
+      <div class="metrics">
+        <div class="metric"><div class="mk">Esfuerzo</div><div class="mv">~3 días</div></div>
+        <div class="metric"><div class="mk">Archivos</div><div class="mv">11 (2 nuevos)</div></div>
+        <div class="metric"><div class="mk">Riesgo</div><div class="mv warn">Medio</div></div>
+        <div class="metric"><div class="mk">Migraciones</div><div class="mv">1 · aditiva</div></div>
+      </div>
+    </div>
+
+    <nav class="toc" aria-label="Índice">
+      <ol>
+        <li><span class="n">§1</span><a href="#a-evidencia">Evidencia</a></li>
+        <li><span class="n">§2</span><a href="#a-decisiones">Registro de decisiones</a></li>
+        <li><span class="n">§3</span><a href="#a-comparacion">Comparación de colas</a></li>
+        <li><span class="n">§4</span><a href="#a-codigo">Código con más riesgo</a></li>
+        <li><span class="n">§5</span><a href="#a-plan">Secuencia y estados</a></li>
+        <li><span class="n">§6</span><a href="#a-quiz">Comprobación</a></li>
+        <li><span class="n">§7</span><a href="#a-export">Exportación</a></li>
+      </ol>
+    </nav>
+
+    <section class="sec" id="a-evidencia">
+      <h2><span class="sn">§1</span>Evidencia</h2>
+      <div class="evidence">
+        <p class="claim"><span class="tagline tag-fact">Hecho</span>El dispatcher no persiste intentos: tras un timeout reenvía aunque el endpoint ya haya procesado el evento.<span class="ref">[E1]</span></p>
+        <div class="codebox">
+          <div class="path">src/webhooks/dispatcher.ts · líneas 141–158</div>
+          <div class="codewrap"><pre><span class="lineno">141</span>  const res = await post(endpoint, event, { timeout: 10_000 });
+<span class="lineno">142</span>  if (!res.ok) {
+<span class="lineno">143</span>    // sin registro del intento: el timeout cae aquí
+<span class="lineno">144</span>    return queue.retry(event);   // ← reenvía el evento completo
+<span class="lineno">145</span>  }</pre></div>
+        </div>
+        <p class="src">Fuente: lectura directa + reproducción con test (delivery.spec.ts:88). Registrada como E1.</p>
+      </div>
+      <div class="evidence">
+        <p class="claim"><span class="tagline tag-inf">Inferencia</span>El pico de duplicados de mayo coincide con p99&nbsp;&gt;&nbsp;10&nbsp;s del endpoint de facturación; probablemente la misma causa.<span class="ref">[E2]</span></p>
+        <p class="src">Fuente: logs 2026-05-12. Correlación no confirmada con el equipo de facturación.</p>
+      </div>
+    </section>
+
+    <section class="sec" id="a-decisiones">
+      <h2><span class="sn">§2</span>Registro de decisiones</h2>
+      <div class="dreg">
+        <div class="drow">
+          <div class="did">D-01</div>
+          <div class="dbody">
+            <h3>Clave de idempotencia: header <code>X-Meridian-Delivery</code></h3>
+            <p>UUID por evento, generado al encolar. El consumidor descarta entregas repetidas comparando la clave, no el cuerpo.</p>
+            <p class="dmeta">Estado: propuesta · Reversible: sí (el header es aditivo) · Cambiar si: los consumidores no pueden leer headers.</p>
+            <details>
+              <summary>Alternativa considerada: hash SHA-256 del payload</summary>
+              <div class="alt"><p>Evita el header, pero colisiona con eventos legítimamente idénticos (dos cargos iguales el mismo día) y ata la clave al cuerpo serializado. Descartada por ambigüedad semántica.</p></div>
+            </details>
+            <p class="dmeta">Respuesta de una línea para cambiarla: <em>«Usa hash del payload en lugar del header.»</em>
+              <button class="btn" type="button" data-copy="Usa hash del payload en lugar del header.">Copiar respuesta</button></p>
+          </div>
+        </div>
+        <div class="drow">
+          <div class="did">D-02</div>
+          <div class="dbody">
+            <h3>Presupuesto de reintentos: 6 intentos / 24 h con backoff exponencial + jitter</h3>
+            <p>Al agotarse, el evento pasa a la cola muerta con causa. Sin presupuesto, un endpoint caído multiplica tráfico ×40 <span class="ref">[E2]</span>.</p>
+            <p class="dmeta">Estado: propuesta · Owner: pendiente de asignar en aprobación.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="a-comparacion">
+      <h2><span class="sn">§3</span>Comparación: dónde vive la cola</h2>
+      <div class="compare">
+        <div class="copt">
+          <span class="cn">OPCIÓN 1 · PROPUESTA</span>
+          <h3>Outbox en Postgres</h3>
+          <ul>
+            <li>Transaccional con el negocio: cero eventos fantasma.</li>
+            <li>Sin infraestructura nueva; opera el mismo backup.</li>
+            <li>~500 eventos/s medidos en staging; +8 ms p50.</li>
+          </ul>
+          <p class="when"><strong>Elegirla si</strong> el volumen se mantiene &lt; 1.000 ev/s (hoy: 120 ev/s).</p>
+        </div>
+        <div class="copt">
+          <span class="cn">OPCIÓN 2</span>
+          <h3>Redis Streams</h3>
+          <ul>
+            <li>~10.000 ev/s; consumidores en grupo nativos.</li>
+            <li>Infra nueva + reconciliación con Postgres al fallar.</li>
+            <li>Entrega at-least-once que exige la misma idempotencia.</li>
+          </ul>
+          <p class="when"><strong>Elegirla si</strong> el volumen se multiplica ×10 este año (roadmap: no).</p>
+        </div>
+      </div>
+      <div class="tablewrap"><table class="cmatrix">
+        <caption class="visually-hidden">Matriz resumen de comparación entre Outbox en Postgres y Redis Streams</caption>
+        <tr><th scope="col">Criterio</th><th scope="col">Outbox PG</th><th scope="col">Redis Streams</th></tr>
+        <tr><th scope="row">Consistencia</th><td>transaccional</td><td>eventual</td></tr>
+        <tr><th scope="row">Rendimiento</th><td>500 ev/s</td><td>10k ev/s</td></tr>
+        <tr><th scope="row">Operación</th><td>sin cambios</td><td>nuevo servicio</td></tr>
+        <tr><th scope="row">Migración</th><td>1 tabla</td><td>doble escritura</td></tr>
+      </table></div>
+    </section>
+
+    <section class="sec" id="a-codigo">
+      <h2><span class="sn">§4</span>Código con más riesgo</h2>
+      <p>El registro del intento debe confirmarse <em>antes</em> del POST; si se invierte el orden, reaparece el duplicado.</p>
+      <div class="codebox">
+        <div class="path">src/webhooks/dispatcher.ts · diff propuesto</div>
+        <div class="codewrap"><pre><span class="del">- const res = await post(endpoint, event, { timeout: 10_000 });</span>
+<span class="add">+ const attempt = await attempts.begin(event.id, delivery.key);  // D-01</span>
+<span class="add">+ const res = await post(endpoint, event, {</span>
+<span class="add">+   timeout: 10_000,</span>
+<span class="add">+   headers: { "X-Meridian-Delivery": delivery.key },</span>
+<span class="add">+ });</span>
+<span class="add">+ await attempt.close(res.status);   // presupuesto D-02 se evalúa aquí</span></pre></div>
+      </div>
+    </section>
+
+    <section class="sec" id="a-plan">
+      <h2><span class="sn">§5</span>Secuencia y estados</h2>
+      <ol class="timeline">
+        <li class="done"><span class="td">21 JUL · HECHO</span><p class="tt">Spec aprobada (fase A); plan en revisión.</p></li>
+        <li class="now"><span class="td">23 JUL · EN CURSO</span><p class="tt">Slice 1 — migración <code>webhook_attempts</code> + outbox, flag apagada.</p></li>
+        <li><span class="td">28 JUL</span><p class="tt">Slice 2 — dispatcher idempotente; canary al 5 %.</p></li>
+        <li><span class="td">4 AGO</span><p class="tt">Ramp al 100 % con alarma de duplicados.</p></li>
+        <li><span class="td">11 AGO</span><p class="tt">Retirar el camino legado y cerrar D-02 con datos reales.</p></li>
+      </ol>
+
+      <figure>
+        <svg viewBox="0 0 700 190" role="img" aria-labelledby="a-fig-t a-fig-d">
+          <title id="a-fig-t">Figura 1. Flujo de entrega propuesto</title>
+          <desc id="a-fig-d">El servicio emisor escribe en la outbox de Postgres; el dispatcher lee la outbox y entrega al endpoint del consumidor. Si el presupuesto de reintentos se agota, el evento pasa a la cola muerta.</desc>
+          <defs>
+            <marker id="a-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1D1F24"/></marker>
+            <marker id="a-arr-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8C2F23"/></marker>
+          </defs>
+          <g fill="none" stroke="#1D1F24" stroke-width="1.2">
+            <rect x="10" y="55" width="130" height="44"/>
+            <rect x="190" y="55" width="130" height="44" fill="#F4F3EC"/>
+            <rect x="370" y="55" width="130" height="44" fill="#F4F3EC"/>
+            <rect x="550" y="55" width="140" height="44"/>
+            <rect x="370" y="140" width="130" height="40" stroke="#8C2F23" stroke-dasharray="4 3"/>
+          </g>
+          <g font-size="12" fill="#1D1F24" text-anchor="middle">
+            <text x="75" y="73">servicio</text><text x="75" y="88">emisor</text>
+            <text x="255" y="73">outbox</text><text x="255" y="88">postgres · nueva</text>
+            <text x="435" y="73">dispatcher</text><text x="435" y="88">idempotente</text>
+            <text x="620" y="73">endpoint</text><text x="620" y="88">consumidor</text>
+            <text x="435" y="164" fill="#8C2F23">cola muerta</text>
+          </g>
+          <g stroke="#1D1F24" stroke-width="1.2" marker-end="url(#a-arr)">
+            <line x1="140" y1="77" x2="188" y2="77"/>
+            <line x1="320" y1="77" x2="368" y2="77"/>
+            <line x1="500" y1="77" x2="548" y2="77"/>
+          </g>
+          <line x1="435" y1="99" x2="435" y2="138" stroke="#8C2F23" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#a-arr-r)"/>
+          <g font-size="10.5" fill="#50545C" text-anchor="middle">
+            <text x="164" y="68">tx</text>
+            <text x="344" y="68">poll</text>
+            <text x="524" y="68">POST</text>
+            <text x="466" y="122">agota D-02</text>
+          </g>
+        </svg>
+        <figcaption><b>Fig. 1 — Flujo de entrega propuesto.</b> Línea continua: camino normal. Línea discontinua: agotamiento del presupuesto (D-02) hacia la cola muerta. Fondo tintado: componentes nuevos. Equivalente textual en la descripción de la figura.</figcaption>
+      </figure>
+
+      <div class="call warn" role="note">
+        <span class="ct">Aviso · bloqueante para la slice 2</span>
+        Staging comparte el secreto de firma con producción. Rotar el secreto antes del canary; de lo contrario un replay de staging valida en prod.
+      </div>
+      <div class="call ok" role="status">
+        <span class="ct">Verificado</span>
+        Slice 1 verificada en staging: 14/14 tests, migración aplicada y revertida sin pérdida.
+      </div>
+    </section>
+
+    <section class="sec" id="a-quiz">
+      <h2><span class="sn">§6</span>Comprobación de comprensión</h2>
+      <form class="quiz" data-quiz data-answer="b">
+        <fieldset>
+          <legend>Pregunta 1 · comportamiento bajo fallo</legend>
+          <p style="margin-top:6px">El dispatcher muere después de recibir un 200 pero antes de cerrar el intento. ¿Qué ocurre al reiniciar?</p>
+          <label class="qopt"><input type="radio" name="a-q1" value="a"><span>El evento se pierde: la outbox lo marca entregado al recibir el 200.</span></label>
+          <label class="qopt"><input type="radio" name="a-q1" value="b"><span>Se reenvía, y el consumidor lo descarta por la clave <code>X-Meridian-Delivery</code> repetida.</span></label>
+          <label class="qopt"><input type="radio" name="a-q1" value="c"><span>Se reenvía y se procesa dos veces, como hasta ahora.</span></label>
+          <button class="btn qcheck" type="button" data-quiz-check>Comprobar</button>
+          <p class="qfb good" data-fb="good"><strong>Correcto.</strong> El intento quedó abierto, así que se reenvía; la idempotencia (D-01) convierte el duplicado en un no-op del consumidor.</p>
+          <p class="qfb bad" data-fb="bad"><strong>No exactamente.</strong> Revisa la evidencia <a href="#a-evidencia">E1</a> y la decisión <a href="#a-decisiones">D-01</a>: el reenvío ocurre, pero la clave repetida lo neutraliza.</p>
+          <noscript><details><summary>Ver respuesta (sin JavaScript)</summary><p>Respuesta correcta: la segunda opción. El intento abierto fuerza reenvío y la clave de idempotencia lo neutraliza.</p></details></noscript>
+        </fieldset>
+      </form>
+    </section>
+
+    <section class="sec" id="a-export">
+      <h2><span class="sn">§7</span>Anexo de exportación</h2>
+      <p>La fuente canónica de este plan es <code>plan.md</code>; esta acta es su vista. Los exports derivan del mismo estado.</p>
+      <div class="exportbar">
+        <button class="btn primary" type="button" data-copy-block="a-md">Copiar como Markdown</button>
+        <button class="btn" type="button" data-copy-block="a-json">Copiar decisiones (JSON)</button>
+        <span class="live" role="status" aria-live="polite" data-copy-status></span>
+      </div>
+      <pre class="visually-hidden" id="a-md"># Plan: webhooks idempotentes (meridian)
+Estado: borrador · 2026-07-21 · commits 3f2c91a..b7d04e2
+## Decisiones
+- D-01 clave de idempotencia via header X-Meridian-Delivery (propuesta)
+- D-02 presupuesto 6 intentos/24h, backoff+jitter (propuesta)
+## Slices
+1. Migración webhook_attempts + outbox (flag off)
+2. Dispatcher idempotente (canary 5%)
+3. Ramp 100% + retirada del camino legado</pre>
+      <pre class="visually-hidden" id="a-json">{"artifact":"change-blueprint/plan","project":"meridian","date":"2026-07-21","range":"3f2c91a..b7d04e2","decisions":[{"id":"D-01","title":"Clave de idempotencia por header","status":"proposed"},{"id":"D-02","title":"Presupuesto de reintentos 6/24h","status":"proposed"}]}</pre>
+      <ol class="sources">
+        <li>[E1] src/webhooks/dispatcher.ts:141–158 · lectura directa · test delivery.spec.ts:88.</li>
+        <li>[E2] logs de producción 2026-05-12 · correlación sin confirmar (inferencia).</li>
+      </ol>
+      <p class="colophon">Acta generada por la skill <code>change-blueprint</code> · meridian @ b7d04e2 · 2026-07-21 · Los hechos se etiquetan <strong>HECHO</strong>; las lecturas no confirmadas, <strong>INFERENCIA</strong>; los recortes deliberados, <strong>SIMPLIFICACIÓN</strong>. Este documento puede quedar obsoleto si la rama avanza.</p>
+    </section>
+
+  </div></div>
+  </div>
+  <p class="demo-note">Comportamiento previsto — móvil: una sola columna, métricas y comparación apiladas con la matriz resumen; el diagrama scrollea dentro de la figura. Impresión: controles ocultos, alternativas de decisión expandidas, figura y fuentes impresas, monocromo legible (estados codificados con texto, no sólo color).</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- DIRECCIÓN B                                                   -->
+<!-- ============================================================ -->
+<div class="dir-wrap" id="dir-b">
+  <div class="dir-head">
+    <span class="tag">DIRECCIÓN B</span>
+    <h2>«Consola» — el artefacto como instrumento de banco</h2>
+  </div>
+  <div class="meta">
+    <div class="cell"><h3>Tesis</h3>
+      <p>Un artefacto de trabajo es un instrumento: estado siempre visible, cada dato con timestamp y traza, controles francos y operables con teclado. La página es un banco de pruebas, no una publicación.</p></div>
+    <div class="cell"><h3>Principios</h3>
+      <ul><li>Estado primero: barra de estado y gates con estado grande.</li><li>Densidad alta; cada panel se gana su espacio.</li><li>Teclado como ciudadano de primera (atajos visibles).</li><li>Evidencia como log trazable, no como prosa.</li><li>Feedback instantáneo; cero motion decorativa.</li></ul></div>
+    <div class="cell"><h3>Tokens (muestra)</h3>
+      <div class="sw">
+        <span><i style="background:#E8EDEE"></i>base</span>
+        <span><i style="background:#FBFDFD"></i>panel</span>
+        <span><i style="background:#1B2A2E"></i>cabecera</span>
+        <span><i style="background:#0A6C5D"></i>acción</span>
+        <span><i style="background:#15702F"></i>positivo</span>
+        <span><i style="background:#8F5F00"></i>aviso</span>
+        <span><i style="background:#A62A1E"></i>peligro</span>
+      </div>
+      <p style="margin-top:8px">Radius 0 px · paneles con header propio · grid de 20 px visible en diagramas · motion 0–100 ms</p></div>
+    <div class="cell"><h3>Tipografía</h3>
+      <p>Mono estructural (headers de panel, labels, datos, timeline) + sans neutral para prosa en «islas» de medida limitada. Sin serif.</p></div>
+    <div class="cell"><h3>Fortalezas</h3>
+      <ul><li>Vistas vivas y diagnóstico: estado y progreso inequívocos.</li><li>Editores y quizzes con affordance clara.</li><li>Trazabilidad: timestamps + rutas en todo.</li><li>Densidad útil en pantallas grandes.</li></ul></div>
+    <div class="cell"><h3>Debilidades</h3>
+      <ul><li>Lectura larga más dura; exige islas de prosa disciplinadas.</li><li>Puede leerse como «IDE genérico» si se descuida.</li><li>El gris técnico pide cuidado para no volverse frío.</li></ul></div>
+    <div class="cell"><h3>Dónde brilla</h3>
+      <p>build-with-notes (vista viva), find-the-cause, do-i-understand-this, what-just-happened técnico, editores de feel-the-flow, draw-the-flow de sistemas.</p></div>
+    <div class="cell"><h3>Riesgos</h3>
+      <p>Sobre-instrumentar documentos que sólo quieren ser leídos (spec de change-blueprint); la densidad castiga en móvil si no se colapsa el rail y las tablas.</p></div>
+    <div class="cell"><h3>Qué la hace original</h3>
+      <p>Gates de decisión como estados de instrumento, navegación con atajos visibles, evidencia como log con timestamp y papel milimetrado bajo los diagramas: nada de esto existe en el upstream, que es editorial en todos sus artefactos.</p></div>
+  </div>
+
+  <div class="demo-frame dB">
+  <div class="artifact-demo"><div class="page">
+
+    <div class="statusbar" role="group" aria-label="Estado del artefacto">
+      <div class="sb"><span class="sk">Artefacto</span>plan de implementación · fase B</div>
+      <div class="sb"><span class="sk">Proyecto</span>meridian @ b7d04e2</div>
+      <div class="sb"><span class="sk">Ámbito</span>src/webhooks/** · migrations/</div>
+      <div class="sb"><span class="sk">Fecha</span>2026-07-21</div>
+      <div class="sb flex"><span class="sk">Estado</span><span class="led warn" aria-hidden="true"></span>BORRADOR — pendiente de aprobación</div>
+    </div>
+
+    <div class="titleblock">
+      <h1>Entrega de webhooks: reintentos con presupuesto e idempotencia</h1>
+      <p class="lede">Los reintentos actuales duplican entregas bajo fallo parcial. Este plan introduce claves de idempotencia y un presupuesto de reintentos con backoff, en tres slices reversibles.</p>
+    </div>
+
+    <div class="cols">
+      <nav class="rail" aria-label="Secciones">
+        <div class="rt">Secciones</div>
+        <a href="#b-resumen"><kbd>1</kbd> Resumen</a>
+        <a href="#b-evidencia"><kbd>2</kbd> Evidencia</a>
+        <a href="#b-decisiones"><kbd>3</kbd> Decisiones</a>
+        <a href="#b-comparacion"><kbd>4</kbd> Comparación</a>
+        <a href="#b-codigo"><kbd>5</kbd> Código</a>
+        <a href="#b-plan"><kbd>6</kbd> Secuencia</a>
+        <a href="#b-quiz"><kbd>7</kbd> Comprobación</a>
+        <a href="#b-export"><kbd>8</kbd> Salida</a>
+        <div class="hint">entradas: spec.md · 14 archivos · git log 90 d · logs 05-12</div>
+      </nav>
+
+      <div>
+        <section class="panel" id="b-resumen">
+          <div class="phead"><span class="pnum">01</span><h2>Resumen</h2><span class="pmeta">TL;DR</span></div>
+          <div class="pbody">
+            <p>El dispatcher reintenta sin registrar intentos: un timeout tras una entrega exitosa produce duplicados (evidencia E1). Se añade la tabla <code>webhook_attempts</code> (aditiva), clave de idempotencia por header y backoff con jitter bajo presupuesto de 6 intentos/24&nbsp;h. Primera slice detrás de flag, reversible con migración down.</p>
+            <div class="metrics">
+              <div class="metric"><div class="mk">Esfuerzo</div><div class="mv">~3 días</div></div>
+              <div class="metric"><div class="mk">Archivos</div><div class="mv">11 (2 nuevos)</div></div>
+              <div class="metric"><div class="mk">Riesgo</div><div class="mv warn">MEDIO</div></div>
+              <div class="metric"><div class="mk">Migraciones</div><div class="mv">1 · aditiva</div></div>
+            </div>
+            <p style="margin:0">
+              <span class="badge draft">borrador</span>
+              <span class="badge ok">slice 1 verificada</span>
+              <span class="badge blocked">secreto compartido</span>
+              <span class="badge info">gate: fase B</span>
+              <span class="badge neutral">flag: webhooks_v2</span>
+            </p>
+          </div>
+        </section>
+
+        <section class="panel" id="b-evidencia">
+          <div class="phead"><span class="pnum">02</span><h2>Evidencia</h2><span class="pmeta">2 registros · 1 hecho · 1 inferencia</span></div>
+          <div class="pbody">
+            <div class="log">
+              <div class="lrow">
+                <div class="lts">E1 · 2026-07-21</div>
+                <div class="ltag fact">HECHO</div>
+                <div class="lmsg">El dispatcher no persiste intentos: tras timeout reenvía aunque el endpoint haya procesado el evento. <span class="trace">src/webhooks/dispatcher.ts:141-158</span> · reproducido en <span class="trace">delivery.spec.ts:88</span></div>
+              </div>
+              <div class="lrow">
+                <div class="lts">E2 · 2026-05-12</div>
+                <div class="ltag inf">INFERENCIA</div>
+                <div class="lmsg">Pico de duplicados de mayo coincide con p99 &gt; 10 s del endpoint de facturación; probable misma causa. Correlación sin confirmar.</div>
+              </div>
+            </div>
+            <div class="codebox" style="margin-top:12px">
+              <div class="path"><span>src/webhooks/dispatcher.ts · 141-158</span><span>E1</span></div>
+              <div class="codewrap"><pre>const res = await post(endpoint, event, { timeout: 10_000 });
+if (!res.ok) {
+  <span class="cm">// sin registro del intento: el timeout cae aquí</span>
+  return queue.retry(event);   <span class="cm">// ← reenvía el evento completo</span>
+}</pre></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="b-decisiones">
+          <div class="phead"><span class="pnum">03</span><h2>Decisiones</h2><span class="pmeta">2 gates · 0 aprobados</span></div>
+          <div class="pbody">
+            <div class="gate">
+              <div class="ghead"><span class="gid">D-01</span><h3>Clave de idempotencia: header <code>X-Meridian-Delivery</code></h3><span class="gstate">PENDIENTE</span></div>
+              <div class="gbody">
+                <p>UUID por evento, generado al encolar. El consumidor descarta entregas repetidas comparando la clave, no el cuerpo.</p>
+                <details>
+                  <summary>Alternativa: hash SHA-256 del payload</summary>
+                  <div class="alt">Evita el header, pero colisiona con eventos legítimamente idénticos (dos cargos iguales el mismo día). Descartada por ambigüedad semántica.</div>
+                </details>
+                <div class="gmeta">
+                  <span>reversible: sí</span><span>cambiar si: consumidores sin acceso a headers</span>
+                  <button class="btn" type="button" data-copy="Usa hash del payload en lugar del header.">copiar respuesta de cambio</button>
+                </div>
+              </div>
+            </div>
+            <div class="gate">
+              <div class="ghead"><span class="gid">D-02</span><h3>Presupuesto de reintentos: 6 / 24 h · backoff + jitter</h3><span class="gstate">PENDIENTE</span></div>
+              <div class="gbody">
+                <p>Al agotarse, el evento pasa a la cola muerta con causa. Sin presupuesto, un endpoint caído multiplica el tráfico ×40 (E2).</p>
+                <div class="gmeta"><span>owner: se asigna en la aprobación</span><span>bloquea: slice 2</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="b-comparacion">
+          <div class="phead"><span class="pnum">04</span><h2>Comparación · dónde vive la cola</h2></div>
+          <div class="pbody">
+            <div class="segbar" role="group" aria-label="Vista de la comparación">
+              <button type="button" aria-pressed="true">lado a lado</button>
+              <button type="button" aria-pressed="false">sólo matriz</button>
+            </div>
+            <div class="compare">
+              <div class="copt">
+                <div class="ch"><span>Opción 1</span><span class="pick">propuesta</span></div>
+                <h3>Outbox en Postgres</h3>
+                <ul>
+                  <li>Transaccional con el negocio: cero eventos fantasma.</li>
+                  <li>Sin infraestructura nueva; opera el mismo backup.</li>
+                  <li>~500 ev/s medidos en staging; +8 ms p50.</li>
+                </ul>
+                <p class="when">elegirla si volumen &lt; 1k ev/s (hoy: 120 ev/s)</p>
+              </div>
+              <div class="copt">
+                <div class="ch"><span>Opción 2</span><span></span></div>
+                <h3>Redis Streams</h3>
+                <ul>
+                  <li>~10.000 ev/s; grupos de consumidores nativos.</li>
+                  <li>Infra nueva + reconciliación con Postgres al fallar.</li>
+                  <li>At-least-once: exige la misma idempotencia.</li>
+                </ul>
+                <p class="when">elegirla si el volumen ×10 este año (roadmap: no)</p>
+              </div>
+            </div>
+            <div class="tablewrap"><table class="cmatrix">
+              <caption class="visually-hidden">Matriz resumen de comparación</caption>
+              <tr><th scope="col">Criterio</th><th scope="col">Outbox PG</th><th scope="col">Redis Streams</th></tr>
+              <tr><th scope="row">Consistencia</th><td>transaccional</td><td>eventual</td></tr>
+              <tr><th scope="row">Rendimiento</th><td>500 ev/s</td><td>10k ev/s</td></tr>
+              <tr><th scope="row">Operación</th><td>sin cambios</td><td>nuevo servicio</td></tr>
+              <tr><th scope="row">Migración</th><td>1 tabla</td><td>doble escritura</td></tr>
+            </table></div>
+          </div>
+        </section>
+
+        <section class="panel" id="b-codigo">
+          <div class="phead"><span class="pnum">05</span><h2>Código con más riesgo</h2><span class="pmeta">dispatcher.ts</span></div>
+          <div class="pbody">
+            <p>El registro del intento debe confirmarse <strong>antes</strong> del POST; si se invierte el orden, reaparece el duplicado.</p>
+            <div class="codebox">
+              <div class="path"><span>src/webhooks/dispatcher.ts · diff propuesto</span><span>D-01 · D-02</span></div>
+              <div class="codewrap"><pre><span class="del">- const res = await post(endpoint, event, { timeout: 10_000 });</span>
+<span class="add">+ const attempt = await attempts.begin(event.id, delivery.key);  <span class="cm">// D-01</span></span>
+<span class="add">+ const res = await post(endpoint, event, {</span>
+<span class="add">+   timeout: 10_000,</span>
+<span class="add">+   headers: { "X-Meridian-Delivery": delivery.key },</span>
+<span class="add">+ });</span>
+<span class="add">+ await attempt.close(res.status);   <span class="cm">// presupuesto D-02 se evalúa aquí</span></span></pre></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel flowpanel" id="b-plan">
+          <div class="phead"><span class="pnum">06</span><h2>Secuencia y flujo</h2></div>
+          <div class="pbody">
+            <ol class="timeline">
+              <li><span class="td">21 JUL</span><span class="ts done">HECHO</span><span class="tt">Spec aprobada (fase A); plan en revisión.</span></li>
+              <li><span class="td">23 JUL</span><span class="ts now">EN CURSO</span><span class="tt">Slice 1 — migración <code>webhook_attempts</code> + outbox, flag off.</span></li>
+              <li><span class="td">28 JUL</span><span class="ts next">SIGUIENTE</span><span class="tt">Slice 2 — dispatcher idempotente; canary 5 %.</span></li>
+              <li><span class="td">04 AGO</span><span class="ts next">PLAN</span><span class="tt">Ramp 100 % con alarma de duplicados.</span></li>
+              <li><span class="td">11 AGO</span><span class="ts next">PLAN</span><span class="tt">Retirar camino legado; cerrar D-02 con datos reales.</span></li>
+            </ol>
+            <div class="flowwrap" style="margin-top:14px">
+              <svg viewBox="0 0 700 190" width="700" role="img" aria-labelledby="b-fig-t b-fig-d">
+                <title id="b-fig-t">Flujo de entrega propuesto</title>
+                <desc id="b-fig-d">El servicio emisor escribe en la outbox de Postgres; el dispatcher lee la outbox y entrega al endpoint del consumidor. Si el presupuesto se agota, el evento pasa a la cola muerta.</desc>
+                <defs>
+                  <marker id="b-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#141A1C"/></marker>
+                  <marker id="b-arr-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A62A1E"/></marker>
+                </defs>
+                <g fill="#FBFDFD" stroke="#141A1C" stroke-width="1.4">
+                  <rect x="10" y="50" width="130" height="50"/>
+                  <rect x="190" y="50" width="130" height="50" stroke="#0A6C5D" stroke-width="2"/>
+                  <rect x="370" y="50" width="130" height="50" stroke="#0A6C5D" stroke-width="2"/>
+                  <rect x="550" y="50" width="140" height="50"/>
+                  <rect x="370" y="140" width="130" height="40" stroke="#A62A1E" stroke-dasharray="5 3"/>
+                </g>
+                <g font-size="12" fill="#141A1C" text-anchor="middle" font-weight="600">
+                  <text x="75" y="72">servicio</text><text x="75" y="88">emisor</text>
+                  <text x="255" y="72">outbox</text><text x="255" y="88">postgres · NUEVA</text>
+                  <text x="435" y="72">dispatcher</text><text x="435" y="88">idempotente</text>
+                  <text x="620" y="72">endpoint</text><text x="620" y="88">consumidor</text>
+                  <text x="435" y="165" fill="#A62A1E">cola muerta</text>
+                </g>
+                <g stroke="#141A1C" stroke-width="1.4" marker-end="url(#b-arr)">
+                  <line x1="140" y1="75" x2="188" y2="75"/>
+                  <line x1="320" y1="75" x2="368" y2="75"/>
+                  <line x1="500" y1="75" x2="548" y2="75"/>
+                </g>
+                <line x1="435" y1="100" x2="435" y2="138" stroke="#A62A1E" stroke-width="1.4" stroke-dasharray="5 3" marker-end="url(#b-arr-r)"/>
+                <g font-size="10.5" fill="#445256" text-anchor="middle">
+                  <text x="164" y="66">tx</text>
+                  <text x="344" y="66">poll</text>
+                  <text x="524" y="66">POST</text>
+                  <text x="472" y="122">agota D-02</text>
+                </g>
+              </svg>
+            </div>
+            <p style="font:11px/1.6 var(--b-mono);color:var(--b-ink2);margin:8px 0 0">continuo = camino normal · discontinuo = fallo · borde verde = componente nuevo. Equivalente textual en la descripción del SVG.</p>
+            <div class="call warn" role="note">
+              <span class="ct">Aviso · bloqueante para slice 2</span>
+              Staging comparte el secreto de firma con producción. Rotar antes del canary; un replay de staging validaría en prod.
+            </div>
+            <div class="call ok" role="status">
+              <span class="ct">Verificado</span>
+              Slice 1 en staging: 14/14 tests · migración aplicada y revertida sin pérdida.
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" id="b-quiz">
+          <div class="phead"><span class="pnum">07</span><h2>Comprobación</h2><span class="pmeta">1 pregunta</span></div>
+          <div class="pbody">
+            <form data-quiz data-answer="b">
+              <fieldset style="border:0;margin:0;padding:0">
+                <legend style="font:600 13.5px/1.4 var(--b-sans);padding:0">El dispatcher muere después de recibir un 200 pero antes de cerrar el intento. ¿Qué ocurre al reiniciar?</legend>
+                <label class="qopt"><input type="radio" name="b-q1" value="a"><span><kbd>A</kbd> El evento se pierde: la outbox lo marca entregado al recibir el 200.</span></label>
+                <label class="qopt"><input type="radio" name="b-q1" value="b"><span><kbd>B</kbd> Se reenvía, y el consumidor lo descarta por la clave <code>X-Meridian-Delivery</code> repetida.</span></label>
+                <label class="qopt"><input type="radio" name="b-q1" value="c"><span><kbd>C</kbd> Se reenvía y se procesa dos veces, como hasta ahora.</span></label>
+                <button class="btn" type="button" data-quiz-check>Comprobar</button>
+                <p class="qfb good" data-fb="good"><strong>Correcto.</strong> El intento quedó abierto → reenvío; la idempotencia (D-01) lo convierte en no-op.</p>
+                <p class="qfb bad" data-fb="bad"><strong>No exactamente.</strong> Revisa <a href="#b-evidencia">E1</a> y <a href="#b-decisiones">D-01</a>: hay reenvío, pero la clave repetida lo neutraliza.</p>
+                <noscript><details><summary>Ver respuesta (sin JavaScript)</summary><p>Correcta: B. El intento abierto fuerza reenvío y la clave de idempotencia lo neutraliza.</p></details></noscript>
+              </fieldset>
+            </form>
+          </div>
+        </section>
+
+        <section class="panel" id="b-export">
+          <div class="phead"><span class="pnum">08</span><h2>Salida</h2><span class="pmeta">md · json</span></div>
+          <div class="pbody">
+            <p style="margin-bottom:0">La fuente canónica es <code>plan.md</code>; este instrumento es su vista. Los exports derivan del mismo estado.</p>
+          </div>
+          <div class="exportbar">
+            <button class="btn primary" type="button" data-copy-block="b-md">Copiar como Markdown</button>
+            <button class="btn" type="button" data-copy-block="b-json">Copiar decisiones (JSON)</button>
+            <span class="live" role="status" aria-live="polite" data-copy-status></span>
+          </div>
+          <pre class="visually-hidden" id="b-md"># Plan: webhooks idempotentes (meridian)
+Estado: borrador · 2026-07-21 · commits 3f2c91a..b7d04e2
+## Decisiones
+- D-01 clave de idempotencia via header X-Meridian-Delivery (pendiente)
+- D-02 presupuesto 6 intentos/24h, backoff+jitter (pendiente)
+## Slices
+1. Migración webhook_attempts + outbox (flag off)
+2. Dispatcher idempotente (canary 5%)
+3. Ramp 100% + retirada del camino legado</pre>
+          <pre class="visually-hidden" id="b-json">{"artifact":"change-blueprint/plan","project":"meridian","date":"2026-07-21","range":"3f2c91a..b7d04e2","decisions":[{"id":"D-01","title":"Clave de idempotencia por header","status":"pending"},{"id":"D-02","title":"Presupuesto de reintentos 6/24h","status":"pending"}]}</pre>
+        </section>
+
+        <p class="colophon">generado por change-blueprint · meridian @ b7d04e2 · 2026-07-21 · HECHO = verificado en código o ejecución · INFERENCIA = lectura sin confirmar · SIMPLIFICACIÓN = recorte deliberado · el artefacto puede quedar obsoleto si la rama avanza</p>
+      </div>
+    </div>
+
+  </div></div>
+  </div>
+  <p class="demo-note">Comportamiento previsto — móvil: el rail colapsa a fila de enlaces, log y timeline pasan a una columna, tablas con scroll interno. Impresión: rail y botones ocultos, paneles sin fondo de grid, gates con su estado en texto, log de evidencia completo.</p>
+</div>
+
+<!--__DIR_B_END__-->
+<!-- ============================================================ -->
+<!-- DIRECCIÓN C                                                   -->
+<!-- ============================================================ -->
+<div class="dir-wrap" id="dir-c">
+  <div class="dir-head">
+    <span class="tag">DIRECCIÓN C</span>
+    <h2>«Expedición» — el artefacto como ruta con mapa</h2>
+  </div>
+  <div class="meta">
+    <div class="cell"><h3>Tesis</h3>
+      <p>El lector es un viajero: primero el mapa completo, luego la ruta por estaciones numeradas. Cada hallazgo es un espécimen etiquetado; cada decisión, una bifurcación señalizada. La orientación nunca se pierde.</p></div>
+    <div class="cell"><h3>Principios</h3>
+      <ul><li>Mapa antes que ruta: overview obligatorio y clicable.</li><li>Waypoints numerados conectados por una ruta visible.</li><li>Evidencia como ficha de espécimen (origen + confianza).</li><li>Bifurcaciones: la ruta elegida en color pleno, la descartada punteada.</li><li>Targets grandes; motion suave y prescindible.</li></ul></div>
+    <div class="cell"><h3>Tokens (muestra)</h3>
+      <div class="sw">
+        <span><i style="background:#F4F6F1"></i>bruma</span>
+        <span><i style="background:#FFFFFF"></i>ficha</span>
+        <span><i style="background:#243029"></i>tinta</span>
+        <span><i style="background:#2A648A"></i>ruta</span>
+        <span><i style="background:#2F6E44"></i>positivo</span>
+        <span><i style="background:#8F6400"></i>aviso</span>
+        <span><i style="background:#A63D3D"></i>peligro</span>
+      </div>
+      <p style="margin-top:8px">Radius 12–16 px · píldoras · rutas punteadas · motion 150–250 ms ease-out (retirable)</p></div>
+    <div class="cell"><h3>Tipografía</h3>
+      <p>Sans humanista (Seravek/Segoe UI) para display y cuerpo; mono para coordenadas, orígenes y datos. Sin serif. Pesos fuertes y tracking apretado en títulos.</p></div>
+    <div class="cell"><h3>Fortalezas</h3>
+      <ul><li>Orientación: imposible perderse en documentos largos.</li><li>Pedagogía: explainers y quizzes se sienten naturales.</li><li>Fact/inference como sistema visual (espécimen), no como nota.</li><li>Táctil: móvil de primera, no adaptación.</li></ul></div>
+    <div class="cell"><h3>Debilidades</h3>
+      <ul><li>Menor densidad: tablas y logs grandes piden más espacio.</li><li>El tono guía puede sobrar en informes de incidente serios.</li><li>Más superficie de card = más ruido en artefactos muy cortos.</li></ul></div>
+    <div class="cell"><h3>Dónde brilla</h3>
+      <p>concept-lab, learning-workbench, draw-the-flow, interface-directions, feel-the-flow, do-i-understand-this, three-code-paths exploratorio.</p></div>
+    <div class="cell"><h3>Riesgos</h3>
+      <p>Riesgo de «infantilizar» artefactos de auditoría (what-just-happened) si la metáfora no se atenúa; exige disciplina para que el wayfinding no se coma el contenido.</p></div>
+    <div class="cell"><h3>Qué la hace original</h3>
+      <p>Operacionaliza overview→detail y hecho/inferencia como geometría (mapa, waypoints, especímenes, bifurcaciones), no como convención editorial. No existe nada cartográfico en el upstream.</p></div>
+  </div>
+
+  <div class="demo-frame dC">
+  <div class="artifact-demo"><div class="page">
+
+    <div class="prov" role="group" aria-label="Ficha del artefacto">
+      <div class="pi"><span class="pk">Artefacto</span><span class="pv">plan · fase B</span></div>
+      <div class="pi"><span class="pk">Proyecto</span><span class="pv">meridian @ b7d04e2</span></div>
+      <div class="pi"><span class="pk">Ámbito</span><span class="pv">src/webhooks/**</span></div>
+      <div class="pi"><span class="pk">Fecha</span><span class="pv">2026-07-21</span></div>
+      <div class="pi"><span class="pk">Commits</span><span class="pv">3f2c91a‥b7d04e2</span></div>
+    </div>
+
+    <div class="titleblock">
+      <h1>Entrega de webhooks: reintentos con presupuesto e idempotencia</h1>
+      <p class="lede">Los reintentos actuales duplican entregas bajo fallo parcial. Este plan introduce claves de idempotencia y un presupuesto de reintentos con backoff, en tres slices reversibles.</p>
+      <div>
+        <span class="pill draft"><span class="dot" aria-hidden="true"></span>Borrador — pendiente de aprobación</span>
+        <span class="pill ok"><span class="dot" aria-hidden="true"></span>Slice 1 verificada</span>
+        <span class="pill blocked"><span class="dot" aria-hidden="true"></span>Bloqueante: secreto compartido</span>
+        <span class="pill info"><span class="dot" aria-hidden="true"></span>Gate: fase B</span>
+      </div>
+    </div>
+
+    <div class="mapa">
+      <h2>Mapa de la ruta</h2>
+      <ol>
+        <li><a href="#c-e1"><span class="wp">1</span>Evidencia</a></li>
+        <li><a href="#c-e2"><span class="wp">2</span>Decisiones</a></li>
+        <li><a href="#c-e3"><span class="wp">3</span>Comparación</a></li>
+        <li><a href="#c-e4"><span class="wp">4</span>Código</a></li>
+        <li><a href="#c-e5"><span class="wp">5</span>Etapas</a></li>
+        <li><a href="#c-e6"><span class="wp">6</span>Comprobación</a></li>
+        <li><a href="#c-e7"><span class="wp">7</span>Llevar contigo</a></li>
+      </ol>
+      <p class="resumen">El dispatcher reintenta sin registrar intentos: un timeout tras entrega exitosa duplica el evento (espécimen E1). Añadimos <code>webhook_attempts</code>, clave de idempotencia por header y presupuesto de 6 intentos/24&nbsp;h. Entradas: spec.md aprobada, 14 archivos, git log 90 días. Válido mientras HEAD = b7d04e2.</p>
+    </div>
+
+    <div class="metrics">
+      <div class="metric"><div class="mk">Esfuerzo</div><div class="mv">~3 días</div></div>
+      <div class="metric"><div class="mk">Archivos</div><div class="mv">11 (2 nuevos)</div></div>
+      <div class="metric"><div class="mk">Riesgo</div><div class="mv warn">Medio</div></div>
+      <div class="metric"><div class="mk">Migraciones</div><div class="mv">1 · aditiva</div></div>
+    </div>
+
+    <div class="ruta">
+      <section class="estacion reached" id="c-e1">
+        <span class="wp" aria-hidden="true">1</span>
+        <h2>Evidencia — qué encontramos en el terreno</h2>
+        <div class="specimen fact">
+          <span class="stag">Observado</span>
+          <div class="sbody">
+            <p class="sclaim">El dispatcher no persiste intentos: tras un timeout reenvía aunque el endpoint ya haya procesado el evento.</p>
+            <div class="codebox">
+              <div class="path">src/webhooks/dispatcher.ts · 141–158</div>
+              <div class="codewrap"><pre>const res = await post(endpoint, event, { timeout: 10_000 });
+if (!res.ok) {
+  <span class="cm">// sin registro del intento: el timeout cae aquí</span>
+  return queue.retry(event);   <span class="cm">// ← reenvía el evento completo</span>
+}</pre></div>
+            </div>
+            <p class="ssrc">E1 · recolectado 2026-07-21 · lectura directa + test delivery.spec.ts:88</p>
+          </div>
+        </div>
+        <div class="specimen inf">
+          <span class="stag">Inferido</span>
+          <div class="sbody">
+            <p class="sclaim">El pico de duplicados de mayo coincide con p99 &gt; 10 s del endpoint de facturación; probablemente la misma causa.</p>
+            <p class="ssrc">E2 · logs 2026-05-12 · correlación sin confirmar con facturación</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="estacion" id="c-e2">
+        <span class="wp" aria-hidden="true">2</span>
+        <h2>Decisiones — bifurcaciones señalizadas</h2>
+        <div class="signpost">
+          <span class="sid">D-01 · PENDIENTE</span>
+          <h3>Clave de idempotencia</h3>
+          <div class="rutas">
+            <div class="rcamino">
+              <span class="rlabel">Ruta elegida</span>
+              <p>Header <code>X-Meridian-Delivery</code>: UUID por evento, generado al encolar. El consumidor descarta claves repetidas.</p>
+            </div>
+            <div class="rcamino alt">
+              <span class="rlabel">Ruta descartada</span>
+              <p>Hash SHA-256 del payload: colisiona con eventos legítimamente idénticos (dos cargos iguales el mismo día).</p>
+            </div>
+          </div>
+          <p class="smeta">Reversible: sí · Cambiar si los consumidores no pueden leer headers ·
+            <button class="btn" type="button" data-copy="Usa hash del payload en lugar del header.">Copiar respuesta de cambio</button></p>
+        </div>
+        <div class="signpost">
+          <span class="sid">D-02 · PENDIENTE</span>
+          <h3>Presupuesto de reintentos: 6 / 24 h con backoff + jitter</h3>
+          <p class="smeta">Al agotarse, el evento pasa a la cola muerta con causa. Sin presupuesto, un endpoint caído multiplica el tráfico ×40 (E2). Owner: se asigna en la aprobación.</p>
+        </div>
+      </section>
+
+      <section class="estacion" id="c-e3">
+        <span class="wp" aria-hidden="true">3</span>
+        <h2>Comparación — dónde vive la cola</h2>
+        <div class="compare">
+          <div class="copt pick">
+            <span class="flag">Propuesta</span>
+            <h3>Outbox en Postgres</h3>
+            <ul>
+              <li>Transaccional con el negocio: cero eventos fantasma.</li>
+              <li>Sin infraestructura nueva; opera el mismo backup.</li>
+              <li>~500 ev/s medidos en staging; +8 ms p50.</li>
+            </ul>
+            <p class="when"><strong>Elegirla si</strong> el volumen sigue &lt; 1.000 ev/s (hoy: 120 ev/s).</p>
+          </div>
+          <div class="copt">
+            <h3>Redis Streams</h3>
+            <ul>
+              <li>~10.000 ev/s; grupos de consumidores nativos.</li>
+              <li>Infra nueva + reconciliación con Postgres al fallar.</li>
+              <li>At-least-once: exige la misma idempotencia.</li>
+            </ul>
+            <p class="when"><strong>Elegirla si</strong> el volumen se multiplica ×10 este año (roadmap: no).</p>
+          </div>
+        </div>
+        <div class="tablewrap"><table class="cmatrix">
+          <caption class="visually-hidden">Matriz resumen de comparación</caption>
+          <tr><th scope="col">Criterio</th><th scope="col">Outbox PG</th><th scope="col">Redis Streams</th></tr>
+          <tr><th scope="row">Consistencia</th><td>transaccional</td><td>eventual</td></tr>
+          <tr><th scope="row">Rendimiento</th><td>500 ev/s</td><td>10k ev/s</td></tr>
+          <tr><th scope="row">Operación</th><td>sin cambios</td><td>nuevo servicio</td></tr>
+          <tr><th scope="row">Migración</th><td>1 tabla</td><td>doble escritura</td></tr>
+        </table></div>
+      </section>
+
+      <section class="estacion" id="c-e4">
+        <span class="wp" aria-hidden="true">4</span>
+        <h2>Código con más riesgo</h2>
+        <div class="card">
+          <p style="margin-top:0">El registro del intento debe confirmarse <strong>antes</strong> del POST; si se invierte el orden, reaparece el duplicado.</p>
+          <div class="codebox">
+            <div class="path">src/webhooks/dispatcher.ts · diff propuesto</div>
+            <div class="codewrap"><pre><span class="del">- const res = await post(endpoint, event, { timeout: 10_000 });</span>
+<span class="add">+ const attempt = await attempts.begin(event.id, delivery.key);  <span class="cm">// D-01</span></span>
+<span class="add">+ const res = await post(endpoint, event, {</span>
+<span class="add">+   timeout: 10_000,</span>
+<span class="add">+   headers: { "X-Meridian-Delivery": delivery.key },</span>
+<span class="add">+ });</span>
+<span class="add">+ await attempt.close(res.status);   <span class="cm">// presupuesto D-02 se evalúa aquí</span></span></pre></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="estacion" id="c-e5">
+        <span class="wp" aria-hidden="true">5</span>
+        <h2>Etapas y flujo</h2>
+        <ol class="timeline">
+          <li class="done"><span class="td">21 JUL ✓</span><p class="tt">Spec aprobada (fase A); plan en revisión.</p></li>
+          <li class="now"><span class="td">23 JUL ●</span><p class="tt">Slice 1 — migración <code>webhook_attempts</code> + outbox, flag apagada.</p></li>
+          <li><span class="td">28 JUL</span><p class="tt">Slice 2 — dispatcher idempotente; canary al 5 %.</p></li>
+          <li><span class="td">4 AGO</span><p class="tt">Ramp al 100 % con alarma de duplicados.</p></li>
+          <li><span class="td">11 AGO</span><p class="tt">Retirar el camino legado y cerrar D-02 con datos reales.</p></li>
+        </ol>
+        <figure>
+          <div class="flowwrap">
+          <svg viewBox="0 0 700 195" width="700" role="img" aria-labelledby="c-fig-t c-fig-d">
+            <title id="c-fig-t">Flujo de entrega propuesto</title>
+            <desc id="c-fig-d">El servicio emisor escribe en la outbox de Postgres; el dispatcher lee la outbox y entrega al endpoint del consumidor. Si el presupuesto se agota, el evento pasa a la cola muerta.</desc>
+            <defs>
+              <marker id="c-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#243029"/></marker>
+              <marker id="c-arr-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#A63D3D"/></marker>
+            </defs>
+            <g fill="#FFFFFF" stroke="#243029" stroke-width="1.6">
+              <rect x="10" y="52" width="130" height="48" rx="14"/>
+              <rect x="190" y="52" width="130" height="48" rx="14" stroke="#2A648A" stroke-width="2.5"/>
+              <rect x="370" y="52" width="130" height="48" rx="14" stroke="#2A648A" stroke-width="2.5"/>
+              <rect x="550" y="52" width="140" height="48" rx="14"/>
+              <rect x="370" y="142" width="130" height="40" rx="12" stroke="#A63D3D" stroke-dasharray="6 4"/>
+            </g>
+            <g font-size="12" fill="#243029" text-anchor="middle" font-weight="600" font-family="Seravek,'Segoe UI',sans-serif">
+              <text x="75" y="72">servicio</text><text x="75" y="88">emisor</text>
+              <text x="255" y="72">outbox</text><text x="255" y="88">postgres · nueva</text>
+              <text x="435" y="72">dispatcher</text><text x="435" y="88">idempotente</text>
+              <text x="620" y="72">endpoint</text><text x="620" y="88">consumidor</text>
+              <text x="435" y="167" fill="#A63D3D">cola muerta</text>
+            </g>
+            <g stroke="#243029" stroke-width="1.8" fill="none" marker-end="url(#c-arr)">
+              <path d="M140,76 C158,76 170,76 188,76"/>
+              <path d="M320,76 C338,76 350,76 368,76"/>
+              <path d="M500,76 C518,76 530,76 548,76"/>
+            </g>
+            <path d="M435,100 C435,116 435,124 435,138" stroke="#A63D3D" stroke-width="1.8" fill="none" stroke-dasharray="6 4" marker-end="url(#c-arr-r)"/>
+            <g font-size="10.5" fill="#55635B" text-anchor="middle" font-family="ui-monospace,Menlo,monospace">
+              <text x="164" y="66">tx</text>
+              <text x="344" y="66">poll</text>
+              <text x="524" y="66">POST</text>
+              <text x="474" y="122">agota D-02</text>
+            </g>
+          </svg>
+          </div>
+          <figcaption>Flujo de entrega propuesto. Equivalente textual en la descripción del SVG.</figcaption>
+          <div class="legend">
+            <span class="li"><span class="sw-line" aria-hidden="true"></span>camino normal</span>
+            <span class="li"><span class="sw-dash" aria-hidden="true"></span>fallo / presupuesto agotado</span>
+            <span class="li"><span class="sw-new" aria-hidden="true"></span>componente nuevo</span>
+          </div>
+        </figure>
+        <div class="call warn" role="note">
+          <span class="ct">Aviso · bloqueante para la slice 2</span>
+          Staging comparte el secreto de firma con producción. Rotar el secreto antes del canary; un replay de staging validaría en prod.
+        </div>
+        <div class="call ok" role="status">
+          <span class="ct">Verificado</span>
+          Slice 1 verificada en staging: 14/14 tests, migración aplicada y revertida sin pérdida.
+        </div>
+      </section>
+
+      <section class="estacion" id="c-e6">
+        <span class="wp" aria-hidden="true">6</span>
+        <h2>Comprobación de comprensión</h2>
+        <form class="card" data-quiz data-answer="b">
+          <fieldset style="border:0;margin:0;padding:0">
+            <legend style="font-weight:700;font-size:15px;padding:0">El dispatcher muere después de recibir un 200 pero antes de cerrar el intento. ¿Qué ocurre al reiniciar?</legend>
+            <label class="qopt"><input type="radio" name="c-q1" value="a"><span>El evento se pierde: la outbox lo marca entregado al recibir el 200.</span></label>
+            <label class="qopt"><input type="radio" name="c-q1" value="b"><span>Se reenvía, y el consumidor lo descarta por la clave <code>X-Meridian-Delivery</code> repetida.</span></label>
+            <label class="qopt"><input type="radio" name="c-q1" value="c"><span>Se reenvía y se procesa dos veces, como hasta ahora.</span></label>
+            <button class="btn" type="button" data-quiz-check>Comprobar respuesta</button>
+            <p class="qfb good" data-fb="good"><strong>Correcto.</strong> El intento quedó abierto, así que se reenvía; la idempotencia (D-01) lo convierte en no-op del consumidor.</p>
+            <p class="qfb bad" data-fb="bad"><strong>No exactamente.</strong> Vuelve al espécimen <a href="#c-e1">E1</a> y a la bifurcación <a href="#c-e2">D-01</a>: hay reenvío, pero la clave repetida lo neutraliza.</p>
+            <noscript><details><summary>Ver respuesta (sin JavaScript)</summary><p>Correcta: la segunda opción. El intento abierto fuerza reenvío y la clave de idempotencia lo neutraliza.</p></details></noscript>
+          </fieldset>
+        </form>
+      </section>
+
+      <section class="estacion" id="c-e7">
+        <span class="wp" aria-hidden="true">7</span>
+        <h2>Llevar contigo</h2>
+        <div class="exportbar">
+          <button class="btn primary" type="button" data-copy-block="c-md">Copiar como Markdown</button>
+          <button class="btn" type="button" data-copy-block="c-json">Copiar decisiones (JSON)</button>
+          <span class="live" role="status" aria-live="polite" data-copy-status></span>
+        </div>
+        <pre class="visually-hidden" id="c-md"># Plan: webhooks idempotentes (meridian)
+Estado: borrador · 2026-07-21 · commits 3f2c91a..b7d04e2
+## Decisiones
+- D-01 clave de idempotencia via header X-Meridian-Delivery (pendiente)
+- D-02 presupuesto 6 intentos/24h, backoff+jitter (pendiente)
+## Slices
+1. Migración webhook_attempts + outbox (flag off)
+2. Dispatcher idempotente (canary 5%)
+3. Ramp 100% + retirada del camino legado</pre>
+        <pre class="visually-hidden" id="c-json">{"artifact":"change-blueprint/plan","project":"meridian","date":"2026-07-21","range":"3f2c91a..b7d04e2","decisions":[{"id":"D-01","title":"Clave de idempotencia por header","status":"pending"},{"id":"D-02","title":"Presupuesto de reintentos 6/24h","status":"pending"}]}</pre>
+        <p class="colophon">Generado por change-blueprint · meridian @ b7d04e2 · 2026-07-21 · Observado = verificado en código o ejecución · Inferido = lectura sin confirmar · Simplificado = recorte deliberado · La ruta puede quedar obsoleta si la rama avanza.</p>
+      </section>
+    </div>
+
+  </div></div>
+  </div>
+  <p class="demo-note">Comportamiento previsto — móvil: mapa como lista de waypoints, bifurcaciones y comparación apiladas (matriz siempre presente), targets ≥ 44 px. Impresión: ruta punteada conservada en monocromo, botones ocultos, especímenes con etiqueta textual, leyenda impresa.</p>
+</div>
+<section class="matrix" id="matriz" aria-labelledby="matriz-t">
+  <h2 id="matriz-t" style="font-size:20px">Matriz comparativa</h2>
+  <table>
+    <tr><th scope="col">Dimensión</th><th scope="col">A · Acta</th><th scope="col">B · Consola</th><th scope="col">C · Expedición</th></tr>
+    <tr><th scope="row">Personalidad</th><td>notarial, sobria</td><td>operacional, precisa</td><td>orientadora, curiosa</td></tr>
+    <tr><th scope="row">Jerarquía</th><td>reglas y numeración §</td><td>paneles con header y estado</td><td>waypoints y bloques de color</td></tr>
+    <tr><th scope="row">Densidad</th><td>media (medida de libro)</td><td>alta</td><td>aireada</td></tr>
+    <tr><th scope="row">Tipografía</th><td>serif de lectura + mono</td><td>mono estructural + sans</td><td>sans humanista + mono</td></tr>
+    <tr><th scope="row">Evidencia</th><td>citas [E1] + registro de fuentes</td><td>log con timestamp y traza</td><td>fichas de espécimen etiquetadas</td></tr>
+    <tr><th scope="row">Decisiones</th><td>registro D-01 con estados</td><td>gates con estado grande</td><td>bifurcaciones señalizadas</td></tr>
+    <tr><th scope="row">Navegación</th><td>índice numerado estático</td><td>rail sticky con atajos</td><td>mapa de waypoints clicable</td></tr>
+    <tr><th scope="row">Diagramas</th><td>esquemático mono + caption Fig.</td><td>ortogonal sobre papel milimetrado</td><td>nodos redondeados + leyenda mapa</td></tr>
+    <tr><th scope="row">Controles</th><td>outline discretos, rectos</td><td>francos, cuadrados, con kbd</td><td>grandes, píldora, táctiles</td></tr>
+    <tr><th scope="row">Motion</th><td>≈ 0</td><td>feedback instantáneo</td><td>suave 150–250 ms, retirable</td></tr>
+    <tr><th scope="row">Geometría</th><td>radius 0–2 px, reglas dobles</td><td>radius 0 px, paneles</td><td>radius 12–16 px, píldoras</td></tr>
+    <tr><th scope="row">Mejor familia</th><td><b>Document</b></td><td><b>Edit/interactive</b></td><td><b>Explore</b></td></tr>
+    <tr><th scope="row">Print</th><td>identidad nativa</td><td>bueno (sin grid de fondo)</td><td>bueno (monocromo cuidado)</td></tr>
+  </table>
+</section>
+
+<section class="reco">
+  <h2>Recomendación (la elección es tuya)</h2>
+  <p>Recomiendo <strong>A · «Acta»</strong> como base del sistema, incorporando dos préstamos quirúrgicos: los <em>gates de decisión con estado grande</em> de B para las fases interactivas (change-blueprint, build-with-notes) y el <em>mapa de waypoints clicable</em> de C como variante de navegación para explainers largos (concept-lab, learning-workbench).</p>
+  <p>Razón: de las 15 skills, 9 producen artefactos durables cuyo valor dominante es lectura, revisión y auditoría — exactamente donde Acta es más fuerte. Su identidad (colofón de procedencia, registro de fuentes, decisiones numeradas, print-first) es además la más difícil de confundir con el upstream y la que mejor encaja con el contrato de procedencia obligatoria del quality bar. B y C son mejores en sus nichos (instrumentos vivos / pedagogía), pero como base castigarían a la mayoría de la colección.</p>
+  <p>Alternativa razonable: si prefieres que la colección se sienta más «herramienta» que «documento», B como base con las citas de evidencia de A es la segunda mejor combinación.</p>
+</section>
+
+<script>
+(function(){
+  'use strict';
+  function flash(btn, ok){
+    var prev = btn.textContent;
+    btn.textContent = ok ? 'Copiado ✓' : 'No se pudo copiar';
+    setTimeout(function(){ btn.textContent = prev; }, 1400);
+  }
+  function announce(btn, msg){
+    var scope = btn.closest('.artifact-demo') || document;
+    var region = scope.querySelector('[data-copy-status]');
+    if (region) { region.textContent = msg; setTimeout(function(){ region.textContent=''; }, 3000); }
+  }
+  function doCopy(text, btn, label){
+    function done(){ flash(btn, true); announce(btn, label + ' copiado al portapapeles.'); }
+    function fail(){
+      var ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch(e){}
+      document.body.removeChild(ta);
+      flash(btn, ok); if (ok) announce(btn, label + ' copiado al portapapeles.');
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, fail);
+    } else { fail(); }
+  }
+  document.addEventListener('click', function(ev){
+    var btn = ev.target.closest('button');
+    if (!btn) return;
+    if (btn.hasAttribute('data-copy')) {
+      doCopy(btn.getAttribute('data-copy'), btn, 'Texto');
+    } else if (btn.hasAttribute('data-copy-block')) {
+      var el = document.getElementById(btn.getAttribute('data-copy-block'));
+      if (el) doCopy(el.textContent, btn, btn.textContent.replace(/^Copiar\s*/i,'') || 'Contenido');
+    } else if (btn.hasAttribute('data-quiz-check')) {
+      var form = btn.closest('[data-quiz]');
+      var sel = form.querySelector('input[type=radio]:checked');
+      var good = form.querySelector('[data-fb=good]');
+      var bad = form.querySelector('[data-fb=bad]');
+      if (!sel) return;
+      var isGood = sel.value === form.getAttribute('data-answer');
+      good.classList.toggle('show', isGood);
+      bad.classList.toggle('show', !isGood);
+      (isGood ? good : bad).setAttribute('role','status');
+    }
+  });
+  window.addEventListener('beforeprint', function(){
+    document.querySelectorAll('details').forEach(function(d){ d.setAttribute('open',''); });
+  });
+})();
+</script>
+</body>
+</html>

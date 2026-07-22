@@ -6,39 +6,47 @@
 npm run new:skill -- concise-kebab-name
 ```
 
-The command rejects invalid names, duplicate stable/incubator names, and existing smoke-case files. It creates an incubator skill plus a matching smoke definition. Replace every `TODO` before opening a pull request.
+Every new skill begins in the incubator with a matching smoke definition. Replace every `TODO` before review.
 
 ## Portable frontmatter
 
-Required fields:
+Required fields are `name`, a trigger-rich `description`, `license: Apache-2.0`, and comma-separated `metadata.tags`. Optional `compatibility` describes concrete environment requirements. Stable behavior cannot depend on client-only frontmatter.
 
-- `name` — 1–64 lowercase letters, digits, and single hyphens; equal to the directory name.
-- `description` — 1–1024 characters explaining both what the skill does and the requests or situations in which agents should use it.
-- `license` — `Apache-2.0`.
-- `metadata.tags` — a comma-separated string of topical kebab-case tags.
+Descriptions must lead with the action, cover each genuine trigger branch once, and distinguish adjacent non-triggers. Installing the whole suite makes description collision quality load-bearing.
 
-Optional `compatibility` may describe a concrete environment requirement in at most 500 characters. Stable skills must not use client-only behavioral frontmatter.
+## Information hierarchy
 
-## Bundle
+Keep ordered behavior and checkable completion criteria in `SKILL.md`. Put optional detail in shallow files directly linked from `SKILL.md`:
 
-Keep `SKILL.md` concise and put optional resources in conventional directories:
+- `references/` for supporting protocol and HTML scaffolds;
+- `scripts/` for portable `.mjs` automation using Node built-ins or bundled relative modules;
+- `assets/` only for necessary licensed media with complete notices;
+- `agents/openai.yaml` for optional presentation metadata.
 
-- `scripts/` for `.mjs` Node standard-library automation;
-- `references/` for supporting documents linked directly from `SKILL.md`; supporting Markdown must not chain to more Markdown;
-- `assets/` for necessary licensed media, accompanied by a root `THIRD_PARTY_NOTICES.md` that records provenance and license for every asset;
-- `agents/openai.yaml` for optional nonessential Codex presentation metadata;
-- `THIRD_PARTY_NOTICES.md` for asset provenance. Add one `## assets/path.ext` section per asset with non-placeholder `Source`, `Copyright`, and `License` list fields. Allowed SPDX licenses are `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `CC-BY-4.0`, `CC0-1.0`, and `MIT`. Original assets identify the project as creator and use `Apache-2.0`.
+Supporting Markdown cannot chain to more Markdown. A skill never depends on a sibling or repository-root runtime file.
 
-References must be relative, resolve, and stay inside the skill. Do not depend on sibling skills or repository-root runtime files.
+## Acta-backed skills
+
+The canonical Acta source is publisher infrastructure. Edit canonical protocol, tokens, behavior, components, or recipes, then run:
+
+```bash
+npm run acta
+npm run acta:check
+npm run validate:acta
+```
+
+Never edit a materialized `references/acta-protocol.md` or `references/acta-scaffold.html` by hand. Fourteen suite skills receive a self-contained scaffold; the text-only realization skill receives only the protocol.
+
+At runtime the agent uses the scaffold as a structural contract and generates `view.html` from canonical Markdown/JSON state. There is no runtime renderer, watcher, server, CDN, package, browser storage, or direct file-writing behavior.
+
+## Codex sidecars
+
+When `agents/openai.yaml` exists, it is presentation-only and contains an interface display name, a 25–64-character short description, and a one-sentence default prompt mentioning `$skill-name`. Sidecars cannot declare required dependencies or invocation policy. Icons and brand colors are omitted from the initial suite.
 
 ## Restrictions
 
-- No external runtime tools or package installation.
-- No symlinks, generated secrets, opaque executables, or hidden install-time actions.
-- No runtime package imports or child-process execution.
-- Network code requires explicit maintainer review.
-- No personal, employer, client, or private operational data.
+No symlinks, opaque executables, generated secrets, hidden install-time actions, runtime package imports, child-process execution, personal/private operational data, or undeclared external tools. Network code requires explicit maintainer review.
 
 ## Promote
 
-Promotion is a separate reviewed change. Complete the smoke evidence described in the testing guide, verify direct installation, regenerate catalogs, and run `npm run check`.
+Promotion is a separate reviewed change. For the initial Acta cohort, all fifteen skills move together only after the versioned suite report contains complete client, end-to-end, browser, and accessibility evidence. Run `npm run check` and isolated installation before promotion.

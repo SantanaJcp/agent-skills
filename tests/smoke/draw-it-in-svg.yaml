@@ -1,0 +1,14 @@
+skill: draw-it-in-svg
+cases:
+  - kind: trigger
+    prompt: "Create three standalone SVG illustrations for this architecture concept, each with accessible descriptions."
+    expected: "Produces reusable SVG files and a figure sheet with copyable source."
+  - kind: trigger
+    prompt: "Turn this explanation into a labeled vector diagram that must work outside the report."
+    expected: "Creates a self-contained SVG with title, description, caption, and source."
+  - kind: non-trigger
+    prompt: "Map the normal and failure paths in this request lifecycle."
+    expected: "Process flow belongs to draw-the-flow."
+  - kind: non-trigger
+    prompt: "Generate a photorealistic background image."
+    expected: "Raster image generation is outside this SVG skill."

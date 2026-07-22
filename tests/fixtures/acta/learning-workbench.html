@@ -1,0 +1,468 @@
+<!-- acta-fixture: recipe=learning-workbench; non-production QA evidence -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Learning workbench · Acta</title>
+<style>
+/* ============================================================
+   ACTA — design system for the Agent Skills collection
+   Canonical stylesheet, v0.1.0 (proposal)
+   Identity: the artifact as an engineering record. Paper first,
+   screen second. Provenance opens the document; evidence is
+   cited; decisions are numbered and stamped.
+   ============================================================ */
+
+/* ---------- 1. Tokens ---------- */
+:root{
+  /* surfaces */
+  --acta-paper:#FDFDFB;
+  --acta-tint:#F4F3EC;
+  --acta-tint-strong:#EAE8DE;
+  --acta-inverse:#23252B;
+  /* text */
+  --acta-ink:#1D1F24;
+  --acta-ink-muted:#50545C;
+  --acta-ink-inverse:#E7E5DE;
+  --acta-ink-inverse-muted:#A5A8A0;
+  /* borders */
+  --acta-rule:#D8D6CC;
+  --acta-rule-strong:#8E8B7E;
+  /* semantic */
+  --acta-action:#2B4C7E;
+  --acta-action-tint:#E9EEF5;
+  --acta-positive:#276140;
+  --acta-positive-tint:#E8F0E9;
+  --acta-warning:#7A5600;
+  --acta-warning-tint:#F6EFDC;
+  --acta-danger:#8C2F23;
+  --acta-danger-tint:#F6E9E6;
+  /* code accents (on inverse surface) */
+  --acta-code-add:#9CC8A9;
+  --acta-code-del:#E8A99C;
+  --acta-code-dim:#989C92;
+  /* typography */
+  --acta-font-text:Charter,"Iowan Old Style","Palatino Linotype",Georgia,"Times New Roman",serif;
+  --acta-font-data:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --acta-font-ui:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,sans-serif;
+  /* space (4px base) */
+  --acta-s1:4px; --acta-s2:8px; --acta-s3:12px; --acta-s4:16px;
+  --acta-s5:24px; --acta-s6:32px; --acta-s7:48px; --acta-s8:64px;
+  /* geometry */
+  --acta-radius:2px;
+  /* motion: color/border only, never movement */
+  --acta-quick:90ms linear;
+  /* measure */
+  --acta-measure:70ch;
+}
+
+/* ---------- 2. Base ---------- */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--acta-paper);color:var(--acta-ink);
+  font:16px/1.62 var(--acta-font-text);
+}
+code,pre,kbd,samp{font-family:var(--acta-font-data)}
+pre{margin:0}
+p{max-width:var(--acta-measure)}
+a{color:var(--acta-action)}
+a:hover{text-decoration-thickness:2px}
+:focus-visible{outline:2px solid var(--acta-action);outline-offset:2px}
+button{font:inherit;cursor:pointer}
+.visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.skip{position:absolute;left:-9999px}
+.skip:focus{position:fixed;left:12px;top:12px;background:var(--acta-action);color:#fff;padding:8px 14px;z-index:99;font:600 13px/1 var(--acta-font-ui)}
+.codewrap,.tablewrap,.flowwrap{overflow-x:auto}
+svg text{font-family:var(--acta-font-data)}
+
+/* ---------- 3. ArtifactShell ---------- */
+.acta-shell{max-width:920px;margin:0 auto;padding:0 var(--acta-s5) var(--acta-s8)}
+.acta-section{border-top:1px solid var(--acta-rule);padding:var(--acta-s5) 0 var(--acta-s6);position:relative}
+
+/* ---------- 4. ProvenanceHeader ---------- */
+.acta-prov{border-top:3px double var(--acta-rule-strong);border-bottom:1px solid var(--acta-rule);
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));font-family:var(--acta-font-data);margin-top:var(--acta-s5)}
+.acta-prov > div{padding:9px 14px 9px 0;border-right:1px solid var(--acta-rule);margin-right:14px;min-width:0}
+.acta-prov > div:last-child{border-right:0;margin-right:0}
+.acta-prov dt{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--acta-ink-muted);margin:0 0 3px}
+.acta-prov dd{margin:0;font-size:12px;overflow-wrap:break-word}
+.acta-prov-note{font:12px/1.5 var(--acta-font-data);color:var(--acta-ink-muted);border-bottom:1px solid var(--acta-rule);padding:7px 0;max-width:none}
+
+/* ---------- 5. ContextHeader (title block) ---------- */
+.acta-context{padding:var(--acta-s6) 0 var(--acta-s2)}
+.acta-eyebrow{font:600 11px/1 var(--acta-font-data);letter-spacing:.14em;text-transform:uppercase;color:var(--acta-ink-muted);margin:0 0 10px}
+.acta-title{font:400 36px/1.15 var(--acta-font-text);letter-spacing:-.005em;margin:0 0 12px}
+.acta-lede{font-size:18.5px;line-height:1.55;color:var(--acta-ink-muted);max-width:64ch;margin:0;font-style:italic}
+.acta-statusline{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:var(--acta-s4)}
+
+/* ---------- 6. StatusBadge (stamps) ---------- */
+.acta-stamp{display:inline-block;border:1.5px solid currentColor;padding:4px 9px;border-radius:var(--acta-radius);
+  font:600 11px/1.2 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase}
+.acta-stamp.is-draft{color:var(--acta-warning)}
+.acta-stamp.is-approved{color:var(--acta-positive)}
+.acta-stamp.is-blocked{color:var(--acta-danger)}
+.acta-stamp.is-info{color:var(--acta-action)}
+.acta-stamp.is-neutral{color:var(--acta-ink-muted)}
+/* evidence-confidence labels share the stamp family, smaller */
+.acta-label{display:inline-block;font:600 10px/1.2 var(--acta-font-data);letter-spacing:.12em;text-transform:uppercase;
+  padding:3px 7px;border:1px solid currentColor;border-radius:var(--acta-radius);margin-right:8px;vertical-align:2px}
+.acta-label.is-fact{color:var(--acta-positive)}
+.acta-label.is-inference{color:var(--acta-action)}
+.acta-label.is-simplification{color:var(--acta-warning)}
+
+/* ---------- 7. SourcePrompt ---------- */
+.acta-source{border:1px solid var(--acta-rule);border-left:3px solid var(--acta-rule-strong);padding:12px 16px;margin:var(--acta-s4) 0;background:var(--acta-paper)}
+.acta-source .sp-k{font:600 10.5px/1 var(--acta-font-data);letter-spacing:.13em;text-transform:uppercase;color:var(--acta-ink-muted);display:block;margin-bottom:6px}
+.acta-source blockquote{margin:0;font-style:italic;font-size:15.5px}
+
+/* ---------- 8. SummaryBand ---------- */
+.acta-summary{border-top:1px solid var(--acta-rule);border-bottom:1px solid var(--acta-rule);margin:var(--acta-s5) 0;padding:18px 0}
+.acta-summary .sm-k{font:600 11px/1 var(--acta-font-data);letter-spacing:.14em;text-transform:uppercase;color:var(--acta-action);margin:0 0 8px}
+.acta-summary p{margin:0}
+
+/* ---------- 9. MetricStrip ---------- */
+.acta-metrics{display:flex;flex-wrap:wrap;margin-top:var(--acta-s4);border-top:1px solid var(--acta-rule)}
+.acta-metric{padding:10px 22px 2px 0;margin-right:22px;border-right:1px solid var(--acta-rule);min-width:0}
+.acta-metric:last-child{border-right:0;margin-right:0}
+.acta-metric .m-k{font:600 10.5px/1.3 var(--acta-font-data);letter-spacing:.13em;text-transform:uppercase;color:var(--acta-ink-muted)}
+.acta-metric .m-v{font:400 15px/1.3 var(--acta-font-data);margin-top:4px}
+.acta-metric .m-v.is-warning{color:var(--acta-warning)}
+.acta-metric .m-v.is-danger{color:var(--acta-danger)}
+.acta-metric .m-v.is-positive{color:var(--acta-positive)}
+
+/* ---------- 10. SectionNavigator (index + waypoint variant) ---------- */
+.acta-toc{margin:var(--acta-s5) 0;font-family:var(--acta-font-data);font-size:13px;column-width:240px;column-gap:40px}
+.acta-toc ol{margin:0;padding:0}
+.acta-toc li{margin:4px 0;list-style:none;break-inside:avoid}
+.acta-toc a{color:var(--acta-ink);text-decoration:none;border-bottom:1px dotted var(--acta-rule-strong)}
+.acta-toc a:hover{color:var(--acta-action)}
+.acta-toc .n{color:var(--acta-action);margin-right:8px;font-weight:600}
+/* waypoint variant: for long guided explainers (borrowed from «Expedición», restated in Acta idiom) */
+.acta-waymap{border:1px solid var(--acta-rule);padding:14px 16px;margin:var(--acta-s5) 0}
+.acta-waymap .w-k{font:600 10.5px/1 var(--acta-font-data);letter-spacing:.13em;text-transform:uppercase;color:var(--acta-ink-muted);margin:0 0 10px}
+.acta-waymap ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 0}
+.acta-waymap li{display:flex;align-items:center}
+.acta-waymap li::after{content:"";width:22px;border-top:1px dotted var(--acta-rule-strong);margin:0 6px}
+.acta-waymap li:last-child::after{display:none}
+.acta-waymap a{display:inline-flex;align-items:center;gap:7px;color:var(--acta-ink);text-decoration:none;font:13px/1.3 var(--acta-font-data);padding:4px 6px;border-radius:var(--acta-radius)}
+.acta-waymap a:hover{background:var(--acta-tint)}
+.acta-waymap a[aria-current="true"]{background:var(--acta-action-tint)}
+.acta-waymap .wn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1.5px solid var(--acta-ink);border-radius:50%;font:600 10.5px/1 var(--acta-font-data)}
+.acta-waymap a[aria-current="true"] .wn{background:var(--acta-action);border-color:var(--acta-action);color:#fff}
+.acta-waymap .done .wn{background:var(--acta-positive);border-color:var(--acta-positive);color:#fff}
+
+/* ---------- 11. Section headings ---------- */
+.acta-h2{font:400 24px/1.25 var(--acta-font-text);margin:0 0 14px}
+.acta-h2 .sn{font:600 13px/1 var(--acta-font-data);color:var(--acta-action);margin-right:12px;letter-spacing:.05em}
+.acta-h3{font:600 17px/1.35 var(--acta-font-text);margin:18px 0 8px}
+
+/* ---------- 12. Disclosure ---------- */
+.acta-disclosure{margin:10px 0 4px;border:0}
+.acta-disclosure > summary{cursor:pointer;font:600 13px/1.5 var(--acta-font-data);color:var(--acta-action);list-style-position:outside}
+.acta-disclosure > summary:hover{text-decoration:underline}
+.acta-disclosure .d-body{border:1px dashed var(--acta-rule-strong);padding:10px 14px;margin-top:8px;background:var(--acta-paper)}
+.acta-disclosure > summary .d-count{color:var(--acta-ink-muted);font-weight:400}
+
+/* ---------- 13. EvidenceBlock ---------- */
+.acta-evidence{margin:18px 0;padding-left:18px;border-left:2px solid var(--acta-rule-strong)}
+.acta-evidence .e-claim{font-size:16.5px;margin:0 0 8px}
+.acta-evidence .e-ref{font:600 10px/1 var(--acta-font-data);color:var(--acta-action);vertical-align:super}
+.acta-evidence .e-src{font:12px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin:8px 0 0;max-width:none}
+
+/* ---------- 14. CodeSurface ---------- */
+.acta-code{border:1px solid var(--acta-rule);margin:12px 0;font-size:13px;line-height:1.6;background:var(--acta-tint)}
+.acta-code.is-inverse{background:var(--acta-inverse);color:var(--acta-ink-inverse);border-color:var(--acta-inverse)}
+.acta-code .c-path{font:11px/1.4 var(--acta-font-data);letter-spacing:.06em;color:var(--acta-ink-muted);border-bottom:1px solid var(--acta-rule);padding:8px 12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px}
+.acta-code.is-inverse .c-path{color:var(--acta-ink-inverse-muted);border-bottom-color:#3A3D45}
+.acta-code pre{padding:12px 14px}
+.acta-code .add{color:var(--acta-positive)}
+.acta-code .del{color:var(--acta-danger);text-decoration:line-through;text-decoration-thickness:1px}
+.acta-code.is-inverse .add{color:var(--acta-code-add)}
+.acta-code.is-inverse .del{color:var(--acta-code-del)}
+.acta-code .dim,.acta-code.is-inverse .dim{color:var(--acta-code-dim)}
+.acta-code .lineno{color:var(--acta-rule-strong);user-select:none}
+
+/* ---------- 15. DecisionCard + DecisionGate ---------- */
+.acta-decisions{border:1px solid var(--acta-rule);margin:16px 0}
+.acta-decision{display:grid;grid-template-columns:88px minmax(0,1fr);border-bottom:1px solid var(--acta-rule)}
+.acta-decision:last-child{border-bottom:0}
+.acta-decision .d-id{font:600 13px/1.4 var(--acta-font-data);color:var(--acta-action);padding:14px;border-right:1px solid var(--acta-rule);background:var(--acta-tint)}
+.acta-decision .d-body{padding:14px 16px;min-width:0}
+.acta-decision .d-title{font:600 16px/1.35 var(--acta-font-text);margin:0 0 6px}
+.acta-decision .d-meta{font:12px/1.7 var(--acta-font-data);color:var(--acta-ink-muted);max-width:none}
+/* gate variant: a decision that blocks progress until resolved (borrowed from «Consola», restated) */
+.acta-gate{border:2px solid var(--acta-ink);margin:16px 0}
+.acta-gate .g-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--acta-rule)}
+.acta-gate .g-id{font:700 13px/1 var(--acta-font-data);color:var(--acta-action)}
+.acta-gate .g-title{font:600 16.5px/1.3 var(--acta-font-text);margin:0;flex:1;min-width:200px}
+.acta-gate .g-body{padding:12px 16px}
+.acta-gate .g-checklist{list-style:none;margin:10px 0;padding:0;font-size:15px}
+.acta-gate .g-checklist li{padding:5px 0 5px 26px;position:relative}
+.acta-gate .g-checklist .ok::before{content:"✓";position:absolute;left:2px;color:var(--acta-positive);font-weight:700}
+.acta-gate .g-checklist .pending::before{content:"○";position:absolute;left:2px;color:var(--acta-ink-muted)}
+.acta-gate .g-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--acta-rule);padding:12px 16px}
+.acta-gate .g-note{font:12px/1.6 var(--acta-font-data);color:var(--acta-ink-muted)}
+
+/* ---------- 16. ComparisonSet ---------- */
+.acta-compare{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));border:1px solid var(--acta-rule);margin:16px 0}
+.acta-compare .c-opt{padding:16px 18px;border-right:1px solid var(--acta-rule);border-bottom:1px solid var(--acta-rule);min-width:0;margin-bottom:-1px}
+.acta-compare .c-opt:last-child{border-right:0}
+.acta-compare .c-n{font:600 11px/1.4 var(--acta-font-data);color:var(--acta-action);letter-spacing:.1em;text-transform:uppercase}
+.acta-compare .c-title{font:600 16px/1.3 var(--acta-font-text);margin:2px 0 4px}
+.acta-compare ul{margin:8px 0;padding-left:18px}
+.acta-compare li{margin:4px 0;font-size:14.5px}
+.acta-compare .c-when{font-size:14px;border-top:1px solid var(--acta-rule);padding-top:8px;margin:10px 0 0}
+
+/* ---------- 17. DataTable ---------- */
+.acta-table{width:100%;border-collapse:collapse;font:12.5px/1.55 var(--acta-font-data)}
+.acta-table caption{text-align:left;font:600 10.5px/1.4 var(--acta-font-data);letter-spacing:.13em;text-transform:uppercase;color:var(--acta-ink-muted);padding:0 0 8px}
+.acta-table th,.acta-table td{border:1px solid var(--acta-rule);padding:7px 10px;text-align:left;vertical-align:top}
+.acta-table th{background:var(--acta-tint);font-weight:600}
+.acta-table .num{text-align:right}
+
+/* ---------- 18. Timeline ---------- */
+.acta-timeline{margin:14px 0;border-left:1px solid var(--acta-rule-strong);padding-left:0;list-style:none}
+.acta-timeline li{position:relative;padding:2px 0 16px 26px}
+.acta-timeline li::before{content:"";position:absolute;left:-4.5px;top:9px;width:8px;height:8px;background:var(--acta-paper);border:1.5px solid var(--acta-ink-muted)}
+.acta-timeline li.is-now::before{background:var(--acta-action);border-color:var(--acta-action)}
+.acta-timeline li.is-done::before{background:var(--acta-positive);border-color:var(--acta-positive)}
+.acta-timeline li.is-impact::before{background:var(--acta-danger);border-color:var(--acta-danger)}
+.acta-timeline .t-d{font:600 12px/1.4 var(--acta-font-data);letter-spacing:.06em;color:var(--acta-ink-muted)}
+.acta-timeline .t-t{margin:4px 0 0;font-size:15.5px}
+
+/* ---------- 19. StickyRail ---------- */
+.acta-cols{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:var(--acta-s6)}
+.acta-rail{position:sticky;top:12px;align-self:start;border-left:1px solid var(--acta-rule);padding-left:16px;font-family:var(--acta-font-data);font-size:12.5px}
+.acta-rail .r-k{font:600 10px/1 var(--acta-font-data);letter-spacing:.14em;text-transform:uppercase;color:var(--acta-ink-muted);margin:4px 0 10px}
+.acta-rail a{display:block;color:var(--acta-ink);text-decoration:none;padding:4px 0}
+.acta-rail a:hover{color:var(--acta-action)}
+
+/* ---------- 20. Figure / DiagramNode / DiagramEdge ---------- */
+.acta-figure{margin:18px 0;border:1px solid var(--acta-rule);padding:18px}
+.acta-figure figcaption{font:12.5px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin-top:10px;border-top:1px solid var(--acta-rule);padding-top:10px;max-width:none}
+.acta-figure figcaption b{color:var(--acta-ink)}
+/* SVG conventions (applied via attributes, documented here):
+   node: rect stroke ink 1.2, fill paper; new/changed node: fill tint;
+   emphasized node: stroke action 2; failure node: stroke danger dashed;
+   edge: line ink 1.2 + arrowhead; failure edge: danger dashed;
+   labels: 12px data font; edge labels: 10.5px ink-muted. */
+.acta-legend{display:flex;flex-wrap:wrap;gap:14px;font:12px/1.5 var(--acta-font-data);color:var(--acta-ink-muted);margin-top:8px}
+.acta-legend .li{display:inline-flex;align-items:center;gap:7px}
+.acta-legend .sw-line{width:24px;border-top:2px solid var(--acta-ink)}
+.acta-legend .sw-dash{width:24px;border-top:2px dashed var(--acta-danger)}
+.acta-legend .sw-tint{width:13px;height:13px;background:var(--acta-tint);border:1.2px solid var(--acta-ink)}
+
+/* ---------- 21. Callouts (warning/positive/danger/info) ---------- */
+.acta-call{border:1px solid;border-radius:var(--acta-radius);padding:12px 16px;margin:14px 0;font-size:15px}
+.acta-call .c-k{font:600 10.5px/1.3 var(--acta-font-data);letter-spacing:.13em;text-transform:uppercase;display:block;margin-bottom:6px}
+.acta-call.is-warning{border-color:var(--acta-warning);background:var(--acta-warning-tint)}
+.acta-call.is-warning .c-k{color:var(--acta-warning)}
+.acta-call.is-positive{border-color:var(--acta-positive);background:var(--acta-positive-tint)}
+.acta-call.is-positive .c-k{color:var(--acta-positive)}
+.acta-call.is-danger{border-color:var(--acta-danger);background:var(--acta-danger-tint)}
+.acta-call.is-danger .c-k{color:var(--acta-danger)}
+.acta-call.is-info{border-color:var(--acta-action);background:var(--acta-action-tint)}
+.acta-call.is-info .c-k{color:var(--acta-action)}
+
+/* ---------- 22. EditorControl ---------- */
+.acta-control{margin:12px 0;padding:12px 14px;border:1px solid var(--acta-rule)}
+.acta-control .k{display:block;font:600 11px/1.4 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;color:var(--acta-ink-muted);margin-bottom:8px}
+.acta-control input[type=range]{width:100%;max-width:340px;accent-color:var(--acta-action)}
+.acta-control input[type=text],.acta-control select{font:14px/1.4 var(--acta-font-data);padding:7px 9px;border:1px solid var(--acta-ink-muted);border-radius:var(--acta-radius);background:var(--acta-paper);color:var(--acta-ink);max-width:100%}
+.acta-control .v{font:600 13px/1.4 var(--acta-font-data);color:var(--acta-action);margin-left:10px}
+.acta-seg{display:inline-flex;border:1px solid var(--acta-ink-muted);border-radius:var(--acta-radius);overflow:hidden}
+.acta-seg button{border:0;border-right:1px solid var(--acta-ink-muted);background:var(--acta-paper);color:var(--acta-ink);padding:7px 14px;font:600 12.5px/1 var(--acta-font-data);transition:background var(--acta-quick),color var(--acta-quick)}
+.acta-seg button:last-child{border-right:0}
+.acta-seg button[aria-pressed=true]{background:var(--acta-ink);color:var(--acta-paper)}
+
+/* ---------- 23. Buttons / ExportBar / StatusRegion ---------- */
+.acta-btn{background:none;border:1px solid var(--acta-ink);color:var(--acta-ink);padding:8px 16px;
+  font:600 12.5px/1.3 var(--acta-font-data);letter-spacing:.05em;border-radius:var(--acta-radius);
+  transition:background var(--acta-quick),color var(--acta-quick)}
+.acta-btn:hover{background:var(--acta-ink);color:var(--acta-paper)}
+.acta-btn.is-primary{border-color:var(--acta-action);color:var(--acta-action)}
+.acta-btn.is-primary:hover{background:var(--acta-action);color:#fff}
+.acta-btn.is-quiet{border-color:transparent;text-decoration:underline;padding-left:6px;padding-right:6px}
+.acta-btn.is-quiet:hover{background:none;color:var(--acta-action)}
+.acta-btn[disabled]{opacity:.45;cursor:not-allowed}
+.acta-export{display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-top:3px double var(--acta-rule-strong);padding:18px 0;margin-top:10px}
+.acta-status{font:12px/1.5 var(--acta-font-data);color:var(--acta-positive);min-height:1.2em}
+.acta-status.is-error{color:var(--acta-danger)}
+
+/* ---------- 24. Quiz ---------- */
+.acta-quiz{border:1px solid var(--acta-rule);padding:18px;margin:14px 0}
+.acta-quiz fieldset{border:0;margin:0;padding:0}
+.acta-quiz legend{font:600 11px/1.4 var(--acta-font-data);letter-spacing:.13em;text-transform:uppercase;color:var(--acta-action);padding:0}
+.acta-quiz .q-text{font-size:16px;margin:8px 0 4px}
+.acta-qopt{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border:1px solid var(--acta-rule);border-radius:var(--acta-radius);margin:8px 0;font-size:15px;transition:background var(--acta-quick)}
+.acta-qopt:hover{background:var(--acta-tint)}
+.acta-qopt input{margin-top:4px;accent-color:var(--acta-action)}
+.acta-qfb{margin-top:12px;padding:10px 14px;border-left:3px solid;font-size:14.5px;display:none;max-width:none}
+.acta-qfb.show{display:block}
+.acta-qfb.good{border-color:var(--acta-positive);background:var(--acta-positive-tint)}
+.acta-qfb.bad{border-color:var(--acta-danger);background:var(--acta-danger-tint)}
+.acta-score{font:600 12.5px/1.4 var(--acta-font-data);border:1px solid var(--acta-rule);padding:6px 10px;display:inline-block}
+
+/* ---------- 25. Sources / Colophon ---------- */
+.acta-sources{font:13px/1.7 var(--acta-font-data);color:var(--acta-ink-muted);border-top:1px solid var(--acta-rule);padding-top:14px;margin:16px 0 0;padding-left:20px}
+.acta-sources li{margin:3px 0}
+.acta-colophon{font:12px/1.7 var(--acta-font-data);color:var(--acta-ink-muted);border-top:3px double var(--acta-rule-strong);margin-top:var(--acta-s6);padding-top:12px;max-width:none}
+
+/* ---------- 26. Responsive ---------- */
+@media (max-width:959px){
+  .acta-cols{grid-template-columns:1fr}
+  .acta-rail{position:static;border-left:0;padding-left:0;border-top:1px solid var(--acta-rule);padding-top:10px}
+}
+@media (max-width:719px){
+  .acta-title{font-size:29px}
+  .acta-h2{font-size:21px}
+  .acta-decision{grid-template-columns:1fr}
+  .acta-decision .d-id{border-right:0;border-bottom:1px solid var(--acta-rule);padding:8px 14px}
+  .acta-prov > div{border-right:0;margin-right:0}
+  .acta-compare{grid-template-columns:1fr}
+  .acta-compare .c-opt{border-right:0}
+  .acta-gate .g-actions{align-items:stretch;flex-direction:column}
+  .acta-gate .g-actions .acta-btn{width:100%}
+}
+
+/* ---------- 27. Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}
+}
+
+/* ---------- 28. Print ---------- */
+@media print{
+  body{background:#fff;font-size:11.5pt}
+  .acta-shell{max-width:none;padding:0}
+  .acta-btn,.acta-seg,.acta-export button,.skip,.acta-noscript,[data-print-hide]{display:none!important}
+  .acta-status{display:none}
+  .acta-rail{display:none}
+  .acta-cols{grid-template-columns:1fr}
+  .acta-section,.acta-figure,.acta-call,.acta-decision,.acta-gate,.acta-evidence,.acta-quiz,.acta-compare .c-opt{break-inside:avoid}
+  .acta-code,.acta-code.is-inverse{background:#fff;color:#111;border:1px solid #999}
+  .acta-code.is-inverse .c-path{color:#555;border-bottom-color:#999}
+  .acta-code.is-inverse .add{color:#1d5232}
+  .acta-code.is-inverse .del{color:#7a2418}
+  .acta-code.is-inverse .dim{color:#666}
+  a[href^="http"]::after{content:" (" attr(href) ")";font:10px/1 var(--acta-font-data);color:#555}
+  .acta-qfb{display:block}
+  details > *{display:block}
+}
+
+/* ---------- 29. NoScriptFallback ---------- */
+.acta-noscript{border:1px solid var(--acta-warning);background:var(--acta-warning-tint);padding:10px 14px;font-size:14px;margin:12px 0}
+</style>
+</head>
+<body>
+<a class="skip" href="#acta-content">Skip to content</a>
+<div class="acta-shell">
+<header>
+<dl class="acta-prov">
+<div><dt>Artifact</dt><dd>Learning workbench</dd></div>
+<div><dt>Skill</dt><dd>learning-workbench</dd></div>
+<div><dt>Family</dt><dd>Explore</dd></div>
+<div><dt>Source revision</dt><dd>861439b26006963caba72c5d548fbd48a80e1cfe</dd></div>
+</dl>
+<p class="acta-prov-note">Acta v0.1.0 · Generated from canonical Markdown/JSON state · Regenerate when inputs or source revision change.</p>
+<div class="acta-context">
+<p class="acta-eyebrow">Explore artifact · <span class="acta-stamp is-draft">Draft</span></p>
+<h1 class="acta-title">Learning workbench</h1>
+<p class="acta-lede">Connect a durable learning mission to trusted sources, retrieval practice, and spaced review.</p>
+</div>
+<div class="acta-source"><span class="sp-k">Source prompt</span><blockquote>Add a tag filter to the generated skill catalog without changing its portable publishing contract.</blockquote></div>
+<div class="acta-summary"><p class="sm-k">Summary</p><p>The fixture records a bounded catalog-filter change against the public synthetic project.</p></div>
+<nav class="acta-toc" aria-label="Artifact sections"><ol><li><a href="#acta-content"><span class="n">01</span>Instrument</a></li><li><a href="#acta-sources"><span class="n">02</span>Sources</a></li></ol></nav>
+</header>
+<main id="acta-content">
+<section class="acta-section" aria-labelledby="instrument-title">
+<h2 id="instrument-title" class="visually-hidden">Learning workbench instrument</h2>
+<nav class="acta-waymap" aria-label="Lesson waypoints"><ol><li><a href="#mission"><span class="wn">1</span>Mission</a></li><li><a href="#lesson"><span class="wn">2</span>Lesson</a></li><li><a href="#practice"><span class="wn">3</span>Practice</a></li></ol></nav><section id="mission" class="acta-section"><h2 class="acta-h2">Mission</h2><p>The next catalog change needs deterministic transformations rather than UI-owned filtering logic.</p></section><section id="lesson" class="acta-section"><h2 class="acta-h2">One tangible win</h2><p>A pure function exposes every input, which makes examples executable as table-driven tests.</p></section><section id="practice" class="acta-section"><h2 class="acta-h2">Retrieval and review</h2><div class="tablewrap"><table class="acta-table"><thead><tr><th>Practice</th><th>Result</th><th>Next review</th></tr></thead><tbody><tr><td>Explain why URL state is an adapter concern, then write one selector example from memory.</td><td>Correct model; forgot the empty-tag identity case.</td><td>2026-07-24</td></tr></tbody></table></div></section>
+</section>
+</main>
+<section class="acta-export" aria-labelledby="export-title">
+<div><h2 id="export-title">Export the current state</h2><p>Persist deliberate state in Markdown and, when structured, JSON.</p></div>
+<div><button class="acta-btn" type="button" data-copy-block="canonical-export" data-copy-label="Markdown export">Copy Markdown</button></div>
+<pre id="canonical-export" class="visually-hidden">---
+acta_protocol: "0.1"
+artifact_kind: "learning-workbench"
+producer_skill: "learning-workbench"
+initiative: "catalog-tag-filter"
+status: "draft"
+language: "en"
+source_revision: null
+inputs: []
+decisions: []
+supersedes: null
+---
+
+Catalog tag filter fixture: decisions, evidence, and next gate are recorded in this document.</pre>
+<p class="acta-status" data-status aria-live="polite"></p>
+</section>
+<section id="acta-sources" class="acta-section"><h2 class="acta-h2">Sources</h2><ol><li>[E1] src/catalog.mjs:1-24 — current catalog filtering seam.</li></ol></section>
+<footer class="acta-colophon"><p>Acta is a print-first engineering record. Fact = directly supported; Inference = reasoned from evidence; Simplification = deliberately reduced model.</p></footer>
+<noscript><div class="acta-noscript">JavaScript is unavailable. All essential content remains readable; copy the canonical text manually to persist a decision.</div></noscript>
+</div>
+<script>
+(function(){
+  "use strict";
+  function statusFor(button){
+    return button.closest("section")?.querySelector("[data-status]") || document.querySelector("[data-status]");
+  }
+  function announce(button, message, isError = false){
+    const region = statusFor(button);
+    if (!region) return;
+    region.classList.toggle("is-error", isError);
+    region.textContent = message;
+  }
+  async function copyText(button, text, label){
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("clipboard unavailable");
+      await navigator.clipboard.writeText(text);
+      announce(button, label + " copied to clipboard.");
+      return;
+    } catch {}
+    const area = document.createElement("textarea");
+    area.value = text;
+    document.body.appendChild(area);
+    area.select();
+    let copied = false;
+    try { copied = document.execCommand("copy"); } catch {}
+    area.remove();
+    announce(button, copied ? label + " copied to clipboard." : "Copy failed — select the text manually.", !copied);
+  }
+  document.addEventListener("click", function(event){
+    const button = event.target.closest("button");
+    if (!button) return;
+    const targetId = button.getAttribute("data-copy-block");
+    if (targetId){
+      const target = document.getElementById(targetId);
+      if (target) copyText(button, target.textContent, button.getAttribute("data-copy-label") || "Content");
+      return;
+    }
+    if (button.hasAttribute("data-seg")){
+      button.parentElement.querySelectorAll("button").forEach(function(candidate){
+        candidate.setAttribute("aria-pressed", String(candidate === button));
+      });
+      announce(button, "View changed to " + button.textContent + ".");
+      return;
+    }
+    if (button.hasAttribute("data-quiz-check")){
+      const quiz = button.closest("[data-quiz]");
+      const selected = quiz?.querySelector("input[type=radio]:checked");
+      if (!selected){ announce(button, "Select an answer first.", true); return; }
+      const correct = selected.value === quiz.getAttribute("data-answer");
+      quiz.querySelectorAll("[data-feedback]").forEach(function(feedback){
+        feedback.hidden = feedback.getAttribute("data-feedback") !== (correct ? "correct" : "incorrect");
+      });
+      announce(button, correct ? "Correct answer." : "Review the linked evidence and try again.");
+    }
+  });
+  window.addEventListener("beforeprint", function(){
+    document.querySelectorAll("details").forEach(function(detail){ detail.open = true; });
+  });
+})();
+</script>
+</body>
+</html>

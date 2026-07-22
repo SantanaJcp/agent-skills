@@ -1,0 +1,14 @@
+skill: find-the-cause
+cases:
+  - kind: trigger
+    prompt: "Diagnose why this endpoint intermittently returns stale data, but do not fix it yet."
+    expected: "Builds a high-reproduction loop, minimizes, tests falsifiable hypotheses, and exports the validated cause."
+  - kind: trigger
+    prompt: "Find the cause of this performance regression and give me an evidence-backed fix direction only."
+    expected: "Measures a baseline, profiles/bisects, cleans instrumentation, and stops before remediation."
+  - kind: non-trigger
+    prompt: "The cause is known; implement the approved fix and regression test."
+    expected: "Known-scope remediation belongs to build-with-notes."
+  - kind: non-trigger
+    prompt: "Write the postmortem for yesterday's resolved outage."
+    expected: "Incident reporting belongs to what-just-happened."

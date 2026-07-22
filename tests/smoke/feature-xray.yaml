@@ -1,0 +1,14 @@
+skill: feature-xray
+cases:
+  - kind: trigger
+    prompt: "Explain how password reset works end to end in this repository, with file and line evidence."
+    expected: "Traces the implemented feature and produces a cited operational explanation."
+  - kind: trigger
+    prompt: "Give a new maintainer an X-ray of our job retry feature and its gotchas."
+    expected: "Uses domain vocabulary, evidence labels, timeline, and source locations without redesigning."
+  - kind: non-trigger
+    prompt: "Teach me the general concept of exponential backoff."
+    expected: "General concept teaching belongs to concept-lab."
+  - kind: non-trigger
+    prompt: "Design a new retry architecture."
+    expected: "Proposed code shapes belong to three-code-paths or change-blueprint."
