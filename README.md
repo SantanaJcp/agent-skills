@@ -58,6 +58,8 @@ npm run new:skill -- my-skill
 npm run acta
 npm run catalog
 npm run check
+# For assigned manual evaluation:
+npm run qa:prepare -- --destination ../agent-skills-manual-qa
 ```
 
 Acta authoring sources are publisher-only. Materialized protocol and HTML scaffolds are committed inside skill bundles so whole-collection and isolated installs work without network, runtime packages, sibling skills, renderers, watchers, or servers.

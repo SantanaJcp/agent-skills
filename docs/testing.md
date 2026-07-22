@@ -22,6 +22,12 @@ Every skill has committed trigger and adjacent non-trigger cases. The initial su
 
 Public CI validates definitions but does not call paid models. Promotion records manual results in current Codex and Claude Code.
 
+## Reproducible manual harnesses
+
+`npm run qa:prepare -- --destination <outside-repository-directory>` copies the public synthetic project, smoke/collision cases, fourteen browser fixtures, and all fifteen incubator bundles into isolated `with-sidecars` and `without-sidecars` project roots. The command refuses dirty default sources and existing destinations, then stamps each harness with the full source revision. It does not modify global client installations.
+
+Reviewers follow `docs/qa/evaluator-runbook.md` and submit separate raw evidence files from `docs/qa/evidence/template.md`. A central integrator owns the suite verdict so parallel reviewers do not overwrite one another.
+
 ## Initial suite promotion evidence
 
 Before moving any initial skill to stable:

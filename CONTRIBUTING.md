@@ -29,6 +29,12 @@ npm run check
 
 Do not edit generated catalogs or materialized Acta references directly.
 
+## Manual QA contributions
+
+Manual evaluators may contribute through a fork or a dedicated `qa/<surface>-<reviewer>` branch; repository write access is not required. Prepare the isolated harness with `npm run qa:prepare -- --destination <directory>`, follow `docs/qa/evaluator-runbook.md`, and copy `docs/qa/evidence/template.md` into one reviewer-owned evidence file. Do not edit the central suite verdict unless assigned as evidence integrator.
+
+Record exact source and tool versions. Preserve failures against their original revision, keep fixes in separate changes, and rerun affected evidence after a fix. Never include private repositories, credentials, or production data.
+
 ## Pull requests
 
 - Keep each pull request focused on one coherent slice.

@@ -31,6 +31,7 @@
 
 - [ ] The portable core worked without optional sidecars.
 - [ ] Direct single-skill installation was self-contained.
+- [ ] Raw manual evidence uses the evaluator template and records a full source revision.
 - [ ] The initial cohort suite report is passing, if applicable.
 - [ ] Third-party material is licensed and attributed.
 

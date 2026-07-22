@@ -4,6 +4,16 @@ Status: pending-manual-evidence
 
 This report is the blocking manual record for the initial fifteen-skill promotion cohort. Deterministic checks do not replace the evidence below.
 
+## Evaluation preparation
+
+Prepare isolated, revision-stamped projects with:
+
+```bash
+npm run qa:prepare -- --destination ../agent-skills-manual-qa
+```
+
+Follow [the evaluator runbook](evaluator-runbook.md). Each reviewer starts from [the evidence template](evidence/template.md) and submits one raw record under `docs/qa/evidence/`; the evidence integrator updates this report only after reviewing those records. A code fix invalidates affected evidence until it is rerun against the new full source revision.
+
 ## Client activation matrix
 
 Record the exact stable client versions, every committed trigger/non-trigger case, observed activation, result against expectation, and confirmation that removing `agents/openai.yaml` does not change behavior.

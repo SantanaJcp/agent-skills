@@ -16,4 +16,4 @@ Status: blocked
 
 ## Current blocker
 
-Deterministic implementation is green (`npm run check`: 38 tests). Issue 06 requires human evidence from current Codex, Claude Code, Chrome, Safari, Firefox, VoiceOver, and NVDA before any suite member can move to stable.
+Deterministic implementation is green (`npm run check`: 41 tests). Issue 06 requires human evidence from current Codex, Claude Code, Chrome, Safari, Firefox, VoiceOver, and NVDA before any suite member can move to stable.

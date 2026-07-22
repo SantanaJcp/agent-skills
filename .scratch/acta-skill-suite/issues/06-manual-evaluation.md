@@ -7,4 +7,4 @@ Implement and verify this slice according to ../spec.md and keep the suite-wide 
 
 ## Answer
 
-Blocked on human-operated client, browser, and assistive-technology trials. Use `docs/qa/acta-suite-0.1.0.md` as the evidence ledger; deterministic checks are already green.
+The revision-stamped QA harness generator, evaluator runbook, and per-reviewer evidence template are implemented. Human-operated Codex, Claude Code, browser, VoiceOver, and NVDA trials remain pending; aggregate reviewed records in `docs/qa/acta-suite-0.1.0.md`.
