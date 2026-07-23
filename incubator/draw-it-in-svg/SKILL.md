@@ -1,6 +1,6 @@
 ---
 name: draw-it-in-svg
-description: "Create accessible standalone SVG illustrations and an Acta figure sheet with copyable source. Use when reusable vector figures communicate the idea better than prose; do not use for process-flow analysis or raster image generation."
+description: "Create accessible standalone SVG illustrations and an Acta figure sheet with copyable source. Use for requests such as turn this explanation into a labeled vector diagram that works outside the report, even when the source explanation still needs to be requested; activate first, then ask for missing content. Do not use for process-flow analysis or raster image generation."
 license: Apache-2.0
 metadata:
   tags: "svg, illustration, visualization"
