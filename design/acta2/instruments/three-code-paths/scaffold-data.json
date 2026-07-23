@@ -1,0 +1,63 @@
+{
+  "acta2": "0.2.0-pilot",
+  "kind": "decision",
+  "decisionId": "D-01",
+  "skill": "three-code-paths",
+  "artifactKind": "code-path-decision",
+  "initiative": "[confirmed-initiative-slug]",
+  "title": "Three code paths",
+  "question": "[The one load-bearing structural question this decision answers]",
+  "sourceRevision": null,
+  "inputs": ["[repo-relative evidence path]"],
+  "unresolved": ["[open item that survives this decision]"],
+  "constraints": ["[hard constraint]", "[evaluation dimension]"],
+  "options": [
+    {
+      "id": "a",
+      "label": "[Path A — structural shape]",
+      "claim": "[Question this path answers in one line]",
+      "code": { "path": "[representative/file.mjs]", "snippet": "[decision-rich snippet, ~10 lines]" },
+      "flow": ["[input]", "[transform]", "[output]"],
+      "pros": ["[benefit]"],
+      "cons": ["[cost]"],
+      "seams": { "test": "[how node --test reaches it]", "migration": "[rollout shape]" },
+      "failureModes": ["[what breaks and how you notice]"],
+      "changeConditions": ["[what would make this path wrong]"]
+    },
+    {
+      "id": "b",
+      "label": "[Path B — different seam or dependency direction]",
+      "claim": "[Distinct question B answers]",
+      "code": { "path": "[file]", "snippet": "[equal-fidelity snippet]" },
+      "flow": ["[input]", "[transform]", "[output]"],
+      "pros": ["[benefit]"],
+      "cons": ["[cost]"],
+      "seams": { "test": "[test seam]", "migration": "[rollout]" },
+      "failureModes": ["[failure mode]"],
+      "changeConditions": ["[change condition]"]
+    },
+    {
+      "id": "c",
+      "label": "[Path C — third genuinely distinct shape]",
+      "claim": "[Distinct question C answers]",
+      "code": { "path": "[file]", "snippet": "[equal-fidelity snippet]" },
+      "flow": ["[input]", "[transform]", "[output]"],
+      "pros": ["[benefit]"],
+      "cons": ["[cost]"],
+      "seams": { "test": "[test seam]", "migration": "[rollout]" },
+      "failureModes": ["[failure mode]"],
+      "changeConditions": ["[change condition]"]
+    }
+  ],
+  "matrix": [
+    {
+      "dimension": "[dimension name]",
+      "verdicts": {
+        "a": { "mark": "yes", "note": "[why]" },
+        "b": { "mark": "part", "note": "[why]" },
+        "c": { "mark": "no", "note": "[why]" }
+      }
+    }
+  ],
+  "recommendation": { "option": "a", "reason": "[why it wins under the declared dimensions — written only after the comparison]" }
+}

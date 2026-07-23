@@ -56,6 +56,7 @@ Requirements: Node `>=22.20.0` and npm.
 npm ci
 npm run new:skill -- my-skill
 npm run acta
+npm run acta2   # Acta v2 pilot (three skills; see ADR 0003)
 npm run catalog
 npm run check
 # For assigned manual evaluation:

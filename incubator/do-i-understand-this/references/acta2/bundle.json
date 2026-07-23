@@ -1,0 +1,7 @@
+{
+  "skill": "do-i-understand-this",
+  "kind": "quiz",
+  "role": "instrument+record",
+  "version": "0.2.0-pilot",
+  "materializer": "scripts/materialize-acta2.mjs"
+}

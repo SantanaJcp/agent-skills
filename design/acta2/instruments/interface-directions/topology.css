@@ -1,0 +1,63 @@
+/* interface-directions topology: stacked, equal-fidelity direction stages.
+   Same data renders through each philosophy inside an identical browser-style
+   frame; the decision layer (matrix → recommendation → gate) follows. The
+   mockup world (.mk-*) is deliberately its own quiet neutral product UI so
+   the fictional interface never blends into Acta chrome. */
+.ifd-question{font:400 32px/1.25 var(--acta-font-text);margin:var(--sp-6) 0 var(--sp-3);max-width:46ch}
+.ifd-lede{font-size:15.5px;line-height:1.6;color:var(--acta-ink-muted);margin:0 0 var(--sp-4);max-width:66ch}
+.ifd-dataset{background:var(--acta-tint);border-radius:var(--acta-radius-lg);padding:12px 18px;margin:0 0 var(--sp-6);font:12.5px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);max-width:100ch}
+.ifd-dataset .a2-k{margin-bottom:2px}
+
+/* ---- one direction = header + thesis + stage + notes ---- */
+.ifd-direction{background:var(--acta-card);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:24px 28px 28px;margin:0 0 var(--sp-5)}
+.ifd-direction .d-head{display:flex;gap:12px;align-items:baseline}
+.ifd-direction .d-id{flex:none;background:var(--acta-tint-strong);border-radius:var(--acta-radius);padding:5px 10px;font:700 12.5px/1 var(--acta-font-data);letter-spacing:.08em;color:var(--acta-ink)}
+.ifd-direction h2{font:600 22px/1.3 var(--acta-font-text);margin:0}
+.ifd-direction .d-thesis{font:italic 15.5px/1.6 var(--acta-font-text);color:var(--acta-ink-muted);margin:8px 0 var(--sp-4);max-width:80ch}
+.ifd-direction[data-selected="true"]{border-color:var(--acta-action);outline:1px solid var(--acta-action);outline-offset:-3px}
+
+/* ---- per-direction notes: tradeoffs + deliberate choice ---- */
+.ifd-notes{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:var(--sp-5);align-items:start}
+.ifd-procon{width:100%;table-layout:fixed;border-collapse:collapse;font-size:13.5px;line-height:1.55}
+.ifd-procon th{font:600 11px/1.4 var(--acta-font-data);letter-spacing:.12em;text-transform:uppercase;color:var(--acta-ink-muted);text-align:left;background:var(--acta-tint);border:1px solid var(--acta-rule-faint);padding:9px 14px;width:50%}
+.ifd-procon td{border:1px solid var(--acta-rule-faint);padding:11px 14px 11px 30px;vertical-align:top;position:relative;width:50%;overflow-wrap:break-word}
+.ifd-procon td::before{content:"";position:absolute;left:14px;top:17.5px;width:6px;height:6px;border-radius:50%}
+.ifd-procon td.pc-pro::before{background:var(--acta-positive)}
+.ifd-procon td.pc-con::before{background:var(--acta-danger)}
+.ifd-procon td.pc-empty::before{content:none}
+.ifd-select{font:600 14.5px/1.4 var(--acta-font-ui);align-items:center;align-self:start}
+.ifd-select input{margin-top:0}
+
+/* ---- decision layer ---- */
+.ifd-matrix{margin:56px 0 0}
+.ifd-matrix h2,.ifd-decide h2{font:600 22px/1.3 var(--acta-font-text);margin:0 0 var(--sp-4)}
+.ifd-matrix h2{border-bottom:1px solid var(--acta-rule);padding-bottom:12px}
+.ifd-matrix .tablewrap{background:var(--acta-card);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:10px 24px}
+.ifd-matrix table{width:100%;border-collapse:collapse;font:14px/1.55 var(--acta-font-ui)}
+.ifd-matrix th,.ifd-matrix td{border:0;border-bottom:1px solid var(--acta-rule-faint);padding:12px 16px 12px 0;text-align:left;vertical-align:top}
+.ifd-matrix thead th{font:600 11px/1.4 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;color:var(--acta-ink-muted);border-bottom:1px solid var(--acta-rule-strong);padding-top:6px}
+.ifd-matrix tbody th{font:600 14px/1.55 var(--acta-font-ui);color:var(--acta-ink);width:22%}
+.ifd-matrix td .m-note{color:var(--acta-ink-muted)}
+.ifd-matrix .m-yes{color:var(--acta-positive);font-weight:700}
+.ifd-matrix .m-no{color:var(--acta-danger);font-weight:700}
+.ifd-matrix .m-part{color:var(--acta-warning);font-weight:700}
+.ifd-reco{border-left:3px solid var(--acta-positive);background:var(--acta-positive-tint);padding:var(--sp-4) 20px;margin:var(--sp-6) 0;font-size:15px;line-height:1.6;max-width:88ch}
+.ifd-reco .r-k{font:600 10.5px/1.3 var(--acta-font-data);letter-spacing:.12em;text-transform:uppercase;color:var(--acta-positive);display:block;margin-bottom:6px}
+.ifd-decide{border:2px solid var(--acta-ink);border-radius:var(--acta-radius-lg);background:var(--acta-card);padding:var(--sp-5) 28px 28px;margin:56px 0}
+.ifd-decide .d-selection{font:600 15.5px/1.5 var(--acta-font-ui);margin:0 0 var(--sp-3)}
+.ifd-decide .a2-field{max-width:78ch}
+.ifd-decide>p:last-child{font-size:13.5px;line-height:1.6;color:var(--acta-ink-muted);max-width:78ch;margin-bottom:0}
+
+@media (max-width:959px){
+  .ifd-notes{grid-template-columns:1fr}
+  .ifd-select{justify-self:start}
+}
+@media (max-width:719px){
+  .ifd-direction{padding:var(--sp-4)}
+  .ifd-stage .s-canvas{padding:24px 16px;min-height:190px}
+  .ifd-matrix th,.ifd-matrix td{padding-right:10px}
+}
+@media print{
+  .ifd-direction,.ifd-stage,.ifd-matrix table,.ifd-reco,.ifd-decide{break-inside:avoid}
+  .ifd-stage .s-canvas{min-height:0}
+}

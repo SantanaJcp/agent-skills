@@ -1,0 +1,24 @@
+{
+  "acta_protocol": "0.2",
+  "payload": "candidate",
+  "artifact_kind": "architecture-analysis",
+  "producer_skill": "deepen-the-codebase",
+  "initiative": "tag-filter",
+  "instrument": "decision",
+  "status": "candidate-ready",
+  "source_revision": "a8b083705553550eda289ddf9cf1d028df907682",
+  "inputs": [
+    "src/catalog.mjs — data + filtering in one module",
+    "src/app.mjs — glue owning empty-state markup",
+    "test/catalog.test.mjs — tests reaching across seams",
+    "feature-xray record — verified system map"
+  ],
+  "unresolved": [
+    "direction A becomes attractive the moment a second catalog source appears"
+  ],
+  "selection": {
+    "option": "b",
+    "label": "Give the empty state a home",
+    "rationale": "The empty state is the one accepted design living as untested glue; naming it turns chip drift into a test failure."
+  }
+}

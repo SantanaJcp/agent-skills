@@ -1,0 +1,17 @@
+{
+ "status": "approved",
+ "stamp": "ACCEPTED",
+ "acceptedVia": "chat 2026-07-23 — postmortem reviewed against the chat log and deploy history after stabilization",
+ "recordTitle": "INC-0721 — shared links rendered a blank catalog",
+ "summary": "Unknown-tag URLs rendered an unexplained empty list for 38 minutes because the glue collapsed \"no tag\" and \"unknown tag\" into one silent branch. Facts, the falsified first hypothesis, the temporary mitigation, and the durable decision-loop fix are recorded separately.",
+ "canonicalPath": "incidents/INC-0721.md",
+ "decisions": [
+  {
+   "id": "publish-postmortem",
+   "selection": "publish-record",
+   "rationale": "Timeline verified against the chat log; every claim is typed as fact, hypothesis, mitigation, or recovery.",
+   "acceptedVia": "chat 2026-07-23 — explicit confirmation"
+  }
+ ],
+ "canonicalBody": "# INC-0721 — blank catalog on unknown-tag links\n\n38 minutes of blank lists for shared ?tag= links after the slice-4 deploy.\nRoot cause: no branch between missing and unknown tags. Mitigated by a\ntemporary full-catalog fallback; durably fixed by the accepted empty state.\nContributing condition: the spec carried no unknown-tag criterion."
+}

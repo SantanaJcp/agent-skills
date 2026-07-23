@@ -1,0 +1,21 @@
+{
+  "status": "approved",
+  "stamp": "Approved — STOP-01 resolved: reject the addition",
+  "recordTitle": "Implementation session: tag filtering, STOP-01 resolved",
+  "summary": "STOP-01 was resolved by rejecting the mid-session remote tag-suggestion request, and the resolution was explicitly accepted in chat. Three of five slices were green at the pause; the approved plan resumes with Slices 4 and 5. The remote-API idea is preserved as an unresolved item, not built. No production behavior was changed by this record.",
+  "canonicalPath": ".agent-work/tag-filter/build-with-notes/session.md",
+  "acceptedVia": "explicit chat confirmation after candidate export",
+  "decisions": [
+    {
+      "id": "STOP-01",
+      "selection": "reject-addition",
+      "rationale": "The remote tag-suggestion API contradicts an approved non-goal; widening scope mid-build would bypass the change-blueprint gates. Keep the approved 5-slice plan and log the idea as unresolved.",
+      "acceptedVia": "chat: \"reject the remote API, continue the plan\" after reviewing the candidate export"
+    }
+  ],
+  "exampleWorking": {
+    "resolution": "reject-addition",
+    "rationale": "The remote tag-suggestion API contradicts an approved non-goal; widening scope mid-build would bypass the change-blueprint gates. Keep the approved 5-slice plan and log the idea as unresolved."
+  },
+  "canonicalBody": "STOP-01 resolved: the remote tag-suggestion API is rejected as out of the approved scope, and the approved five-slice plan continues from Slice 4. The deviation about unknown-tag URL fallback remains open and must be answered before Slice 4 renders. Slices 1-3 (pure filterByTag, pure parseTagFromSearch, static markup) were green at the pause; twelve node --test assertions passed and typecheck was clean. This record reflects the accepted resolution only; the live board that carried the open gate is now stale."
+}

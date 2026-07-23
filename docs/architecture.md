@@ -23,6 +23,10 @@ Publisher tooling deterministically materializes:
 
 Materialized files carry Acta version and a SHA-256 of canonical inputs. Dates and Git hashes are excluded from build markers. Installed skills never read the canonical authoring source or sibling directories.
 
+### Acta v2 pilot (not promoted)
+
+All fourteen HTML skills use the Acta v2 instrument/record split — piloted by `three-code-paths`, `build-with-notes`, and `concept-lab` ([ADR 0003](adr/0003-acta-v2-instrument-record-pilot.md)) and generalized to the complete suite as a suite candidate ([ADR 0004](adr/0004-acta-v2-suite-generalization.md)). The suite manifest `design/acta2/lib/suite.mjs` is the single source of truth for each skill's role (instrument + record, record-only, or instrument-only); canonical v2 sources live in `design/acta2/`, and `npm run acta2` deterministically materializes, per skill, a self-contained generator bundle (`references/acta2/`), rendered scaffold examples, and realistic open-scenario test fixtures. Installed skills generate `instrument.html` from `scenario.json` and `record.html` from `canonical.json` with the bundled generators (Node built-ins only) — HTML artifacts are never hand-edited. State machines cover six kinds (decision, stop-gate, model, prototype, quiz, checklist) plus record-only dossiers; shared Node-side renderers supply syntax-highlighted code islands (`lib/highlight.mjs`), node/edge flow diagrams (`lib/flow.mjs`), and constrained vector figures (`lib/figure.mjs`). Static v2 gates run in `npm run validate:acta2`; state/export invariants and round-trips live in `tests/acta2.test.mjs`. Every skill retains its Acta 0.1 references for rollback until the migration is approved; `make-me-realize` stays deliberately text-only.
+
 ## Artifact authority
 
 Technical working state lives under `.agent-work/<initiative>/<skill>/`, locally excluded through `.git/info/exclude`. Learning workspaces use a durable user-selected directory.

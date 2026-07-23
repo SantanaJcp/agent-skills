@@ -1,0 +1,23 @@
+{
+  "acta_protocol": "0.2",
+  "payload": "candidate",
+  "artifact_kind": "implementation-plan",
+  "producer_skill": "change-blueprint",
+  "initiative": "tag-filter",
+  "instrument": "decision",
+  "status": "candidate-ready",
+  "source_revision": "a8b083705553550eda289ddf9cf1d028df907682",
+  "inputs": [
+    "spec.md — accepted at Gate A",
+    "src/catalog.mjs — visibleSkills() idiom",
+    "three-code-paths record — functional core, thin shell"
+  ],
+  "unresolved": [
+    "whether slice 5 intercepts chip clicks or lets them navigate (decided during build)"
+  ],
+  "selection": {
+    "option": "approve-plan",
+    "label": "Approve the plan",
+    "rationale": "Slices are independently green, the flow direction matches the accepted code-path decision, rollback is one revert."
+  }
+}

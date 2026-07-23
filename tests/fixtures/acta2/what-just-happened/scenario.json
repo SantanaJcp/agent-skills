@@ -1,0 +1,94 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "dossier",
+ "decisionId": "publish-postmortem",
+ "acceptanceToken": "publish-record",
+ "skill": "what-just-happened",
+ "artifactKind": "incident-postmortem",
+ "initiative": "tag-filter",
+ "title": "What just happened — INC-0721",
+ "question": "Why did shared catalog links render a blank list, and what actually fixed it?",
+ "sourceRevision": "a8b083705553550eda289ddf9cf1d028df907682",
+ "inputs": [
+  "chat log 2026-07-21 — bug report thread",
+  "git log slice-4 deploy window",
+  "src/app.mjs — render glue at the incident revision",
+  "test/catalog.test.mjs — assertions added afterwards"
+ ],
+ "incidentId": "INC-0721",
+ "severity": "SEV-3",
+ "state": "resolved",
+ "duration": "38 min",
+ "detected": "2026-07-21 · 16:12",
+ "tldr": "After the slice-4 deploy, links carrying a tag no skill has (?tag=deploy) rendered an empty, unexplained list. The render glue treated \"unknown tag\" and \"no tag\" as the same empty array and had no empty-state branch. A hotfix fell back to the full catalog for unknown tags; the durable fix — the accepted explain-and-suggest empty state — landed through interface-directions and STOP-01 the next day.",
+ "impact": [
+  { "label": "Shared links affected", "value": "12 links" },
+  { "label": "Sessions with a blank list", "value": "~40" },
+  { "label": "Data loss", "value": "none — render-only" },
+  { "label": "Durable fix", "value": "accepted empty state (next day)" }
+ ],
+ "timeline": [
+  {
+   "time": "15:58",
+   "type": "fact",
+   "title": "Slice 4 deploys the browser glue",
+   "body": "renderFromUrl() starts re-deriving the catalog DOM from location.search on every load."
+  },
+  {
+   "time": "16:12",
+   "type": "fact",
+   "title": "Impact starts — first blank-list report",
+   "body": "A maintainer shares ?tag=deploy in chat; recipients see an empty list with no explanation. More shared links follow the same shape.",
+   "marker": "impact"
+  },
+  {
+   "time": "16:19",
+   "type": "hypothesis",
+   "title": "First hypothesis: the deploy broke rendering",
+   "body": "Rolling back slice 4 locally reproduces a working catalog — but only because the static page has no filtering at all. The hypothesis is falsified: known tags render correctly on the deployed build."
+  },
+  {
+   "time": "16:31",
+   "type": "fact",
+   "title": "Cause isolated to the unknown-tag branch",
+   "body": "filterByTag returns [] for tags no skill carries, and renderFromUrl passes the empty array straight to replaceChildren — a blank <ul> with zero affordances. \"No tag\" and \"unknown tag\" collapse into the same render."
+  },
+  {
+   "time": "16:41",
+   "type": "mitigation",
+   "title": "Hotfix: unknown tags fall back to the full catalog",
+   "body": "A guard renders the unfiltered list when the tag matches nothing, so shared links stop dead-ending. Deliberately temporary — it silently ignores the user's intent.",
+   "marker": "mitigated"
+  },
+  {
+   "time": "16:50",
+   "type": "fact",
+   "title": "Monitors green; incident closed as mitigated",
+   "body": "All shared links render content again. The silent-fallback debt is logged for a proper empty-state decision."
+  },
+  {
+   "time": "next day",
+   "type": "recovery",
+   "title": "Durable fix through the decision loop",
+   "body": "interface-directions compares three real empty states against the live dataset; direction B (explain and suggest) is accepted, and STOP-01 later keeps remote suggestions out of scope. The hotfix fallback is replaced by the accepted empty state."
+  }
+ ],
+ "rootCause": "renderFromUrl() had no branch between \"no tag requested\" and \"tag requested but unknown\" — both produced an empty visible list, and the second produced it silently. The spec at that revision carried no acceptance criterion for unknown tags, so nothing failed before users did.",
+ "evidence": {
+  "path": "src/app.mjs @ incident revision (16:31 isolation)",
+  "snippet": "function renderFromUrl() {\n  const tag = parseTagFromSearch(location.search);\n  const visible = filterByTag(visibleSkills(), tag);\n  // BUG: visible === [] for unknown tags falls through\n  // to a blank <ul> with no explanation\n  replaceChildren(list, rows(visible));\n}"
+ },
+ "conditions": [
+  "The Gate A spec had no acceptance criterion for unknown tags — the gap shipped because nothing asserted it (criterion 3 exists now).",
+  "No fixture link with an unknown tag existed in QA notes, so the path was never walked before users walked it.",
+  "Blank-list rendering produced no signal: the page was \"working\" by every existing check."
+ ],
+ "followUps": [
+  { "state": "done", "text": "Accepted empty state replaces the silent fallback (interface-directions, direction B)" },
+  { "state": "done", "text": "Acceptance criterion 3 added: unknown tags must render the accepted empty state" },
+  { "state": "open", "text": "QA sweep template gains an unknown-tag link so the path is walked every release" }
+ ],
+ "unresolved": [
+  "whether blank-render detection is worth an automated probe at this catalog size"
+ ]
+}

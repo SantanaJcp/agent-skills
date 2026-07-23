@@ -1,0 +1,24 @@
+{
+  "acta_protocol": "0.2",
+  "payload": "candidate",
+  "artifact_kind": "interface-direction-decision",
+  "producer_skill": "interface-directions",
+  "initiative": "tag-filter",
+  "instrument": "decision",
+  "status": "candidate-ready",
+  "source_revision": "a8b083705553550eda289ddf9cf1d028df907682",
+  "inputs": [
+    "index.html — current catalog markup",
+    "spec.md — tag-filter scope and non-goals",
+    "STOP-01 resolution — unknown tags stay empty, no remote suggestions"
+  ],
+  "unresolved": [
+    "chip ordering (alphabetical vs frequency) once real usage exists",
+    "whether the clear-filter action reads better as a link than a button"
+  ],
+  "selection": {
+    "option": "b",
+    "label": "Explain and suggest",
+    "rationale": "B is the only direction that gives the user somewhere to go; chips derive from visibleSkills() so they cannot drift from the real tag set."
+  }
+}

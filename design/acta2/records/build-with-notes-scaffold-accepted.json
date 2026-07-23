@@ -1,0 +1,18 @@
+{
+  "status": "approved",
+  "stamp": "[Approved — STOP resolution]",
+  "recordTitle": "[Implementation session: initiative subject, gate resolved]",
+  "summary": "[One-paragraph accepted-state summary: how the STOP was resolved, what resumes, what stays open, what was not modified.]",
+  "canonicalPath": ".agent-work/[initiative]/build-with-notes/session.md",
+  "acceptedVia": "explicit chat confirmation after candidate export",
+  "decisions": [
+    {
+      "id": "STOP-01",
+      "selection": "reject-addition",
+      "rationale": "[why this resolution, if volunteered]",
+      "acceptedVia": "[the explicit confirmation, quoted]"
+    }
+  ],
+  "exampleWorking": { "resolution": "reject-addition", "rationale": "[why this resolution, if volunteered]" },
+  "canonicalBody": "[Accepted canonical content generated only after explicit acceptance.]"
+}

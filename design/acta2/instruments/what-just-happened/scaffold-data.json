@@ -1,0 +1,70 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "dossier",
+ "decisionId": "publish-postmortem",
+ "acceptanceToken": "publish-record",
+ "skill": "what-just-happened",
+ "artifactKind": "incident-postmortem",
+ "initiative": "initiative-slug",
+ "title": "What just happened",
+ "question": "What happened, what was the impact, and what actually fixed it?",
+ "sourceRevision": null,
+ "inputs": [
+  "the chat log, alert history, or deploy log the timeline derives from"
+ ],
+ "incidentId": "INC-0000",
+ "severity": "SEV-3",
+ "state": "resolved",
+ "duration": "NN min",
+ "detected": "date · time",
+ "tldr": "Three sentences: trigger, impact, mitigation, durable fix — no mystery left.",
+ "impact": [
+  {
+   "label": "a real impact measure",
+   "value": "its value"
+  }
+ ],
+ "timeline": [
+  {
+   "time": "00:00",
+   "type": "fact",
+   "title": "Impact starts",
+   "body": "What was observed, from evidence.",
+   "marker": "impact"
+  },
+  {
+   "time": "00:10",
+   "type": "hypothesis",
+   "title": "First hypothesis",
+   "body": "Kept even when falsified, with how it was tested."
+  },
+  {
+   "time": "00:20",
+   "type": "mitigation",
+   "title": "Mitigated",
+   "body": "The step that stopped the bleeding.",
+   "marker": "mitigated"
+  },
+  {
+   "time": "later",
+   "type": "recovery",
+   "title": "Durable fix",
+   "body": "The change that removes the cause."
+  }
+ ],
+ "rootCause": "The mechanism, stated causally, with the condition that let it ship.",
+ "evidence": {
+  "path": "path/file.mjs @ incident revision",
+  "snippet": "// the code state that produced the incident\nfunction example() {}"
+ },
+ "conditions": [
+  "a contributing condition distinct from the cause"
+ ],
+ "followUps": [
+  {
+   "state": "open",
+   "text": "a follow-up without an invented owner"
+  }
+ ],
+ "unresolved": []
+}

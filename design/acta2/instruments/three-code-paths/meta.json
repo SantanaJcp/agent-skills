@@ -1,0 +1,16 @@
+{
+  "skill": "three-code-paths",
+  "kind": "decision",
+  "title": "Three code paths",
+  "instrumentName": "compare-bench",
+  "brief": {
+    "humanQuestion": "Which of three structurally distinct implementation shapes should we build?",
+    "cognitiveAction": "compare",
+    "primaryRepresentation": "three equal columns with a criterion-major verdict matrix",
+    "humanAction": "inspect columns, select one path, optionally add a rationale",
+    "consequence": "selection highlights the column, flips working status, and rewrites the candidate export",
+    "firstViewport": "decision question, constraints, and all three alternatives side by side",
+    "export": "candidate Markdown/JSON with selected path, rationale, unresolved items",
+    "noJs": "columns, matrix, and recommendation stay readable; decide by replying in chat"
+  }
+}

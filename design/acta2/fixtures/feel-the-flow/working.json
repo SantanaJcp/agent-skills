@@ -1,0 +1,5 @@
+{
+ "params": { "debounce": 100, "minChars": 0 },
+ "toggles": { "instantFirst": true },
+ "conclusion": "300 ms reads as broken — the pending marker is the only sign anything heard you. 100 ms with instant first keystroke feels immediate on this five-item list; minimum characters adds nothing at this scale."
+}

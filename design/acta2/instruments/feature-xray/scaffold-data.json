@@ -1,0 +1,81 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "dossier",
+ "decisionId": "publish-xray",
+ "acceptanceToken": "publish-record",
+ "skill": "feature-xray",
+ "artifactKind": "feature-explanation",
+ "initiative": "initiative-slug",
+ "title": "Feature X-ray",
+ "question": "How does this feature actually work?",
+ "sourceRevision": null,
+ "inputs": [
+  "the files the explanation was verified against"
+ ],
+ "tldr": "Two or three sentences: the mechanism, in causal order, with no mystery left.",
+ "map": {
+  "lede": "The modules involved and the one dependency direction.",
+  "caption": "State what solid edges and the dark node mean.",
+  "nodes": [
+   {
+    "id": "in",
+    "label": "entry point",
+    "sub": "where requests arrive",
+    "col": 0,
+    "row": 0
+   },
+   {
+    "id": "core",
+    "label": "core function",
+    "sub": "the pure heart",
+    "col": 1,
+    "row": 0
+   },
+   {
+    "id": "state",
+    "label": "stateful surface",
+    "sub": "the only mutation",
+    "col": 1,
+    "row": 1,
+    "tone": "dark"
+   }
+  ],
+  "edges": [
+   {
+    "from": "in",
+    "to": "core",
+    "label": "input"
+   },
+   {
+    "from": "core",
+    "to": "state",
+    "label": "result"
+   }
+  ]
+ },
+ "steps": [
+  {
+   "title": "First step of the operational path",
+   "where": "path/file.mjs:12",
+   "what": "What actually happens, verified at the cited line."
+  }
+ ],
+ "usage": {
+  "lede": "How a developer touches this feature day to day.",
+  "path": "path/file.mjs (excerpt)",
+  "snippet": "export function example() {\n  return real(code);\n}"
+ },
+ "gotchas": [
+  {
+   "lead": "A real gotcha, bolded.",
+   "body": "Why it surprises people and where the evidence lives."
+  }
+ ],
+ "faq": [
+  {
+   "q": "A question someone actually asks?",
+   "a": "The evidence-grounded answer."
+  }
+ ],
+ "unresolved": []
+}

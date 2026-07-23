@@ -1,0 +1,7 @@
+{
+  "skill": "feature-xray",
+  "kind": "dossier",
+  "role": "record-only",
+  "version": "0.2.0-pilot",
+  "materializer": "scripts/materialize-acta2.mjs"
+}

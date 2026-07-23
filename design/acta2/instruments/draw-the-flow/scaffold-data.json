@@ -1,0 +1,160 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "decision",
+ "decisionId": "flow-verification",
+ "skill": "draw-the-flow",
+ "artifactKind": "process-flow",
+ "initiative": "initiative-slug",
+ "title": "Draw the flow",
+ "question": "How does this process actually flow, end to end?",
+ "lede": "One drawing, named paths, and the same flow in words below it.",
+ "openStatusLabel": "Open — flow not yet verified",
+ "sourceRevision": null,
+ "inputs": [
+  "the code or documents the flow was traced from"
+ ],
+ "flow": {
+  "ariaLabel": "Tag-filter navigation flow with normal, decision, failure, and recovery paths",
+  "caption": "Every navigation walks left to right; the branch at “tag known?” separates the normal render from the empty-state path, and “clear filter” is the recovery route back to the full catalog.",
+  "nodes": [
+   {
+    "id": "url",
+    "label": "navigation",
+    "sub": "?tag=… or popstate",
+    "col": 0,
+    "row": 0,
+    "paths": [
+     "normal",
+     "failure",
+     "recovery"
+    ]
+   },
+   {
+    "id": "parse",
+    "label": "parseTagFromSearch",
+    "sub": "src/url-tag.mjs",
+    "col": 1,
+    "row": 0,
+    "paths": [
+     "normal",
+     "failure",
+     "recovery"
+    ]
+   },
+   {
+    "id": "decide",
+    "label": "tag known?",
+    "sub": "any skill carries it",
+    "col": 2,
+    "row": 0,
+    "tone": "accent",
+    "paths": [
+     "normal",
+     "decision",
+     "failure"
+    ]
+   },
+   {
+    "id": "filter",
+    "label": "filterByTag",
+    "sub": "src/catalog.mjs",
+    "col": 3,
+    "row": 0,
+    "paths": [
+     "normal",
+     "decision"
+    ]
+   }
+  ],
+  "edges": [
+   {
+    "from": "url",
+    "to": "parse",
+    "label": "tag | null",
+    "paths": [
+     "normal",
+     "failure",
+     "recovery"
+    ]
+   },
+   {
+    "from": "parse",
+    "to": "decide",
+    "label": "requested tag",
+    "paths": [
+     "normal",
+     "failure",
+     "recovery"
+    ]
+   },
+   {
+    "from": "decide",
+    "to": "filter",
+    "label": "known",
+    "paths": [
+     "normal",
+     "decision"
+    ]
+   }
+  ]
+ },
+ "pathViews": [
+  {
+   "id": "all",
+   "label": "Whole flow",
+   "steps": []
+  },
+  {
+   "id": "normal",
+   "label": "Normal path",
+   "steps": [
+    "each step of the happy path, in words"
+   ]
+  },
+  {
+   "id": "decision",
+   "label": "The decision",
+   "steps": [
+    "what the branch decides and on what evidence"
+   ]
+  },
+  {
+   "id": "failure",
+   "label": "Failure path",
+   "steps": [
+    "what actually happens when it goes wrong"
+   ]
+  },
+  {
+   "id": "recovery",
+   "label": "Recovery path",
+   "steps": [
+    "how the system or user gets back to good"
+   ]
+  }
+ ],
+ "options": [
+  {
+   "id": "confirm-accurate",
+   "label": "The flow is accurate",
+   "consequence": "This drawing and its textual equivalent become the recorded shared understanding of the navigation."
+  },
+  {
+   "id": "needs-correction",
+   "label": "Needs correction",
+   "consequence": "Name what is wrong or missing in the rationale; the flow is redrawn before anything is recorded."
+  },
+  {
+   "id": "wrong-scope",
+   "label": "Wrong question",
+   "consequence": "The flow answers a different question than the one that matters; scope is restated before redrawing."
+  }
+ ],
+ "recommendation": {
+  "option": "confirm-accurate",
+  "reason": "Every node and edge was walked against src/app.mjs at the recorded revision."
+ },
+ "unresolved": [
+  "anything the flow deliberately leaves open"
+ ]
+}

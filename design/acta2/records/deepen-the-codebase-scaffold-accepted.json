@@ -1,0 +1,21 @@
+{
+ "status": "approved",
+ "stamp": "ACCEPTED",
+ "acceptedVia": "chat — explicit confirmation of the pasted candidate",
+ "recordTitle": "Accepted deepening direction",
+ "summary": "One paragraph: the chosen direction and its blueprint seed.",
+ "canonicalPath": "architecture/deepening-slug.md",
+ "decisions": [
+  {
+   "id": "deepening-direction",
+   "selection": "a",
+   "rationale": "The accepted rationale.",
+   "acceptedVia": "chat — explicit confirmation"
+  }
+ ],
+ "exampleWorking": {
+  "selected": "a",
+  "rationale": "The accepted rationale."
+ },
+ "canonicalBody": "# Accepted deepening direction\n\nAnalysis record with the blueprint seed; nothing implemented."
+}

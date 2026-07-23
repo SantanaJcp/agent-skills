@@ -1,0 +1,123 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "decision",
+ "decisionId": "direction-decision-slug",
+ "skill": "interface-directions",
+ "artifactKind": "interface-direction-decision",
+ "initiative": "initiative-slug",
+ "title": "Interface directions",
+ "question": "Which visual direction should this surface take?",
+ "sourceRevision": null,
+ "inputs": [
+  "the current markup or screens the directions must replace"
+ ],
+ "stageLabel": "product surface — state under exploration",
+ "dataset": {
+  "queryTag": "example",
+  "skills": [
+   {
+    "name": "First real item from the product",
+    "tags": [
+     "one",
+     "two"
+    ]
+   },
+   {
+    "name": "Second real item",
+    "tags": [
+     "two"
+    ]
+   },
+   {
+    "name": "Third real item",
+    "tags": [
+     "three"
+    ]
+   }
+  ]
+ },
+ "options": [
+  {
+   "id": "a",
+   "label": "First direction",
+   "claim": "One sentence stating this direction's philosophy about the surface.",
+   "mockup": {
+    "kind": "quiet",
+    "headline": "State headline",
+    "body": "Supporting sentence.",
+    "action": "Primary action"
+   },
+   "pros": [
+    "a real strength observed in the render"
+   ],
+   "cons": [
+    "a real cost observed in the render"
+   ]
+  },
+  {
+   "id": "b",
+   "label": "Second direction",
+   "claim": "A genuinely different philosophy — not a restyle of direction A.",
+   "mockup": {
+    "kind": "suggest",
+    "headline": "State headline",
+    "body": "Supporting sentence:",
+    "suggestions": [
+     "one",
+     "two",
+     "three"
+    ],
+    "action": "Primary action"
+   },
+   "pros": [
+    "a real strength observed in the render"
+   ],
+   "cons": [
+    "a real cost observed in the render"
+   ]
+  },
+  {
+   "id": "c",
+   "label": "Third direction",
+   "claim": "A third incompatible philosophy so reacting beats imagining.",
+   "mockup": {
+    "kind": "dimmed",
+    "notice": "Inline notice explaining the state",
+    "action": "Primary action"
+   },
+   "pros": [
+    "a real strength observed in the render"
+   ],
+   "cons": [
+    "a real cost observed in the render"
+   ]
+  }
+ ],
+ "matrix": [
+  {
+   "dimension": "A dimension every direction is judged on",
+   "verdicts": {
+    "a": {
+     "mark": "yes",
+     "note": "evidence"
+    },
+    "b": {
+     "mark": "partly",
+     "note": "evidence"
+    },
+    "c": {
+     "mark": "no",
+     "note": "evidence"
+    }
+   }
+  }
+ ],
+ "recommendation": {
+  "option": "a",
+  "reason": "State why, grounded in the rendered comparison."
+ },
+ "unresolved": [
+  "anything the decision deliberately leaves open"
+ ],
+ "openStatusLabel": "Open — no direction selected yet"
+}

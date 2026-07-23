@@ -1,0 +1,21 @@
+{
+  "status": "approved",
+  "stamp": "Approved — Path A",
+  "recordTitle": "Code-path decision: tag filtering and URL-state structure",
+  "summary": "Path A (functional core, thin shell) was selected and explicitly accepted in chat. Paths B and C remain recorded as rejected alternatives with their own change conditions. No production code has been modified.",
+  "canonicalPath": ".agent-work/tag-filter/three-code-paths/code-paths.md",
+  "acceptedVia": "explicit chat confirmation after candidate export",
+  "decisions": [
+    {
+      "id": "D-01",
+      "selection": "a",
+      "rationale": "Only shape with no tension against the Node-only test constraint; matches the existing pure-function idiom.",
+      "acceptedVia": "chat: \"accept path A\" after reviewing the candidate export"
+    }
+  ],
+  "exampleWorking": {
+    "selected": "a",
+    "rationale": "Only shape with no tension against the Node-only test constraint; matches the existing pure-function idiom."
+  },
+  "canonicalBody": "DecisionGate D-01 resolved: Path A — functional core, thin imperative shell. Paths B (custom element) and C (pub/sub store) preserved as rejected alternatives with change conditions. See the comparison matrix in the instrument evidence; interface control decisions remain with interface-directions."
+}

@@ -1,0 +1,22 @@
+{
+ "status": "approved",
+ "stamp": "ACCEPTED",
+ "acceptedVia": "chat 2026-07-23 — gaps export pasted and confirmed after completing all six questions",
+ "recordTitle": "Understanding check: tag-filter change — 5/6, one named gap",
+ "summary": "Six evidence-grounded questions against the merged tag-filter change: five answered correctly; the unknown-tag fallback was missed and is recorded as a named gap with its evidence locations. Diagnostic only — never a merge gate.",
+ "canonicalPath": "learning/tag-filter-understanding.md",
+ "decisions": [
+  {
+   "id": "understanding-check",
+   "selection": "record-gaps",
+   "rationale": "Score 5/6; the unknown-tag fallback gap is real — I expected a blank list.",
+   "acceptedVia": "chat 2026-07-23 — explicit confirmation of the pasted candidate"
+  }
+ ],
+ "exampleWorking": {
+  "answers": { "q1": "b", "q2": "a", "q3": "a", "q4": "b", "q5": "a", "q6": "b" },
+  "reflection": "I had the no-JS story right but assumed unknown tags would just blank the list — the empty state decision had not landed in my head."
+ },
+ "derived": { "correct": 5, "total": 6 },
+ "canonicalBody": "# Understanding check — tag-filter change\n\nScore 5/6. Named gap: unknown-tag fallback (expected a blank list; the\naccepted behavior is the explain-and-suggest empty state, src/app.mjs:19).\nFollow-up: re-read the STOP-01 resolution and the interface-directions\nrecord. This check is diagnostic and never gates a merge."
+}

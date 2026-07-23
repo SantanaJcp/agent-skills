@@ -1,0 +1,120 @@
+{
+  "scenario": {
+    "acta2": "0.2.0-pilot",
+    "kind": "model",
+    "decisionId": "D-01",
+    "acceptanceToken": "model-accepted",
+    "skill": "concept-lab",
+    "artifactKind": "concept-model",
+    "initiative": "retry-backoff",
+    "title": "Concept lab",
+    "question": "How do base delay, growth factor, retry count, cap, and jitter shape total retry wait?",
+    "sourceRevision": null,
+    "inputs": [
+      "AWS Architecture Blog — Exponential Backoff and Jitter (Marc Brooker, 2015)",
+      "Google SRE Book ch. 22 — Addressing Cascading Failures"
+    ],
+    "unresolved": [
+      "mapping these parameters onto the project's actual HTTP client is a separate task"
+    ],
+    "params": [
+      {
+        "id": "base",
+        "label": "Base delay",
+        "min": 50,
+        "max": 1000,
+        "step": 50,
+        "default": 100,
+        "unit": "ms"
+      },
+      {
+        "id": "factor",
+        "label": "Growth factor",
+        "min": 1,
+        "max": 4,
+        "step": 0.5,
+        "default": 2,
+        "unit": "×"
+      },
+      {
+        "id": "retries",
+        "label": "Max retries",
+        "min": 1,
+        "max": 8,
+        "step": 1,
+        "default": 5,
+        "unit": ""
+      },
+      {
+        "id": "cap",
+        "label": "Delay cap",
+        "min": 500,
+        "max": 30000,
+        "step": 500,
+        "default": 10000,
+        "unit": "ms"
+      }
+    ],
+    "toggles": [
+      {
+        "id": "fullJitter",
+        "label": "Full jitter (random 0…delay instead of delay/2…delay)",
+        "default": false
+      }
+    ],
+    "facts": [
+      {
+        "text": "Retry storms amplify outages: synchronized clients retry in waves.",
+        "source": "E1"
+      },
+      {
+        "text": "Full jitter lowers the expected per-attempt delay from 75% to 50% of the capped exponential delay — one third less than equal jitter — while preserving the same worst case.",
+        "source": "E1"
+      },
+      {
+        "text": "Backoff without a cap eventually produces waits longer than any user will tolerate.",
+        "source": "E2"
+      }
+    ],
+    "simplifications": [
+      "assumes an ideal clock and zero network transfer time",
+      "treats jitter as a deterministic range band, not sampled randomness",
+      "single client shown; aggregate-load effects are described, not simulated"
+    ]
+  },
+  "accepted": {
+    "status": "completed",
+    "stamp": "Completed — model accepted",
+    "recordTitle": "Concept model: exponential backoff and jitter for retry waits",
+    "summary": "The retry-backoff model was explored and its accepted parameters and observed conclusion were explicitly confirmed in chat. The record captures the accepted parameter set, the derived consequence table at those parameters, the declared simplifications, and the sourced facts. No production code or HTTP client configuration has been changed.",
+    "canonicalPath": ".agent-work/retry-backoff/concept-lab/canonical.json",
+    "acceptedVia": "explicit chat confirmation after candidate export",
+    "decisions": [
+      {
+        "id": "D-01",
+        "selection": "model-accepted",
+        "rationale": "The bench made the jitter trade-off legible: full jitter leaves the worst case untouched while cutting the expected total to half the worst case (one third below equal jitter), and the cap is what bounds the tail.",
+        "acceptedVia": "chat: \"accept the backoff model\" after reviewing the candidate export"
+      }
+    ],
+    "exampleWorking": {
+      "params": {
+        "base": 200,
+        "factor": 2,
+        "retries": 6,
+        "cap": 2000
+      },
+      "toggles": {
+        "fullJitter": true
+      },
+      "conclusion": "Full jitter keeps the worst case at 7000 ms while the expected total drops to ≈3500 ms — half of the worst case, and one third below equal jitter's ≈5250 ms; the 2000 ms cap flattens growth from attempt 5 onward."
+    },
+    "derived": {
+      "attempts": 6,
+      "worstCaseTotalMs": 7000,
+      "expectedTotalMs": 3500,
+      "firstCappedAttempt": 5
+    },
+    "canonicalBody": "The team explored exponential backoff with jitter as a shared mental model before touching the HTTP client. At the accepted parameters (base 200 ms, factor 2, 6 retries, 2000 ms cap, full jitter on) the worst-case aggregate wait is 7000 ms; the expected wait is ≈3500 ms — half of the worst case and one third below equal jitter's ≈5250 ms — with the cap binding from attempt 5. The model is a teaching device, not a client configuration: mapping these parameters onto the project's actual retry code is tracked separately."
+  }
+}

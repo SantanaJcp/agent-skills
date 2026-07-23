@@ -1,0 +1,167 @@
+{
+  "scenario": {
+    "acta2": "0.2.0-pilot",
+    "kind": "stop-gate",
+    "skill": "build-with-notes",
+    "artifactKind": "implementation-session",
+    "initiative": "tag-filter",
+    "title": "Build with notes",
+    "question": "A mid-session request contradicts the approved spec's non-goals — resolve the STOP gate before Slice 4 continues?",
+    "sourceRevision": "a8b083705553550eda289ddf9cf1d028df907682",
+    "inputs": [
+      ".agent-work/tag-filter/change-blueprint/specification.md",
+      ".agent-work/tag-filter/change-blueprint/implementation-plan.md",
+      ".agent-work/tag-filter/three-code-paths/code-paths.md",
+      "src/catalog.mjs",
+      "test/catalog.test.mjs"
+    ],
+    "unresolved": [
+      "unknown-tag URL fallback needs a membership check before Slice 4 renders",
+      "control style, density, and empty-state copy remain with interface-directions"
+    ],
+    "gate": {
+      "id": "STOP-01",
+      "title": "Remote tag-suggestion API contradicts the approved non-goals",
+      "reason": "The approved specification lists \"no network calls; the 3-skill catalog is static\" as a non-goal. Mid-session you asked to also fetch tag suggestions from a remote API. Building that now would silently widen the accepted scope, so the plan is paused before Slice 4.",
+      "options": [
+        {
+          "id": "reject-addition",
+          "label": "Reject the addition, continue the approved plan",
+          "consequence": "Slices 4 and 5 proceed as specified; the remote-API idea is logged as unresolved, not built."
+        },
+        {
+          "id": "revise-blueprint",
+          "label": "Accept the addition, reopen change-blueprint",
+          "consequence": "The build pauses and change-blueprint reopens to respec scope and non-goals before any code for it is written."
+        },
+        {
+          "id": "pause-session",
+          "label": "Park the whole session",
+          "consequence": "All work stops and state is saved as-is; nothing further is built until the session is explicitly resumed."
+        }
+      ]
+    },
+    "entries": [
+      {
+        "id": "e1",
+        "type": "plan-confirmed",
+        "time": "13:48",
+        "title": "Approved 5-slice plan loaded",
+        "body": "The implementation plan from change-blueprint was confirmed: five vertical slices building tag filtering on the functional-core shape from three-code-paths."
+      },
+      {
+        "id": "e2",
+        "type": "check",
+        "time": "13:55",
+        "title": "Baseline suite green before edits",
+        "body": "node --test ran clean on the untouched tree to establish a red/green baseline.",
+        "state": "pass"
+      },
+      {
+        "id": "e3",
+        "type": "plan-confirmed",
+        "time": "14:02",
+        "title": "Slice 1 — pure filterByTag done",
+        "body": "filterByTag(skills, tag) landed test-first as a plain importable function with its own assertions."
+      },
+      {
+        "id": "e4",
+        "type": "check",
+        "time": "14:09",
+        "title": "Slice 1 checks",
+        "body": "Four assertions cover the null-tag, matching-tag, and no-match cases.",
+        "state": "pass"
+      },
+      {
+        "id": "e5",
+        "type": "plan-confirmed",
+        "time": "14:18",
+        "title": "Slice 2 — pure parseTagFromSearch done",
+        "body": "parseTagFromSearch(search) reads the single ?tag= param via URLSearchParams and returns tag or null."
+      },
+      {
+        "id": "e6",
+        "type": "discovery",
+        "time": "14:26",
+        "title": "Existing visibleSkills() already sorts",
+        "body": "The catalog's visibleSkills() sorts before returning, so filterByTag must run before the sort to keep ordering stable."
+      },
+      {
+        "id": "e7",
+        "type": "plan-confirmed",
+        "time": "14:34",
+        "title": "Slice 3 — static markup done",
+        "body": "The no-JS catalog list renders every skill with its tags so the page is complete before any script runs."
+      },
+      {
+        "id": "e8",
+        "type": "check",
+        "time": "14:38",
+        "title": "Checks after Slice 3",
+        "body": "Twelve node --test assertions pass; typecheck is clean.",
+        "state": "pass"
+      },
+      {
+        "id": "e9",
+        "type": "deviation",
+        "time": "14:47",
+        "title": "Unknown-tag fallback needs a membership check",
+        "body": "Slice 4 would render an empty list for an unknown ?tag=; the spec is silent on whether that should fall back to the full catalog.",
+        "needsHuman": true
+      },
+      {
+        "id": "e10",
+        "type": "stop",
+        "time": "14:52",
+        "title": "STOP-01 — remote tag-suggestion API is out of the approved scope",
+        "body": "The mid-session request to fetch tag suggestions from a remote API contradicts an approved non-goal, so building is paused for a decision.",
+        "needsHuman": true
+      }
+    ],
+    "slices": {
+      "done": 3,
+      "total": 5,
+      "current": "Slice 4 — URL-driven filter wiring"
+    },
+    "checks": [
+      {
+        "label": "node --test",
+        "state": "pass",
+        "detail": "12 assertions pass"
+      },
+      {
+        "label": "typecheck",
+        "state": "pass",
+        "detail": "clean"
+      }
+    ],
+    "nextAction": "Work is paused at STOP-01; no further slices run until the gate resolves.",
+    "files": [
+      "src/catalog.mjs",
+      "src/url-tag.mjs",
+      "src/app.mjs",
+      "test/catalog.test.mjs"
+    ]
+  },
+  "accepted": {
+    "status": "approved",
+    "stamp": "Approved — STOP-01 resolved: reject the addition",
+    "recordTitle": "Implementation session: tag filtering, STOP-01 resolved",
+    "summary": "STOP-01 was resolved by rejecting the mid-session remote tag-suggestion request, and the resolution was explicitly accepted in chat. Three of five slices were green at the pause; the approved plan resumes with Slices 4 and 5. The remote-API idea is preserved as an unresolved item, not built. No production behavior was changed by this record.",
+    "canonicalPath": ".agent-work/tag-filter/build-with-notes/session.md",
+    "acceptedVia": "explicit chat confirmation after candidate export",
+    "decisions": [
+      {
+        "id": "STOP-01",
+        "selection": "reject-addition",
+        "rationale": "The remote tag-suggestion API contradicts an approved non-goal; widening scope mid-build would bypass the change-blueprint gates. Keep the approved 5-slice plan and log the idea as unresolved.",
+        "acceptedVia": "chat: \"reject the remote API, continue the plan\" after reviewing the candidate export"
+      }
+    ],
+    "exampleWorking": {
+      "resolution": "reject-addition",
+      "rationale": "The remote tag-suggestion API contradicts an approved non-goal; widening scope mid-build would bypass the change-blueprint gates. Keep the approved 5-slice plan and log the idea as unresolved."
+    },
+    "canonicalBody": "STOP-01 resolved: the remote tag-suggestion API is rejected as out of the approved scope, and the approved five-slice plan continues from Slice 4. The deviation about unknown-tag URL fallback remains open and must be answered before Slice 4 renders. Slices 1-3 (pure filterByTag, pure parseTagFromSearch, static markup) were green at the pause; twelve node --test assertions passed and typecheck was clean. This record reflects the accepted resolution only; the live board that carried the open gate is now stale."
+  }
+}

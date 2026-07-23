@@ -1,0 +1,24 @@
+{
+  "acta_protocol": "0.2",
+  "payload": "candidate",
+  "artifact_kind": "code-path-decision",
+  "producer_skill": "three-code-paths",
+  "initiative": "tag-filter",
+  "instrument": "decision",
+  "status": "candidate-ready",
+  "source_revision": "a8b083705553550eda289ddf9cf1d028df907682",
+  "inputs": [
+    ".agent-work/tag-filter/make-me-realize/realization.md",
+    "src/catalog.mjs",
+    "index.html",
+    "test/catalog.test.mjs"
+  ],
+  "unresolved": [
+    "control style, density, and empty-state copy belong to interface-directions"
+  ],
+  "selection": {
+    "option": "a",
+    "label": "Functional core, thin shell",
+    "rationale": "Only shape with no tension against the Node-only test constraint; matches the existing pure-function idiom."
+  }
+}

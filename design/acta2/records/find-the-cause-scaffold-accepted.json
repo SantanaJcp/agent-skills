@@ -1,0 +1,23 @@
+{
+ "status": "approved",
+ "stamp": "ACCEPTED",
+ "acceptedVia": "chat — diagnosis confirmed after the board was judged",
+ "recordTitle": "Accepted diagnosis",
+ "summary": "One paragraph: the validated cause and how the others were falsified.",
+ "canonicalPath": "diagnoses/symptom-slug.md",
+ "decisions": [
+  {
+   "id": "diagnosis",
+   "selection": "record-diagnosis",
+   "rationale": "Why the surviving hypothesis survived.",
+   "acceptedVia": "chat — explicit confirmation"
+  }
+ ],
+ "exampleWorking": {
+  "marks": {
+   "h-example": "validated"
+  },
+  "conclusion": "The diagnosis, naming the validated cause."
+ },
+ "canonicalBody": "# Accepted diagnosis\n\nValidated cause plus the falsification evidence for the rest."
+}

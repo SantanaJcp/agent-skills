@@ -1,0 +1,21 @@
+{
+ "status": "approved",
+ "stamp": "ACCEPTED",
+ "acceptedVia": "chat 2026-07-23 — candidate pasted and confirmed after comparing the three dependency diagrams",
+ "recordTitle": "Catalog deepening: give the empty state a home (direction B)",
+ "summary": "Direction B accepted: extract the accepted empty state from app.mjs glue into a named, directly tested empty-state.mjs. Its change-blueprint seed carries forward; directions A and C are preserved with their reopening conditions.",
+ "canonicalPath": "architecture/catalog-deepening.md",
+ "decisions": [
+  {
+   "id": "deepening-direction",
+   "selection": "b",
+   "rationale": "The empty state is the one accepted design living as untested glue; naming it turns chip drift into a test failure.",
+   "acceptedVia": "chat 2026-07-23 — explicit confirmation"
+  }
+ ],
+ "exampleWorking": {
+  "selected": "b",
+  "rationale": "The empty state is the one accepted design living as untested glue; naming it turns chip drift into a test failure."
+ },
+ "canonicalBody": "# Catalog deepening — accepted direction\n\nDirection B: extract emptyState(tag) into empty-state.mjs with direct\ntests asserting the chip set equals the real tag set. Blueprint seed\nhanded to change-blueprint. Directions A (data/behavior split) and C\n(fold url-tag) preserved with change conditions."
+}

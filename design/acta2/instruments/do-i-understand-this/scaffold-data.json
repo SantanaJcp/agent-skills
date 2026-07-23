@@ -1,0 +1,151 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "quiz",
+ "decisionId": "understanding-check",
+ "acceptanceToken": "record-gaps",
+ "skill": "do-i-understand-this",
+ "artifactKind": "understanding-check",
+ "initiative": "initiative-slug",
+ "title": "Do I understand this",
+ "question": "Do you understand what this change actually did?",
+ "lede": "Check your model of the completed change against what actually landed.",
+ "sourceRevision": null,
+ "inputs": [
+  "the files the change touched"
+ ],
+ "facts": [
+  {
+   "value": "2",
+   "label": "files changed"
+  },
+  {
+   "value": "+120",
+   "label": "lines added",
+   "tone": "plus"
+  },
+  {
+   "value": "−15",
+   "label": "lines removed",
+   "tone": "minus"
+  }
+ ],
+ "model": {
+  "lede": "Where the behavior comes from now, versus before the change.",
+  "before": {
+   "label": "Before the change",
+   "flow": {
+    "nodes": [
+     {
+      "id": "in",
+      "label": "old entry point",
+      "col": 0,
+      "row": 0
+     },
+     {
+      "id": "out",
+      "label": "old result",
+      "col": 1,
+      "row": 0,
+      "tone": "dark"
+     }
+    ],
+    "edges": [
+     {
+      "from": "in",
+      "to": "out",
+      "label": "old path"
+     }
+    ]
+   }
+  },
+  "after": {
+   "label": "After the change",
+   "flow": {
+    "nodes": [
+     {
+      "id": "in",
+      "label": "new entry point",
+      "col": 0,
+      "row": 0
+     },
+     {
+      "id": "core",
+      "label": "new seam",
+      "col": 1,
+      "row": 0,
+      "tone": "accent"
+     },
+     {
+      "id": "out",
+      "label": "result",
+      "col": 1,
+      "row": 1,
+      "tone": "dark"
+     }
+    ],
+    "edges": [
+     {
+      "from": "in",
+      "to": "core",
+      "label": "input"
+     },
+     {
+      "from": "core",
+      "to": "out",
+      "label": "output",
+      "tone": "accent"
+     }
+    ]
+   }
+  }
+ },
+ "behaviorsTitle": "Behaviors a diff skim won't tell you",
+ "behaviorsLede": "Each card grounds one non-obvious behavior in real locations.",
+ "behaviors": [
+  {
+   "title": "A real non-obvious behavior",
+   "what": "What actually happens.",
+   "why": "Why it was built that way.",
+   "where": [
+    "path/file.mjs:12"
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "id": "q1",
+   "prompt": "A question you would have to answer during review or an incident",
+   "options": [
+    {
+     "id": "a",
+     "label": "A plausible wrong answer"
+    },
+    {
+     "id": "b",
+     "label": "The evidenced right answer"
+    }
+   ],
+   "answer": "b",
+   "explanation": "Why b is right, citing the evidence.",
+   "gap": "named gap if missed"
+  },
+  {
+   "id": "q2",
+   "prompt": "A second decision-relevant question",
+   "options": [
+    {
+     "id": "a",
+     "label": "The evidenced right answer"
+    },
+    {
+     "id": "b",
+     "label": "A plausible wrong answer"
+    }
+   ],
+   "answer": "a",
+   "explanation": "Why a is right.",
+   "gap": "second named gap"
+  }
+ ],
+ "unresolved": []
+}

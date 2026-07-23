@@ -1,0 +1,36 @@
+{
+  "acta_protocol": "0.2",
+  "payload": "candidate",
+  "artifact_kind": "learning-session",
+  "producer_skill": "learning-workbench",
+  "initiative": "url-as-state",
+  "instrument": "quiz",
+  "status": "candidate-ready",
+  "source_revision": null,
+  "inputs": [
+    "feature-xray record — tag filtering, verified",
+    "find-the-cause record — bfcache diagnosis",
+    "MDN — History API and pageshow",
+    "spec.md — tag-filter scope"
+  ],
+  "unresolved": [
+    "session 3 candidate topic: applying the pattern to multi-parameter state"
+  ],
+  "answers": {
+    "q1": "a",
+    "q2": "b",
+    "q3": "b",
+    "q4": "b"
+  },
+  "score": {
+    "correct": 3,
+    "total": 4
+  },
+  "gaps": [
+    {
+      "question": "q3",
+      "gap": "03 · History traversal is not a load"
+    }
+  ],
+  "reflection": "The entry-routes framing finally made bfcache feel structural instead of trivia; the miss confirms it needs one more pass."
+}

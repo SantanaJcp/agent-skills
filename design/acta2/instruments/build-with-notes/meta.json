@@ -1,0 +1,16 @@
+{
+  "skill": "build-with-notes",
+  "kind": "stop-gate",
+  "title": "Build with notes",
+  "instrumentName": "session-board",
+  "brief": {
+    "humanQuestion": "Work has paused at a STOP gate — how should the deviation be resolved before building continues?",
+    "cognitiveAction": "monitor",
+    "primaryRepresentation": "a live session board: status tiles, a dominant STOP gate panel, and a filterable typed timeline",
+    "humanAction": "read the current state, choose a gate resolution, optionally add a rationale, filter the timeline for what needs attention",
+    "consequence": "choosing a resolution flips working status and rewrites the candidate export; nothing resumes until the resolution is accepted in chat",
+    "firstViewport": "what is happening now, whether work may continue, what needs attention, and what each resolution would change",
+    "export": "candidate Markdown/JSON with the proposed STOP resolution, rationale, and unresolved items",
+    "noJs": "tiles, gate, timeline, and checks stay readable; the controls are inert — resolve by replying in chat"
+  }
+}

@@ -1,0 +1,93 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "decision",
+ "decisionId": "gate-a-spec",
+ "skill": "change-blueprint",
+ "artifactKind": "change-specification",
+ "initiative": "tag-filter",
+ "title": "Change blueprint — specification",
+ "question": "Does this specification say what we will build — and what we will not?",
+ "lede": "Gate A reviews the shape of the change before any plan exists. Approving it locks scope and non-goals; the implementation plan (Gate B) is written only after this gate closes.",
+ "gatePhase": "spec",
+ "gateLabel": "Gate A — specification",
+ "gateQuestion": "Approve this specification as the contract for the tag-filter change?",
+ "sourceRevision": "a8b083705553550eda289ddf9cf1d028df907682",
+ "inputs": [
+  "make-me-realize interview notes — tag-filter frontier",
+  "index.html — current static catalog",
+  "src/catalog.mjs — visibleSkills() idiom"
+ ],
+ "facts": [
+  {
+   "value": "5",
+   "label": "scope items",
+   "sub": "3 in · 2 companions"
+  },
+  {
+   "value": "4",
+   "label": "non-goals",
+   "sub": "explicitly out"
+  },
+  {
+   "value": "6",
+   "label": "acceptance criteria",
+   "sub": "all checkable"
+  },
+  {
+   "value": "3",
+   "label": "assumptions",
+   "sub": "verified before Gate B"
+  }
+ ],
+ "scope": [
+  "Filter the skills catalog by a single ?tag= query parameter",
+  "Pure filterByTag(skills, tag) importable by Node tests and the browser",
+  "Tag chips on each catalog row become filter links",
+  "No-JS renders the full, unfiltered catalog",
+  "Unknown tags render the empty state chosen in interface-directions"
+ ],
+ "nonGoals": [
+  "No multi-tag or free-text search of any kind",
+  "No network calls; the 3-skill catalog stays static",
+  "No URL state beyond the single ?tag= parameter",
+  "No persistence of the last-used filter"
+ ],
+ "acceptanceCriteria": [
+  "node --test passes with filterByTag covered for null, matching, and no-match tags",
+  "Opening ?tag=git shows exactly the git-tagged skills",
+  "Opening ?tag=unknown shows the accepted empty state, not a blank page",
+  "Disabling JavaScript shows the complete catalog with working chip links",
+  "Back/forward restores the previous filter state",
+  "No new runtime dependency enters package.json"
+ ],
+ "assumptions": [
+  "The catalog stays small enough (≤ 20 skills) that client-side filtering is instant",
+  "visibleSkills() remains the single source of catalog data",
+  "Tag names remain single lowercase words"
+ ],
+ "options": [
+  {
+   "id": "approve-spec",
+   "label": "Approve the specification",
+   "consequence": "Scope and non-goals lock; change-blueprint proceeds to the implementation plan (Gate B)."
+  },
+  {
+   "id": "request-changes",
+   "label": "Request changes",
+   "consequence": "The spec reopens with your notes; nothing downstream starts until it is re-reviewed."
+  },
+  {
+   "id": "reject-spec",
+   "label": "Reject the direction",
+   "consequence": "The change is shelved; the interview notes and this draft are preserved for a future attempt."
+  }
+ ],
+ "recommendation": {
+  "option": "approve-spec",
+  "reason": "Scope matches the interview frontier exactly; every criterion is mechanically checkable."
+ },
+ "unresolved": [
+  "empty-state microcopy finalization is tracked in interface-directions"
+ ],
+ "openStatusLabel": "Gate A open — no resolution proposed yet"
+}

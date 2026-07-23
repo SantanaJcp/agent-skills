@@ -1,0 +1,488 @@
+{
+  "scenario": {
+    "acta2": "0.2.0-pilot",
+    "kind": "checklist",
+    "decisionId": "figure-sheet",
+    "acceptanceToken": "accept-figures",
+    "skill": "draw-it-in-svg",
+    "artifactKind": "figure-sheet",
+    "initiative": "tag-filter",
+    "title": "Draw it in SVG — tag-filter figures",
+    "question": "Which of these three documentation figures are approved for reuse?",
+    "lede": "Three standalone figures for the tag-filter documentation, authored as vector data. Each carries its own title and description, renders identically everywhere, and ships with copyable source.",
+    "sourceRevision": "a8b083705553550eda289ddf9cf1d028df907682",
+    "inputs": [
+      "feature-xray record — verified system map",
+      "interface-directions record — accepted empty state",
+      "docs/architecture.md — module boundaries"
+    ],
+    "conclusionRequired": false,
+    "verdicts": [
+      {
+        "id": "approve",
+        "label": "Approve",
+        "tone": "positive"
+      },
+      {
+        "id": "revise",
+        "label": "Needs revision",
+        "tone": "warning"
+      }
+    ],
+    "items": [
+      {
+        "id": "fig-dataflow",
+        "label": "URL to DOM, in one line",
+        "figure": {
+          "id": "fig-dataflow",
+          "title": "Tag filtering: URL to DOM",
+          "desc": "Three boxes in a row — the URL parameter, the pure functions, and the catalog DOM — connected by two arrows; the pure middle box is emphasized.",
+          "viewW": 640,
+          "viewH": 180,
+          "caption": "The whole feature is one left-to-right sentence: URL in, pure functions, DOM out.",
+          "elements": [
+            {
+              "el": "rect",
+              "x": 24,
+              "y": 58,
+              "width": 168,
+              "height": 64,
+              "rx": 12,
+              "fill": "var(--acta-paper)",
+              "stroke": "var(--acta-rule-strong)",
+              "stroke-width": 1.5
+            },
+            {
+              "el": "text",
+              "x": 108,
+              "y": 85,
+              "font-size": 13,
+              "font-weight": 600,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink)",
+              "text": "?tag=git"
+            },
+            {
+              "el": "text",
+              "x": 108,
+              "y": 103,
+              "font-size": 11,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink-muted)",
+              "text": "the only state"
+            },
+            {
+              "el": "polyline",
+              "points": "192,90 232,90",
+              "fill": "none",
+              "stroke": "var(--acta-rule-strong)",
+              "stroke-width": 1.5
+            },
+            {
+              "el": "polygon",
+              "points": "239,90 229,85 229,95",
+              "fill": "var(--acta-rule-strong)"
+            },
+            {
+              "el": "rect",
+              "x": 240,
+              "y": 46,
+              "width": 176,
+              "height": 88,
+              "rx": 12,
+              "fill": "var(--acta-action-tint)",
+              "stroke": "var(--acta-action)",
+              "stroke-width": 1.5
+            },
+            {
+              "el": "text",
+              "x": 328,
+              "y": 78,
+              "font-size": 13,
+              "font-weight": 600,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink)",
+              "text": "parse → filter"
+            },
+            {
+              "el": "text",
+              "x": 328,
+              "y": 96,
+              "font-size": 11,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink-muted)",
+              "text": "pure functions"
+            },
+            {
+              "el": "text",
+              "x": 328,
+              "y": 114,
+              "font-size": 11,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink-muted)",
+              "text": "tested in Node"
+            },
+            {
+              "el": "polyline",
+              "points": "416,90 456,90",
+              "fill": "none",
+              "stroke": "var(--acta-rule-strong)",
+              "stroke-width": 1.5
+            },
+            {
+              "el": "polygon",
+              "points": "463,90 453,85 453,95",
+              "fill": "var(--acta-rule-strong)"
+            },
+            {
+              "el": "rect",
+              "x": 464,
+              "y": 58,
+              "width": 152,
+              "height": 64,
+              "rx": 12,
+              "fill": "#22252B",
+              "stroke": "#22252B",
+              "stroke-width": 1.5
+            },
+            {
+              "el": "text",
+              "x": 540,
+              "y": 85,
+              "font-size": 13,
+              "font-weight": 600,
+              "text-anchor": "middle",
+              "fill": "#E7E5DE",
+              "text": "catalog DOM"
+            },
+            {
+              "el": "text",
+              "x": 540,
+              "y": 103,
+              "font-size": 11,
+              "text-anchor": "middle",
+              "fill": "#9DA2AC",
+              "text": "replaceChildren"
+            },
+            {
+              "el": "text",
+              "x": 24,
+              "y": 30,
+              "font-size": 11,
+              "fill": "var(--acta-ink-muted)",
+              "text": "every navigation, including back/forward, replays this line"
+            }
+          ]
+        }
+      },
+      {
+        "id": "fig-decision",
+        "label": "The one branch",
+        "figure": {
+          "id": "fig-decision",
+          "title": "Unknown tags are a state, not an error",
+          "desc": "A diamond asks whether any skill carries the requested tag; yes leads to the matching rows, no leads to the explain-and-suggest empty state.",
+          "viewW": 640,
+          "viewH": 250,
+          "caption": "The flow's only decision: known tags render rows, unknown tags render the accepted empty state.",
+          "elements": [
+            {
+              "el": "polygon",
+              "points": "320,22 408,68 320,114 232,68",
+              "fill": "var(--acta-warning-tint)",
+              "stroke": "var(--acta-warning)",
+              "stroke-width": 1.5
+            },
+            {
+              "el": "text",
+              "x": 320,
+              "y": 64,
+              "font-size": 13,
+              "font-weight": 600,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink)",
+              "text": "any skill"
+            },
+            {
+              "el": "text",
+              "x": 320,
+              "y": 80,
+              "font-size": 13,
+              "font-weight": 600,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink)",
+              "text": "tagged this?"
+            },
+            {
+              "el": "polyline",
+              "points": "268,95 176,140 176,158",
+              "fill": "none",
+              "stroke": "var(--acta-positive)",
+              "stroke-width": 1.5
+            },
+            {
+              "el": "polygon",
+              "points": "176,165 171,155 181,155",
+              "fill": "var(--acta-positive)"
+            },
+            {
+              "el": "text",
+              "x": 200,
+              "y": 128,
+              "font-size": 11,
+              "font-weight": 600,
+              "fill": "var(--acta-positive)",
+              "text": "yes"
+            },
+            {
+              "el": "polyline",
+              "points": "372,95 464,140 464,158",
+              "fill": "none",
+              "stroke": "var(--acta-danger)",
+              "stroke-width": 1.5,
+              "stroke-dasharray": "5 4"
+            },
+            {
+              "el": "polygon",
+              "points": "464,165 459,155 469,155",
+              "fill": "var(--acta-danger)"
+            },
+            {
+              "el": "text",
+              "x": 428,
+              "y": 128,
+              "font-size": 11,
+              "font-weight": 600,
+              "fill": "var(--acta-danger)",
+              "text": "no"
+            },
+            {
+              "el": "rect",
+              "x": 84,
+              "y": 166,
+              "width": 184,
+              "height": 60,
+              "rx": 12,
+              "fill": "var(--acta-positive-tint)",
+              "stroke": "var(--acta-positive)",
+              "stroke-width": 1.5
+            },
+            {
+              "el": "text",
+              "x": 176,
+              "y": 192,
+              "font-size": 12.5,
+              "font-weight": 600,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink)",
+              "text": "matching rows"
+            },
+            {
+              "el": "text",
+              "x": 176,
+              "y": 209,
+              "font-size": 11,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink-muted)",
+              "text": "order preserved"
+            },
+            {
+              "el": "rect",
+              "x": 360,
+              "y": 166,
+              "width": 208,
+              "height": 60,
+              "rx": 12,
+              "fill": "var(--acta-danger-tint)",
+              "stroke": "var(--acta-danger)",
+              "stroke-width": 1.5
+            },
+            {
+              "el": "text",
+              "x": 464,
+              "y": 192,
+              "font-size": 12.5,
+              "font-weight": 600,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink)",
+              "text": "empty state"
+            },
+            {
+              "el": "text",
+              "x": 464,
+              "y": 209,
+              "font-size": 11,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink-muted)",
+              "text": "explains + suggests tags"
+            }
+          ]
+        }
+      },
+      {
+        "id": "fig-seams",
+        "label": "Module seams",
+        "figure": {
+          "id": "fig-seams",
+          "title": "Dependency direction of the tag filter",
+          "desc": "Three stacked layers — browser glue on top, pure core in the middle, static baseline at the bottom — with a single downward dependency arrow beside them.",
+          "viewW": 640,
+          "viewH": 260,
+          "caption": "Each layer depends only on the one below it; the static page at the bottom depends on nothing.",
+          "elements": [
+            {
+              "el": "rect",
+              "x": 140,
+              "y": 24,
+              "width": 400,
+              "height": 56,
+              "rx": 12,
+              "fill": "var(--acta-action-tint)",
+              "stroke": "var(--acta-action)",
+              "stroke-width": 1.5
+            },
+            {
+              "el": "text",
+              "x": 340,
+              "y": 48,
+              "font-size": 13,
+              "font-weight": 600,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink)",
+              "text": "src/app.mjs"
+            },
+            {
+              "el": "text",
+              "x": 340,
+              "y": 66,
+              "font-size": 11,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink-muted)",
+              "text": "browser glue — the only DOM writer"
+            },
+            {
+              "el": "rect",
+              "x": 140,
+              "y": 100,
+              "width": 400,
+              "height": 56,
+              "rx": 12,
+              "fill": "var(--acta-paper)",
+              "stroke": "var(--acta-rule-strong)",
+              "stroke-width": 1.5
+            },
+            {
+              "el": "text",
+              "x": 340,
+              "y": 124,
+              "font-size": 13,
+              "font-weight": 600,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink)",
+              "text": "catalog.mjs · url-tag.mjs"
+            },
+            {
+              "el": "text",
+              "x": 340,
+              "y": 142,
+              "font-size": 11,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink-muted)",
+              "text": "pure core — imported by tests and glue"
+            },
+            {
+              "el": "rect",
+              "x": 140,
+              "y": 176,
+              "width": 400,
+              "height": 56,
+              "rx": 12,
+              "fill": "var(--acta-tint)",
+              "stroke": "var(--acta-rule-strong)",
+              "stroke-width": 1.5
+            },
+            {
+              "el": "text",
+              "x": 340,
+              "y": 200,
+              "font-size": 13,
+              "font-weight": 600,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink)",
+              "text": "index.html"
+            },
+            {
+              "el": "text",
+              "x": 340,
+              "y": 218,
+              "font-size": 11,
+              "text-anchor": "middle",
+              "fill": "var(--acta-ink-muted)",
+              "text": "complete no-JS baseline"
+            },
+            {
+              "el": "line",
+              "x1": 96,
+              "y1": 36,
+              "x2": 96,
+              "y2": 212,
+              "stroke": "var(--acta-rule-strong)",
+              "stroke-width": 1.5
+            },
+            {
+              "el": "polygon",
+              "points": "96,220 91,210 101,210",
+              "fill": "var(--acta-rule-strong)"
+            },
+            {
+              "el": "text",
+              "x": 88,
+              "y": 120,
+              "font-size": 11,
+              "text-anchor": "end",
+              "fill": "var(--acta-ink-muted)",
+              "text": "depends"
+            },
+            {
+              "el": "text",
+              "x": 88,
+              "y": 136,
+              "font-size": 11,
+              "text-anchor": "end",
+              "fill": "var(--acta-ink-muted)",
+              "text": "on ↓"
+            }
+          ]
+        }
+      }
+    ],
+    "unresolved": [
+      "whether the decision figure should also show the null-tag shortcut"
+    ]
+  },
+  "accepted": {
+    "status": "approved",
+    "stamp": "ACCEPTED",
+    "acceptedVia": "chat 2026-07-23 — per-figure verdicts pasted and confirmed",
+    "recordTitle": "Tag-filter figure sheet — two approved, one revised",
+    "summary": "The data-flow and decision figures are approved for the documentation; the module-seams figure returns for revision with lighter dependency annotation.",
+    "canonicalPath": "figures/tag-filter-sheet.md",
+    "decisions": [
+      {
+        "id": "figure-sheet",
+        "selection": "accept-figures",
+        "rationale": "Data-flow and decision read at a glance; the seams arrow annotation needs less weight.",
+        "acceptedVia": "chat 2026-07-23 — explicit confirmation"
+      }
+    ],
+    "exampleWorking": {
+      "marks": {
+        "fig-dataflow": "approve",
+        "fig-decision": "approve",
+        "fig-seams": "revise"
+      },
+      "conclusion": "Seams figure: thin the side arrow and mute its labels; the layers themselves are right."
+    },
+    "canonicalBody": "# Tag-filter figure sheet\n\nApproved: URL-to-DOM data flow; the one branch (unknown tags are a state,\nnot an error). Revision: module seams — dependency annotation reads heavier\nthan the layers it describes."
+  }
+}

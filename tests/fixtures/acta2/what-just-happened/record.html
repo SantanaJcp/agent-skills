@@ -1,0 +1,308 @@
+<!-- acta2-materialized: v0.2.0-pilot record=what-just-happened sha256=6d23b271136be6ac75670c4c64e60f7bacecf1080418141489b92dc11068af6e; do not edit by hand — regenerate from canonical JSON -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What just happened — INC-0721 — record · Acta</title>
+<style>
+/* Acta v2 record foundation — durable, print-first documents generated only
+   from accepted canonical state. Records keep Acta's paper identity (white
+   page, notarial provenance) while sharing the v2 type scale; the warm
+   canvas belongs to ACTIVE instruments only. Per-skill record topology CSS
+   is appended after this file. */
+
+:root{
+  --acta-paper:#FDFDFB; --acta-tint:#F1EDE0; --acta-tint-strong:#E7E1D1;
+  --acta-ink:#1D1F24; --acta-ink-muted:#50545C;
+  --acta-rule:#D8D6CC; --acta-rule-strong:#8E8B7E; --acta-rule-faint:#E7E5DB;
+  --acta-action:#2B4C7E; --acta-action-tint:#E9EEF5;
+  --acta-positive:#276140; --acta-positive-tint:#E8F0E9;
+  --acta-warning:#7A5600; --acta-warning-tint:#F6EFDC;
+  --acta-danger:#8C2F23; --acta-danger-tint:#F6E9E6;
+  --acta-code-bg:#22252B; --acta-code-head:#1B1D22; --acta-code-rule:#383B44;
+  --acta-code-ink:#E7E5DE; --acta-code-muted:#9DA2AC;
+  --acta-font-text:Charter,"Iowan Old Style","Palatino Linotype",Georgia,"Times New Roman",serif;
+  --acta-font-data:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --acta-font-ui:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,sans-serif;
+  --acta-radius:2px; --acta-radius-lg:14px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--acta-paper);color:var(--acta-ink);font:16px/1.6 var(--acta-font-ui)}
+code,pre,kbd,samp{font-family:var(--acta-font-data)}
+pre{margin:0;white-space:pre-wrap;word-break:break-word}
+a{color:var(--acta-action)}
+h1,h2,h3{text-wrap:balance}
+p{text-wrap:pretty}
+:focus-visible{outline:2px solid var(--acta-action);outline-offset:2px}
+.skip{position:absolute;left:-9999px}
+.skip:focus{position:fixed;left:12px;top:12px;background:var(--acta-action);color:#fff;padding:8px 14px;z-index:99;font:600 13px/1 var(--acta-font-ui)}
+.codewrap,.tablewrap,.flowwrap{overflow-x:auto;position:relative}
+.plotwrap{overflow-x:auto;position:relative}
+.visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+.acta-shell{max-width:960px;margin:0 auto;padding:0 clamp(16px,4vw,44px) var(--sp-7)}
+
+/* ---- notarial provenance header ---- */
+.acta-prov{margin:0;padding:14px 0;border-bottom:1px solid var(--acta-rule);display:flex;gap:6px 22px;flex-wrap:wrap;font:12px/1.5 var(--acta-font-data);color:var(--acta-ink-muted)}
+.acta-prov>div{display:flex;gap:8px;min-width:0}
+.acta-prov dt{font-weight:600;text-transform:uppercase;letter-spacing:.1em;font-size:10px;align-self:center}
+.acta-prov dd{margin:0;overflow-wrap:anywhere}
+.acta-prov-note{font:12px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin:10px 0 0;max-width:90ch}
+
+/* ---- context block ---- */
+.acta-context{margin:var(--sp-6) 0 var(--sp-6)}
+.acta-eyebrow{font:600 11.5px/1.4 var(--acta-font-data);letter-spacing:.12em;text-transform:uppercase;color:var(--acta-ink-muted);margin:0 0 10px}
+.acta-stamp{display:inline-block;border:1.5px solid var(--acta-positive);color:var(--acta-positive);border-radius:var(--acta-radius);padding:2px 9px;font:600 10.5px/1.3 var(--acta-font-data);letter-spacing:.08em;text-transform:uppercase}
+.acta-title{font:400 32px/1.25 var(--acta-font-text);margin:0 0 var(--sp-3);max-width:46ch}
+.acta-lede{font-size:16.5px;line-height:1.6;color:var(--acta-ink-muted);margin:0;max-width:70ch}
+
+/* ---- sections ---- */
+.acta-section{margin:var(--sp-7) 0 0}
+.acta-h2{font:600 22px/1.3 var(--acta-font-text);margin:0 0 var(--sp-4);border-bottom:1px solid var(--acta-rule);padding-bottom:12px}
+.acta-h3{font:600 17px/1.35 var(--acta-font-text);margin:var(--sp-5) 0 var(--sp-3)}
+.acta-section p{max-width:76ch}
+
+/* ---- shared record primitives ---- */
+.r-k{display:block;font:600 10.5px/1.4 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;color:var(--acta-ink-muted)}
+.r-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--sp-4);margin:var(--sp-5) 0}
+.r-fact{border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:14px 18px;min-width:0}
+.r-fact b{display:block;font:400 26px/1.15 var(--acta-font-text);font-variant-numeric:tabular-nums}
+.r-fact span{display:block;font:600 10.5px/1.5 var(--acta-font-data);letter-spacing:.08em;text-transform:uppercase;color:var(--acta-ink-muted);margin-top:6px}
+.r-fact small{display:block;font:12px/1.5 var(--acta-font-ui);color:var(--acta-ink-muted);margin-top:3px}
+.r-table{width:100%;border-collapse:collapse;font:14px/1.55 var(--acta-font-ui)}
+.r-table th,.r-table td{border:0;border-bottom:1px solid var(--acta-rule-faint);padding:10px 16px 10px 0;text-align:left;vertical-align:top}
+.r-table thead th{font:600 11px/1.4 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;color:var(--acta-ink-muted);border-bottom:1px solid var(--acta-rule-strong)}
+.r-table td.num,.r-table th.num{text-align:right;font-variant-numeric:tabular-nums}
+.r-chip{display:inline-block;border:1px solid var(--acta-rule);border-radius:var(--acta-radius-lg);background:var(--acta-tint);padding:2px 10px;font:500 11.5px/1.6 var(--acta-font-data);color:var(--acta-ink-muted)}
+.r-tagrow{display:flex;gap:10px;align-items:baseline;margin:6px 0}
+.r-tagrow .r-tag{flex:none;background:var(--acta-tint);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:3px 10px;font:600 10.5px/1.4 var(--acta-font-data);letter-spacing:.08em;text-transform:uppercase;color:var(--acta-ink-muted)}
+.r-tagrow .r-val{font:13px/1.6 var(--acta-font-data);color:var(--acta-ink-muted)}
+.r-loc{display:inline-block;border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius);background:var(--acta-tint);padding:1px 7px;font:11.5px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin:0 4px 4px 0}
+.r-aside{border-left:3px solid var(--acta-positive);background:var(--acta-positive-tint);padding:var(--sp-4) 20px;margin:var(--sp-5) 0;font-size:15px;line-height:1.6;max-width:88ch}
+.r-aside .r-k{color:var(--acta-positive);margin-bottom:6px}
+.r-warn{border-left:3px solid var(--acta-warning);background:var(--acta-warning-tint);padding:var(--sp-4) 20px;margin:var(--sp-5) 0;font-size:15px;line-height:1.6;max-width:88ch}
+.r-warn .r-k{color:var(--acta-warning);margin-bottom:6px}
+
+/* dark code islands (shared with instruments; records print them light) */
+.a2-code{background:var(--acta-code-bg);color:var(--acta-code-ink);border-radius:var(--acta-radius-lg);overflow:hidden}
+.a2-code .c-path{font:500 12px/1.5 var(--acta-font-data);letter-spacing:.02em;color:var(--acta-code-muted);background:var(--acta-code-head);border-bottom:1px solid var(--acta-code-rule);padding:8px 16px}
+.a2-code pre{white-space:pre;word-break:normal;overflow-x:auto;padding:14px 16px;font-size:12.5px;line-height:1.65;tab-size:2}
+.a2-code .tok-kw{color:#E8926F}
+.a2-code .tok-fn{color:#8FB6E3}
+.a2-code .tok-str{color:#A3C293}
+.a2-code .tok-num{color:#D9BC8C}
+.a2-code .tok-com{color:#8A9099;font-style:italic}
+
+/* ---- shared flow diagrams (lib/flow.mjs output) ---- */
+.flowd{display:block;width:100%;height:auto}
+.flowd text{font-family:var(--acta-font-data)}
+.flowd-caption{font:12.5px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin:10px 0 0;max-width:90ch}
+
+/* ---- sources & colophon ---- */
+.acta-sources{margin:0;padding-left:1.4em;font:13.5px/1.7 var(--acta-font-ui)}
+.acta-sources li{margin:0 0 6px}
+.acta-colophon{border-top:3px double var(--acta-rule-strong);margin-top:var(--sp-7);padding-top:var(--sp-4)}
+.acta-colophon p{font:12px/1.7 var(--acta-font-data);color:var(--acta-ink-muted);max-width:96ch}
+
+@media (max-width:719px){
+  .acta-prov{flex-direction:column;gap:4px}
+  .r-facts{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:479px){
+  .r-facts{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+@media print{
+  body{background:#fff;font-size:11pt}
+  .skip{display:none!important}
+  .acta-shell{max-width:none;padding:0}
+  .r-fact,.r-table,.r-aside,.r-warn,.a2-code{break-inside:avoid}
+  .a2-code{background:#fff;color:#000;border:1px solid #888}
+  .a2-code .c-path{background:#fff;color:#333;border-bottom:1px solid #888}
+  .a2-code pre{white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}
+  .a2-code pre span{color:inherit!important;font-style:normal}
+  a[href^="http"]::after{content:" (" attr(href) ")";font:9px/1 var(--acta-font-data);color:#555}
+}
+
+/* ---- what-just-happened record topology ---- */
+.wjh-chips{display:flex;gap:10px;flex-wrap:wrap;margin:calc(-1 * var(--sp-4)) 0 0}
+.wjh-chip{display:inline-block;border-radius:var(--acta-radius-lg);padding:3px 12px;font:600 12px/1.6 var(--acta-font-data);border:1px solid var(--acta-rule);color:var(--acta-ink-muted)}
+.wjh-chip.is-danger{border-color:var(--acta-danger);color:var(--acta-danger);background:var(--acta-danger-tint)}
+.wjh-chip.is-positive{border-color:var(--acta-positive);color:var(--acta-positive);background:var(--acta-positive-tint)}
+.wjh-tldr{background:var(--acta-code-bg);color:var(--acta-code-ink);border-radius:var(--acta-radius-lg);padding:18px 24px;margin:0 0 var(--sp-5)}
+.wjh-tldr .r-k{color:var(--acta-code-muted);margin-bottom:8px}
+.wjh-tldr p{margin:0;font-size:15.5px;line-height:1.65;max-width:none}
+.wjh-legend{font-size:13.5px;color:var(--acta-ink-muted);margin:0 0 var(--sp-4)}
+.wjh-timeline{margin:0;padding:0;list-style:none}
+.wjh-entry{display:grid;grid-template-columns:16px minmax(0,1fr);gap:0 16px;position:relative;padding:0 0 24px}
+.wjh-entry::before{content:"";position:absolute;left:7px;top:16px;bottom:-2px;width:1.5px;background:var(--acta-rule)}
+.wjh-entry:last-child::before{content:none}
+.wjh-dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--acta-rule-strong);background:var(--acta-paper);margin-top:4px;position:relative;z-index:1}
+.wjh-entry[data-type="hypothesis"] .wjh-dot{border-style:dashed}
+.wjh-entry[data-marker="impact"] .wjh-dot{border-color:var(--acta-danger);background:var(--acta-danger-tint)}
+.wjh-entry[data-marker="mitigated"] .wjh-dot{border-color:var(--acta-positive);background:var(--acta-positive-tint)}
+.wjh-entry[data-type="recovery"] .wjh-dot{border-color:var(--acta-action)}
+.wjh-entry-head{display:flex;gap:12px;align-items:baseline;margin:0}
+.wjh-time{font:600 12.5px/1.5 var(--acta-font-data);color:var(--acta-ink-muted);font-variant-numeric:tabular-nums}
+.wjh-type{font:600 10.5px/1.5 var(--acta-font-data);letter-spacing:.08em;text-transform:uppercase;color:var(--acta-ink-muted)}
+.wjh-entry[data-type="hypothesis"] .wjh-type{color:var(--acta-warning)}
+.wjh-entry[data-type="mitigation"] .wjh-type{color:var(--acta-positive)}
+.wjh-entry[data-type="recovery"] .wjh-type{color:var(--acta-action)}
+.wjh-entry-title{font:600 16px/1.45 var(--acta-font-ui);margin:3px 0 0}
+.wjh-entry-text{font-size:14.5px;line-height:1.6;color:var(--acta-ink-muted);margin:4px 0 0;max-width:78ch}
+.wjh-conditions{margin:0;padding:0;list-style:none;max-width:80ch}
+.wjh-conditions li{position:relative;padding:10px 0 10px 22px;border-bottom:1px solid var(--acta-rule-faint);font-size:15px;line-height:1.6}
+.wjh-conditions li:last-child{border-bottom:0}
+.wjh-conditions li::before{content:"";position:absolute;left:2px;top:19px;width:7px;height:7px;border-radius:50%;border:1.5px solid var(--acta-warning)}
+.wjh-followups{margin:0;padding:0;list-style:none;border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);overflow:hidden}
+.wjh-followups li{display:flex;gap:14px;align-items:baseline;padding:12px 20px;border-bottom:1px solid var(--acta-rule-faint);font-size:15px;line-height:1.6}
+.wjh-followups li:last-child{border-bottom:0}
+.wjh-followups li[data-state="done"]{color:var(--acta-ink-muted);text-decoration:line-through;text-decoration-color:var(--acta-rule-strong)}
+.wjh-state{flex:none;font:700 14px/1.5 var(--acta-font-data)}
+.wjh-followups li[data-state="done"] .wjh-state{color:var(--acta-positive)}
+@media print{.wjh-tldr{background:#fff;color:#000;border:1px solid #888}.wjh-tldr .r-k{color:#555}.wjh-entry{break-inside:avoid}}
+</style>
+</head>
+<body>
+<a class="skip" href="#acta-content">Skip to content</a>
+<div class="acta-shell">
+<header>
+<dl class="acta-prov">
+<div><dt>Artifact</dt><dd>What just happened — INC-0721 — accepted record</dd></div>
+<div><dt>Skill</dt><dd>what-just-happened</dd></div>
+<div><dt>Initiative</dt><dd>tag-filter</dd></div>
+<div><dt>Status</dt><dd>approved</dd></div>
+<div><dt>Source revision</dt><dd>a8b083705553550eda289ddf9cf1d028df907682</dd></div>
+</dl>
+<p class="acta-prov-note">Acta v0.2.0-pilot record · Generated from accepted canonical state (incidents/INC-0721.md) after explicit acceptance (chat 2026-07-23 — postmortem reviewed against the chat log and deploy history after stabilization) · Never generated from browser state.</p>
+<div class="acta-context">
+<p class="acta-eyebrow">dossier record · <span class="acta-stamp is-approved">ACCEPTED</span></p>
+<h1 class="acta-title">INC-0721 — shared links rendered a blank catalog</h1>
+<p class="acta-lede">Unknown-tag URLs rendered an unexplained empty list for 38 minutes because the glue collapsed &quot;no tag&quot; and &quot;unknown tag&quot; into one silent branch. Facts, the falsified first hypothesis, the temporary mitigation, and the durable decision-loop fix are recorded separately.</p>
+</div>
+</header>
+<main id="acta-content">
+
+<p class="wjh-chips"><span class="wjh-chip is-danger">SEV-3</span><span class="wjh-chip is-positive">resolved</span><span class="wjh-chip is-plain">duration 38 min</span><span class="wjh-chip is-plain">detected 2026-07-21 · 16:12</span></p>
+<section class="acta-section" aria-labelledby="tldr-title">
+<h2 id="tldr-title" class="acta-h2">TL;DR</h2>
+<div class="wjh-tldr"><span class="r-k">What happened</span>
+<p>After the slice-4 deploy, links carrying a tag no skill has (?tag=deploy) rendered an empty, unexplained list. The render glue treated &quot;unknown tag&quot; and &quot;no tag&quot; as the same empty array and had no empty-state branch. A hotfix fell back to the full catalog for unknown tags; the durable fix — the accepted explain-and-suggest empty state — landed through interface-directions and STOP-01 the next day.</p>
+</div>
+<div class="r-facts">
+<div class="r-fact"><b>12 links</b><span>Shared links affected</span></div>
+<div class="r-fact"><b>~40</b><span>Sessions with a blank list</span></div>
+<div class="r-fact"><b>none — render-only</b><span>Data loss</span></div>
+<div class="r-fact"><b>accepted empty state (next day)</b><span>Durable fix</span></div>
+</div>
+</section>
+<section class="acta-section" aria-labelledby="timeline-title">
+<h2 id="timeline-title" class="acta-h2">Timeline</h2>
+<p class="wjh-legend">Entries are typed: <strong>fact</strong> (directly supported), <strong>hypothesis</strong> (kept even when falsified), <strong>mitigation</strong>, <strong>recovery</strong>.</p>
+<ol class="wjh-timeline">
+
+<li class="wjh-entry" data-type="fact">
+<span class="wjh-dot" aria-hidden="true"></span>
+<div class="wjh-entry-body">
+<p class="wjh-entry-head"><span class="wjh-time">15:58</span><span class="wjh-type">fact</span></p>
+<p class="wjh-entry-title">Slice 4 deploys the browser glue</p>
+<p class="wjh-entry-text">renderFromUrl() starts re-deriving the catalog DOM from location.search on every load.</p>
+</div>
+</li>
+
+<li class="wjh-entry" data-type="fact" data-marker="impact">
+<span class="wjh-dot" aria-hidden="true"></span>
+<div class="wjh-entry-body">
+<p class="wjh-entry-head"><span class="wjh-time">16:12</span><span class="wjh-type">fact</span></p>
+<p class="wjh-entry-title">Impact starts — first blank-list report</p>
+<p class="wjh-entry-text">A maintainer shares ?tag=deploy in chat; recipients see an empty list with no explanation. More shared links follow the same shape.</p>
+</div>
+</li>
+
+<li class="wjh-entry" data-type="hypothesis">
+<span class="wjh-dot" aria-hidden="true"></span>
+<div class="wjh-entry-body">
+<p class="wjh-entry-head"><span class="wjh-time">16:19</span><span class="wjh-type">hypothesis</span></p>
+<p class="wjh-entry-title">First hypothesis: the deploy broke rendering</p>
+<p class="wjh-entry-text">Rolling back slice 4 locally reproduces a working catalog — but only because the static page has no filtering at all. The hypothesis is falsified: known tags render correctly on the deployed build.</p>
+</div>
+</li>
+
+<li class="wjh-entry" data-type="fact">
+<span class="wjh-dot" aria-hidden="true"></span>
+<div class="wjh-entry-body">
+<p class="wjh-entry-head"><span class="wjh-time">16:31</span><span class="wjh-type">fact</span></p>
+<p class="wjh-entry-title">Cause isolated to the unknown-tag branch</p>
+<p class="wjh-entry-text">filterByTag returns [] for tags no skill carries, and renderFromUrl passes the empty array straight to replaceChildren — a blank &lt;ul&gt; with zero affordances. &quot;No tag&quot; and &quot;unknown tag&quot; collapse into the same render.</p>
+</div>
+</li>
+
+<li class="wjh-entry" data-type="mitigation" data-marker="mitigated">
+<span class="wjh-dot" aria-hidden="true"></span>
+<div class="wjh-entry-body">
+<p class="wjh-entry-head"><span class="wjh-time">16:41</span><span class="wjh-type">mitigation</span></p>
+<p class="wjh-entry-title">Hotfix: unknown tags fall back to the full catalog</p>
+<p class="wjh-entry-text">A guard renders the unfiltered list when the tag matches nothing, so shared links stop dead-ending. Deliberately temporary — it silently ignores the user's intent.</p>
+</div>
+</li>
+
+<li class="wjh-entry" data-type="fact">
+<span class="wjh-dot" aria-hidden="true"></span>
+<div class="wjh-entry-body">
+<p class="wjh-entry-head"><span class="wjh-time">16:50</span><span class="wjh-type">fact</span></p>
+<p class="wjh-entry-title">Monitors green; incident closed as mitigated</p>
+<p class="wjh-entry-text">All shared links render content again. The silent-fallback debt is logged for a proper empty-state decision.</p>
+</div>
+</li>
+
+<li class="wjh-entry" data-type="recovery">
+<span class="wjh-dot" aria-hidden="true"></span>
+<div class="wjh-entry-body">
+<p class="wjh-entry-head"><span class="wjh-time">next day</span><span class="wjh-type">recovery</span></p>
+<p class="wjh-entry-title">Durable fix through the decision loop</p>
+<p class="wjh-entry-text">interface-directions compares three real empty states against the live dataset; direction B (explain and suggest) is accepted, and STOP-01 later keeps remote suggestions out of scope. The hotfix fallback is replaced by the accepted empty state.</p>
+</div>
+</li>
+</ol>
+</section>
+<section class="acta-section" aria-labelledby="cause-title">
+<h2 id="cause-title" class="acta-h2">Root cause</h2>
+<p>renderFromUrl() had no branch between &quot;no tag requested&quot; and &quot;tag requested but unknown&quot; — both produced an empty visible list, and the second produced it silently. The spec at that revision carried no acceptance criterion for unknown tags, so nothing failed before users did.</p>
+<div class="a2-code"><div class="c-path">src/app.mjs @ incident revision (16:31 isolation)</div><div class="codewrap"><pre><code><span class="tok-kw">function</span> <span class="tok-fn">renderFromUrl</span>() {
+  <span class="tok-kw">const</span> tag = <span class="tok-fn">parseTagFromSearch</span>(location.search);
+  <span class="tok-kw">const</span> visible = <span class="tok-fn">filterByTag</span>(<span class="tok-fn">visibleSkills</span>(), tag);
+  <span class="tok-com">// BUG: visible === [] for unknown tags falls through</span>
+  <span class="tok-com">// to a blank &lt;ul&gt; with no explanation</span>
+  <span class="tok-fn">replaceChildren</span>(list, <span class="tok-fn">rows</span>(visible));
+}</code></pre></div></div>
+</section>
+<section class="acta-section" aria-labelledby="conditions-title">
+<h2 id="conditions-title" class="acta-h2">Contributing conditions</h2>
+<ul class="wjh-conditions">
+<li>The Gate A spec had no acceptance criterion for unknown tags — the gap shipped because nothing asserted it (criterion 3 exists now).</li>
+<li>No fixture link with an unknown tag existed in QA notes, so the path was never walked before users walked it.</li>
+<li>Blank-list rendering produced no signal: the page was &quot;working&quot; by every existing check.</li>
+</ul>
+</section>
+<section class="acta-section" aria-labelledby="followups-title">
+<h2 id="followups-title" class="acta-h2">Follow-ups</h2>
+<ul class="wjh-followups">
+<li data-state="done"><span class="wjh-state" aria-hidden="true">✓</span><span class="visually-hidden">done:</span> Accepted empty state replaces the silent fallback (interface-directions, direction B)</li>
+<li data-state="done"><span class="wjh-state" aria-hidden="true">✓</span><span class="visually-hidden">done:</span> Acceptance criterion 3 added: unknown tags must render the accepted empty state</li>
+<li data-state="open"><span class="wjh-state" aria-hidden="true">○</span><span class="visually-hidden">open:</span> QA sweep template gains an unknown-tag link so the path is walked every release</li>
+</ul>
+</section>
+</main>
+<section id="acta-sources" class="acta-section"><h2 class="acta-h2">Sources</h2><ol class="acta-sources">
+<li>[E1] chat log 2026-07-21 — bug report thread</li>
+<li>[E2] git log slice-4 deploy window</li>
+<li>[E3] src/app.mjs — render glue at the incident revision</li>
+<li>[E4] test/catalog.test.mjs — assertions added afterwards</li>
+</ol></section>
+<footer class="acta-colophon"><p>Acta is a print-first engineering record. Fact = directly supported; Inference = reasoned from evidence; Simplification = deliberately reduced model. This record renders accepted canonical state only; open decisions live in the companion instrument.</p></footer>
+</div>
+</body>
+</html>

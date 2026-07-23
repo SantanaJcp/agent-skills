@@ -8,7 +8,7 @@ Contributions are welcome through curated pull requests. The maintainer retains 
 2. Discuss substantial policy or architecture changes before implementation.
 3. Create new skills with `npm run new:skill -- <name>`.
 4. Never import a personal skill directory or include private operational data.
-5. For Acta changes, edit canonical sources and run `npm run acta`; never hand-edit materialized copies.
+5. For Acta changes, edit canonical sources and run `npm run acta`; for the Acta v2 pilot, edit `design/acta2/` and run `npm run acta2`. Never hand-edit materialized copies.
 
 ## Skill lifecycle
 

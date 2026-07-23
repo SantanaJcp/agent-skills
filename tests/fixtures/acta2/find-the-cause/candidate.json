@@ -1,0 +1,30 @@
+{
+  "acta_protocol": "0.2",
+  "payload": "candidate",
+  "artifact_kind": "diagnosis",
+  "producer_skill": "find-the-cause",
+  "initiative": "tag-filter",
+  "instrument": "checklist",
+  "status": "candidate-ready",
+  "source_revision": "a8b083705553550eda289ddf9cf1d028df907682",
+  "inputs": [
+    "qa notes 2026-07-23 — repro steps and frequency",
+    "src/app.mjs — popstate wiring",
+    "browser devtools traces from the repro session"
+  ],
+  "unresolved": [
+    "whether the eventual fix listens to pageshow or opts out of bfcache — a change-blueprint question, not a diagnosis one"
+  ],
+  "marks": {
+    "h-popstate-missing": "falsified",
+    "h-bfcache": "validated",
+    "h-filter-order": "falsified",
+    "h-race": "falsified"
+  },
+  "counts": {
+    "validated": 1,
+    "falsified": 3,
+    "still-open": 0
+  },
+  "conclusion": "H2 is the cause: Safari bfcache restores the pre-navigation DOM with pageshow.persisted=true and no popstate, so renderFromUrl never re-runs. H1 falsified (handler fires everywhere else), H3 falsified (pure core property-tested stable), H4 falsified (synchronous render, nothing to race). Fix direction — pageshow listener vs bfcache opt-out — is deliberately out of scope here."
+}

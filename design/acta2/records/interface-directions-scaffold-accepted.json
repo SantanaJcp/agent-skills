@@ -1,0 +1,18 @@
+{
+ "status": "approved",
+ "stamp": "ACCEPTED",
+ "acceptedVia": "chat — explicit confirmation of the pasted candidate",
+ "recordTitle": "Accepted interface direction",
+ "summary": "One paragraph stating which direction was accepted and the decisive reason.",
+ "canonicalPath": "decisions/direction-decision-slug.md",
+ "decisions": [
+  {
+   "id": "direction-decision-slug",
+   "selection": "a",
+   "rationale": "The accepted rationale, in the human's words.",
+   "acceptedVia": "chat — explicit confirmation"
+  }
+ ],
+ "exampleWorking": { "selected": "a", "rationale": "The accepted rationale, in the human's words." },
+ "canonicalBody": "# Accepted interface direction\n\nDirection A is accepted for this surface. Rejected directions are preserved\nbelow with the conditions that would reopen them."
+}

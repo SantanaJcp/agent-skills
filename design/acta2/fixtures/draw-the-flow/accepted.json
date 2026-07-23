@@ -1,0 +1,21 @@
+{
+ "status": "approved",
+ "stamp": "ACCEPTED",
+ "acceptedVia": "chat 2026-07-23 — flow verified against src/app.mjs and confirmed via pasted candidate",
+ "recordTitle": "Tag-filter navigation flow — verified",
+ "summary": "The end-to-end navigation flow — normal render, the single known/unknown branch, the empty-state failure path, and the clear-filter recovery — verified as the shared understanding at a8b0837.",
+ "canonicalPath": "flows/tag-filter-navigation.md",
+ "decisions": [
+  {
+   "id": "flow-verification",
+   "selection": "confirm-accurate",
+   "rationale": "Walked each edge against the glue code; the branch and both exits match.",
+   "acceptedVia": "chat 2026-07-23 — explicit confirmation"
+  }
+ ],
+ "exampleWorking": {
+  "selected": "confirm-accurate",
+  "rationale": "Walked each edge against the glue code; the branch and both exits match."
+ },
+ "canonicalBody": "# Tag-filter navigation flow — verified\n\nnavigation → parse → (tag known?) → filter → rows, with unknown tags\nrouting to the accepted empty state and clear-filter recovering to the\nfull catalog. Textual equivalent recorded alongside the drawing."
+}

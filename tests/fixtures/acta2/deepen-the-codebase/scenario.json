@@ -1,0 +1,105 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "decision",
+ "decisionId": "deepening-direction",
+ "skill": "deepen-the-codebase",
+ "artifactKind": "architecture-analysis",
+ "initiative": "tag-filter",
+ "title": "Deepen the codebase — catalog module",
+ "question": "Where should the catalog architecture deepen next?",
+ "lede": "The tag filter shipped; three seams are now visibly shallow. Each direction below is analysis at equal fidelity — dependency diagram, evidence, costs, and the blueprint seed it would hand to change-blueprint. Nothing is refactored here.",
+ "openStatusLabel": "Open — no direction selected yet",
+ "sourceRevision": "a8b083705553550eda289ddf9cf1d028df907682",
+ "inputs": [
+  "src/catalog.mjs — data + filtering in one module",
+  "src/app.mjs — glue owning empty-state markup",
+  "test/catalog.test.mjs — tests reaching across seams",
+  "feature-xray record — verified system map"
+ ],
+ "currentMap": {
+  "caption": "Today: catalog.mjs owns both the data and the filtering; app.mjs owns both wiring and empty-state construction; tests import across two seams.",
+  "flow": {
+   "nodes": [
+    { "id": "app", "label": "app.mjs", "sub": "glue + empty-state markup", "col": 0, "row": 0, "tone": "accent" },
+    { "id": "catalog", "label": "catalog.mjs", "sub": "data + filterByTag", "col": 1, "row": 0 },
+    { "id": "urltag", "label": "url-tag.mjs", "sub": "parseTagFromSearch", "col": 2, "row": 0 },
+    { "id": "tests", "label": "test/*.test.mjs", "sub": "imports two modules", "col": 1, "row": 1, "tone": "dark" }
+   ],
+   "edges": [
+    { "from": "app", "to": "catalog", "label": "data + filter" },
+    { "from": "app", "to": "urltag", "label": "parse" },
+    { "from": "tests", "to": "catalog", "label": "asserts" }
+   ]
+  }
+ },
+ "options": [
+  {
+   "id": "a",
+   "label": "Split data from filtering",
+   "claim": "catalog.mjs quietly grew two jobs — the skill data and the filtering logic. Splitting them makes the data swappable without touching behavior.",
+   "flowCaption": "skills-data.mjs becomes a pure data module; filter.mjs depends on nothing but its input shape.",
+   "flow": {
+    "nodes": [
+     { "id": "data", "label": "skills-data.mjs", "sub": "the catalog, nothing else", "col": 0, "row": 0 },
+     { "id": "filter", "label": "filter.mjs", "sub": "pure behavior", "col": 1, "row": 0, "tone": "accent" },
+     { "id": "app", "label": "app.mjs", "sub": "unchanged glue", "col": 2, "row": 0 }
+    ],
+    "edges": [
+     { "from": "data", "to": "filter", "label": "skills[]" },
+     { "from": "filter", "to": "app", "label": "visible[]" }
+    ]
+   },
+   "evidence": ["src/catalog.mjs:1-12", "test/catalog.test.mjs:3"],
+   "pros": ["data changes stop rippling into behavior tests", "a future remote catalog swaps one module"],
+   "cons": ["one more file for a five-skill catalog", "no behavior improves today"],
+   "blueprintSeed": "Scope: extract skills-data.mjs; filter.mjs takes skills as input. Non-goal: any behavior change. Criteria: existing assertions pass unchanged against the split."
+  },
+  {
+   "id": "b",
+   "label": "Give the empty state a home",
+   "claim": "app.mjs builds the accepted empty state inline — markup, chips, and copy in glue code. Extracting empty-state.mjs makes the accepted design a named, tested artifact.",
+   "flowCaption": "empty-state.mjs renders from the same data island the catalog uses; app.mjs shrinks to pure wiring.",
+   "flow": {
+    "nodes": [
+     { "id": "app", "label": "app.mjs", "sub": "wiring only", "col": 0, "row": 0 },
+     { "id": "empty", "label": "empty-state.mjs", "sub": "accepted design, named", "col": 1, "row": 0, "tone": "accent" },
+     { "id": "data", "label": "catalog.mjs", "sub": "tag set source", "col": 2, "row": 0 },
+     { "id": "tests", "label": "empty-state.test.mjs", "sub": "new direct coverage", "col": 1, "row": 1, "tone": "dark" }
+    ],
+    "edges": [
+     { "from": "app", "to": "empty", "label": "emptyState(tag)" },
+     { "from": "empty", "to": "data", "label": "real tag set" },
+     { "from": "tests", "to": "empty", "label": "asserts" }
+    ]
+   },
+   "evidence": ["src/app.mjs:19-31", "interface-directions record — accepted direction B"],
+   "pros": ["the accepted empty state becomes directly testable", "glue shrinks to wiring, its stated job", "chip drift from real tags becomes a test failure"],
+   "cons": ["touches the code most recently stabilized", "empty-state markup in JS needs the same no-sink discipline"],
+   "blueprintSeed": "Scope: extract emptyState(tag) into empty-state.mjs with direct tests asserting chips == real tag set. Non-goal: visual changes. Criteria: unknown-tag criterion 3 passes against the extracted module."
+  },
+  {
+   "id": "c",
+   "label": "Fold url-tag into catalog",
+   "claim": "Two modules for forty lines may be one seam too many — folding parseTagFromSearch into catalog.mjs trades a boundary for simplicity.",
+   "flowCaption": "One module owns tag semantics end to end; app.mjs imports a single surface.",
+   "flow": {
+    "nodes": [
+     { "id": "app", "label": "app.mjs", "sub": "one import", "col": 0, "row": 0 },
+     { "id": "catalog", "label": "catalog.mjs", "sub": "parse + data + filter", "col": 1, "row": 0, "tone": "accent" }
+    ],
+    "edges": [{ "from": "app", "to": "catalog", "label": "everything tag" }]
+   },
+   "evidence": ["src/url-tag.mjs — 14 lines total", "src/catalog.mjs — 22 lines"],
+   "pros": ["fewer files, one obvious import", "no cross-module test setup"],
+   "cons": ["re-couples URL parsing to data — the seam three-code-paths deliberately created", "URL semantics lose their own test file", "swims against the accepted dependency direction"],
+   "blueprintSeed": "Scope: merge url-tag.mjs into catalog.mjs preserving both export names. Non-goal: signature changes. Criteria: all existing assertions pass from the single module."
+  }
+ ],
+ "recommendation": {
+  "option": "b",
+  "reason": "It is the only direction that turns an accepted decision (the empty state) into tested, named code — the other two move boxes without changing what can fail. The seed is small, the criteria are mechanical, and it reduces the file most likely to grow badly."
+ },
+ "unresolved": [
+  "direction A becomes attractive the moment a second catalog source appears"
+ ]
+}

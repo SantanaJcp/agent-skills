@@ -1,0 +1,21 @@
+{
+ "status": "approved",
+ "stamp": "ACCEPTED",
+ "acceptedVia": "chat — flow verified and confirmed",
+ "recordTitle": "Verified process flow",
+ "summary": "One paragraph: what the flow shows and that it was verified as the shared understanding.",
+ "canonicalPath": "flows/process-slug.md",
+ "decisions": [
+  {
+   "id": "flow-verification",
+   "selection": "confirm-accurate",
+   "rationale": "Each edge was walked against the source.",
+   "acceptedVia": "chat — explicit confirmation"
+  }
+ ],
+ "exampleWorking": {
+  "selected": "confirm-accurate",
+  "rationale": "Each edge was walked against the source."
+ },
+ "canonicalBody": "# Verified process flow\n\nThe drawing plus its full textual equivalent."
+}

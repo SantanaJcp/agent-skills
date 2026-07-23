@@ -1,0 +1,29 @@
+{
+ "status": "approved",
+ "stamp": "ACCEPTED",
+ "acceptedVia": "chat 2026-07-23 — Gate B candidate pasted and confirmed; Gate A accepted 2026-07-22",
+ "recordTitle": "Tag-filter change blueprint — spec and plan accepted",
+ "summary": "The tag-filter specification (Gate A) and its five-slice implementation plan (Gate B) are both accepted: pure functional core, DOM-last dependency direction, twelve planned assertions, single-revert rollback.",
+ "canonicalPath": "blueprints/tag-filter.md",
+ "decisions": [
+  {
+   "id": "gate-b-plan",
+   "selection": "approve-plan",
+   "rationale": "Slices are independently green, the flow direction matches the accepted code-path decision, rollback is one revert.",
+   "acceptedVia": "chat 2026-07-23 — explicit confirmation of the pasted candidate"
+  },
+  {
+   "id": "gate-a-spec",
+   "selection": "approve-spec",
+   "rationale": "Scope and non-goals mirror the interview frontier; all six criteria are mechanically checkable.",
+   "acceptedVia": "chat 2026-07-22 — explicit confirmation of the pasted candidate",
+   "artifactPath": "spec.md",
+   "acceptedRevision": "tag-filter-spec-2026-07-22"
+  }
+ ],
+ "exampleWorking": {
+  "selected": "approve-plan",
+  "rationale": "Slices are independently green, the flow direction matches the accepted code-path decision, rollback is one revert."
+ },
+ "canonicalBody": "# Tag-filter change blueprint — accepted\n\nGate A locked scope (single ?tag= filter, pure core, no-JS parity) and\nnon-goals (no search, no network, no persistence). Gate B accepted the\nfive-slice plan: pure filterByTag, pure parseTagFromSearch, static chips,\nbrowser glue, back/forward wiring — DOM depends on pure functions, never\nthe reverse. Rollback is a single revert of the slice-4 commit."
+}

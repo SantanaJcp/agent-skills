@@ -1,0 +1,28 @@
+{
+ "status": "approved",
+ "stamp": "ACCEPTED",
+ "acceptedVia": "chat — gaps export confirmed after completing the check",
+ "recordTitle": "Understanding check — score and named gaps",
+ "summary": "One paragraph: the score, the named gaps, and the follow-ups. Diagnostic only — never a merge gate.",
+ "canonicalPath": "learning/initiative-understanding.md",
+ "decisions": [
+  {
+   "id": "understanding-check",
+   "selection": "record-gaps",
+   "rationale": "The honest takeaway.",
+   "acceptedVia": "chat — explicit confirmation"
+  }
+ ],
+ "exampleWorking": {
+  "answers": {
+   "q1": "b",
+   "q2": "b"
+  },
+  "reflection": "What surprised you."
+ },
+ "derived": {
+  "correct": 1,
+  "total": 2
+ },
+ "canonicalBody": "# Understanding check\n\nScore and named gaps, with evidence locations and follow-ups."
+}

@@ -1,0 +1,109 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "checklist",
+ "decisionId": "diagnosis",
+ "acceptanceToken": "record-diagnosis",
+ "skill": "find-the-cause",
+ "artifactKind": "diagnosis",
+ "initiative": "initiative-slug",
+ "title": "Find the cause",
+ "question": "Why does the symptom happen?",
+ "lede": "Falsifiable hypotheses with probes and observations; judge each and record the diagnosis.",
+ "sourceRevision": null,
+ "inputs": [
+  "repro notes, traces, and the code under suspicion"
+ ],
+ "conclusionRequired": true,
+ "conclusionNote": "The diagnosis must name the validated cause and why the falsified hypotheses are dead — a fix is a separate, later decision.",
+ "conclusionPlaceholder": "e.g. H2 is the cause: bfcache restores the pre-navigation DOM and popstate does not fire on restore; H1/H3 falsified by direct probes.",
+ "facts": [
+  {
+   "value": "n / m",
+   "label": "repro rate"
+  },
+  {
+   "value": "scope",
+   "label": "observed scope"
+  },
+  {
+   "value": "impact",
+   "label": "blast radius"
+  }
+ ],
+ "causalMap": {
+  "caption": "Each hypothesis attacks one edge of the render path: H1 the event, H2 the cache restore, H3 the filter, H4 the timing between them.",
+  "flow": {
+   "nodes": [
+    {
+     "id": "back",
+     "label": "back navigation",
+     "sub": "history traversal",
+     "col": 0,
+     "row": 0
+    },
+    {
+     "id": "restore",
+     "label": "page restore",
+     "sub": "bfcache or reload?",
+     "col": 1,
+     "row": 0,
+     "tone": "danger"
+    },
+    {
+     "id": "pop",
+     "label": "popstate?",
+     "sub": "H1 · H2 attack here",
+     "col": 2,
+     "row": 0,
+     "tone": "accent"
+    }
+   ],
+   "edges": [
+    {
+     "from": "back",
+     "to": "restore",
+     "label": "traversal"
+    },
+    {
+     "from": "restore",
+     "to": "pop",
+     "label": "fires event?",
+     "tone": "danger",
+     "dashed": true
+    }
+   ]
+  }
+ },
+ "verdicts": [
+  {
+   "id": "validated",
+   "label": "Validated",
+   "tone": "positive"
+  },
+  {
+   "id": "falsified",
+   "label": "Falsified",
+   "tone": "plain"
+  },
+  {
+   "id": "still-open",
+   "label": "Still open",
+   "tone": "warning"
+  }
+ ],
+ "items": [
+  {
+   "id": "h-example",
+   "label": "A falsifiable hypothesis",
+   "predicts": "What would be observable if this were the cause.",
+   "probe": "The one-variable probe that was actually run.",
+   "observed": "What the probe showed.",
+   "evidence": [
+    "path/file.mjs:1"
+   ]
+  }
+ ],
+ "unresolved": [
+  "fix direction is a separate decision"
+ ]
+}

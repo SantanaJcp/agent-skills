@@ -1,0 +1,268 @@
+<!-- acta2-materialized: v0.2.0-pilot record=feature-xray sha256=85438177781b53cba4b2fbe641558f8c10c0562b2651dc91bfac6aecc0aab5d3; do not edit by hand — regenerate from canonical JSON -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature X-ray — tag filtering — record · Acta</title>
+<style>
+/* Acta v2 record foundation — durable, print-first documents generated only
+   from accepted canonical state. Records keep Acta's paper identity (white
+   page, notarial provenance) while sharing the v2 type scale; the warm
+   canvas belongs to ACTIVE instruments only. Per-skill record topology CSS
+   is appended after this file. */
+
+:root{
+  --acta-paper:#FDFDFB; --acta-tint:#F1EDE0; --acta-tint-strong:#E7E1D1;
+  --acta-ink:#1D1F24; --acta-ink-muted:#50545C;
+  --acta-rule:#D8D6CC; --acta-rule-strong:#8E8B7E; --acta-rule-faint:#E7E5DB;
+  --acta-action:#2B4C7E; --acta-action-tint:#E9EEF5;
+  --acta-positive:#276140; --acta-positive-tint:#E8F0E9;
+  --acta-warning:#7A5600; --acta-warning-tint:#F6EFDC;
+  --acta-danger:#8C2F23; --acta-danger-tint:#F6E9E6;
+  --acta-code-bg:#22252B; --acta-code-head:#1B1D22; --acta-code-rule:#383B44;
+  --acta-code-ink:#E7E5DE; --acta-code-muted:#9DA2AC;
+  --acta-font-text:Charter,"Iowan Old Style","Palatino Linotype",Georgia,"Times New Roman",serif;
+  --acta-font-data:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --acta-font-ui:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,sans-serif;
+  --acta-radius:2px; --acta-radius-lg:14px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--acta-paper);color:var(--acta-ink);font:16px/1.6 var(--acta-font-ui)}
+code,pre,kbd,samp{font-family:var(--acta-font-data)}
+pre{margin:0;white-space:pre-wrap;word-break:break-word}
+a{color:var(--acta-action)}
+h1,h2,h3{text-wrap:balance}
+p{text-wrap:pretty}
+:focus-visible{outline:2px solid var(--acta-action);outline-offset:2px}
+.skip{position:absolute;left:-9999px}
+.skip:focus{position:fixed;left:12px;top:12px;background:var(--acta-action);color:#fff;padding:8px 14px;z-index:99;font:600 13px/1 var(--acta-font-ui)}
+.codewrap,.tablewrap,.flowwrap{overflow-x:auto;position:relative}
+.plotwrap{overflow-x:auto;position:relative}
+.visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+.acta-shell{max-width:960px;margin:0 auto;padding:0 clamp(16px,4vw,44px) var(--sp-7)}
+
+/* ---- notarial provenance header ---- */
+.acta-prov{margin:0;padding:14px 0;border-bottom:1px solid var(--acta-rule);display:flex;gap:6px 22px;flex-wrap:wrap;font:12px/1.5 var(--acta-font-data);color:var(--acta-ink-muted)}
+.acta-prov>div{display:flex;gap:8px;min-width:0}
+.acta-prov dt{font-weight:600;text-transform:uppercase;letter-spacing:.1em;font-size:10px;align-self:center}
+.acta-prov dd{margin:0;overflow-wrap:anywhere}
+.acta-prov-note{font:12px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin:10px 0 0;max-width:90ch}
+
+/* ---- context block ---- */
+.acta-context{margin:var(--sp-6) 0 var(--sp-6)}
+.acta-eyebrow{font:600 11.5px/1.4 var(--acta-font-data);letter-spacing:.12em;text-transform:uppercase;color:var(--acta-ink-muted);margin:0 0 10px}
+.acta-stamp{display:inline-block;border:1.5px solid var(--acta-positive);color:var(--acta-positive);border-radius:var(--acta-radius);padding:2px 9px;font:600 10.5px/1.3 var(--acta-font-data);letter-spacing:.08em;text-transform:uppercase}
+.acta-title{font:400 32px/1.25 var(--acta-font-text);margin:0 0 var(--sp-3);max-width:46ch}
+.acta-lede{font-size:16.5px;line-height:1.6;color:var(--acta-ink-muted);margin:0;max-width:70ch}
+
+/* ---- sections ---- */
+.acta-section{margin:var(--sp-7) 0 0}
+.acta-h2{font:600 22px/1.3 var(--acta-font-text);margin:0 0 var(--sp-4);border-bottom:1px solid var(--acta-rule);padding-bottom:12px}
+.acta-h3{font:600 17px/1.35 var(--acta-font-text);margin:var(--sp-5) 0 var(--sp-3)}
+.acta-section p{max-width:76ch}
+
+/* ---- shared record primitives ---- */
+.r-k{display:block;font:600 10.5px/1.4 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;color:var(--acta-ink-muted)}
+.r-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--sp-4);margin:var(--sp-5) 0}
+.r-fact{border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:14px 18px;min-width:0}
+.r-fact b{display:block;font:400 26px/1.15 var(--acta-font-text);font-variant-numeric:tabular-nums}
+.r-fact span{display:block;font:600 10.5px/1.5 var(--acta-font-data);letter-spacing:.08em;text-transform:uppercase;color:var(--acta-ink-muted);margin-top:6px}
+.r-fact small{display:block;font:12px/1.5 var(--acta-font-ui);color:var(--acta-ink-muted);margin-top:3px}
+.r-table{width:100%;border-collapse:collapse;font:14px/1.55 var(--acta-font-ui)}
+.r-table th,.r-table td{border:0;border-bottom:1px solid var(--acta-rule-faint);padding:10px 16px 10px 0;text-align:left;vertical-align:top}
+.r-table thead th{font:600 11px/1.4 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;color:var(--acta-ink-muted);border-bottom:1px solid var(--acta-rule-strong)}
+.r-table td.num,.r-table th.num{text-align:right;font-variant-numeric:tabular-nums}
+.r-chip{display:inline-block;border:1px solid var(--acta-rule);border-radius:var(--acta-radius-lg);background:var(--acta-tint);padding:2px 10px;font:500 11.5px/1.6 var(--acta-font-data);color:var(--acta-ink-muted)}
+.r-tagrow{display:flex;gap:10px;align-items:baseline;margin:6px 0}
+.r-tagrow .r-tag{flex:none;background:var(--acta-tint);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:3px 10px;font:600 10.5px/1.4 var(--acta-font-data);letter-spacing:.08em;text-transform:uppercase;color:var(--acta-ink-muted)}
+.r-tagrow .r-val{font:13px/1.6 var(--acta-font-data);color:var(--acta-ink-muted)}
+.r-loc{display:inline-block;border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius);background:var(--acta-tint);padding:1px 7px;font:11.5px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin:0 4px 4px 0}
+.r-aside{border-left:3px solid var(--acta-positive);background:var(--acta-positive-tint);padding:var(--sp-4) 20px;margin:var(--sp-5) 0;font-size:15px;line-height:1.6;max-width:88ch}
+.r-aside .r-k{color:var(--acta-positive);margin-bottom:6px}
+.r-warn{border-left:3px solid var(--acta-warning);background:var(--acta-warning-tint);padding:var(--sp-4) 20px;margin:var(--sp-5) 0;font-size:15px;line-height:1.6;max-width:88ch}
+.r-warn .r-k{color:var(--acta-warning);margin-bottom:6px}
+
+/* dark code islands (shared with instruments; records print them light) */
+.a2-code{background:var(--acta-code-bg);color:var(--acta-code-ink);border-radius:var(--acta-radius-lg);overflow:hidden}
+.a2-code .c-path{font:500 12px/1.5 var(--acta-font-data);letter-spacing:.02em;color:var(--acta-code-muted);background:var(--acta-code-head);border-bottom:1px solid var(--acta-code-rule);padding:8px 16px}
+.a2-code pre{white-space:pre;word-break:normal;overflow-x:auto;padding:14px 16px;font-size:12.5px;line-height:1.65;tab-size:2}
+.a2-code .tok-kw{color:#E8926F}
+.a2-code .tok-fn{color:#8FB6E3}
+.a2-code .tok-str{color:#A3C293}
+.a2-code .tok-num{color:#D9BC8C}
+.a2-code .tok-com{color:#8A9099;font-style:italic}
+
+/* ---- shared flow diagrams (lib/flow.mjs output) ---- */
+.flowd{display:block;width:100%;height:auto}
+.flowd text{font-family:var(--acta-font-data)}
+.flowd-caption{font:12.5px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin:10px 0 0;max-width:90ch}
+
+/* ---- sources & colophon ---- */
+.acta-sources{margin:0;padding-left:1.4em;font:13.5px/1.7 var(--acta-font-ui)}
+.acta-sources li{margin:0 0 6px}
+.acta-colophon{border-top:3px double var(--acta-rule-strong);margin-top:var(--sp-7);padding-top:var(--sp-4)}
+.acta-colophon p{font:12px/1.7 var(--acta-font-data);color:var(--acta-ink-muted);max-width:96ch}
+
+@media (max-width:719px){
+  .acta-prov{flex-direction:column;gap:4px}
+  .r-facts{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:479px){
+  .r-facts{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+@media print{
+  body{background:#fff;font-size:11pt}
+  .skip{display:none!important}
+  .acta-shell{max-width:none;padding:0}
+  .r-fact,.r-table,.r-aside,.r-warn,.a2-code{break-inside:avoid}
+  .a2-code{background:#fff;color:#000;border:1px solid #888}
+  .a2-code .c-path{background:#fff;color:#333;border-bottom:1px solid #888}
+  .a2-code pre{white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}
+  .a2-code pre span{color:inherit!important;font-style:normal}
+  a[href^="http"]::after{content:" (" attr(href) ")";font:9px/1 var(--acta-font-data);color:#555}
+}
+
+/* ---- feature-xray record topology ---- */
+.fx-step{border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);margin:0 0 var(--sp-3);overflow:hidden}
+.fx-step .fx-step-head{display:flex;gap:12px;align-items:baseline;background:var(--acta-tint);border-bottom:1px solid var(--acta-rule-faint);padding:11px 18px;margin:0}
+.fx-step .fx-n{flex:none;font:700 12px/1.5 var(--acta-font-data);color:var(--acta-ink-muted)}
+.fx-step .fx-step-title{font:600 16px/1.4 var(--acta-font-text);flex:1 1 auto}
+.fx-step .fx-step-head .r-loc{margin:0;background:var(--acta-paper)}
+.fx-step .fx-step-body{margin:0;padding:12px 18px 14px;font-size:14.5px;line-height:1.6;max-width:none}
+.fx-gotchas{margin:0;padding:0;list-style:none;max-width:80ch}
+.fx-gotchas li{position:relative;padding:10px 0 10px 22px;border-bottom:1px solid var(--acta-rule-faint);font-size:15px;line-height:1.6}
+.fx-gotchas li:last-child{border-bottom:0}
+.fx-gotchas li::before{content:"";position:absolute;left:2px;top:19px;width:7px;height:7px;border-radius:50%;background:var(--acta-warning)}
+</style>
+</head>
+<body>
+<a class="skip" href="#acta-content">Skip to content</a>
+<div class="acta-shell">
+<header>
+<dl class="acta-prov">
+<div><dt>Artifact</dt><dd>Feature X-ray — tag filtering — accepted record</dd></div>
+<div><dt>Skill</dt><dd>feature-xray</dd></div>
+<div><dt>Initiative</dt><dd>tag-filter</dd></div>
+<div><dt>Status</dt><dd>approved</dd></div>
+<div><dt>Source revision</dt><dd>a8b083705553550eda289ddf9cf1d028df907682</dd></div>
+</dl>
+<p class="acta-prov-note">Acta v0.2.0-pilot record · Generated from accepted canonical state (explanations/tag-filter-xray.md) after explicit acceptance (chat 2026-07-23 — explanation verified against the five source files listed as inputs) · Never generated from browser state.</p>
+<div class="acta-context">
+<p class="acta-eyebrow">dossier record · <span class="acta-stamp is-approved">ACCEPTED</span></p>
+<h1 class="acta-title">How tag filtering works in the skills catalog</h1>
+<p class="acta-lede">URL-derived rendering over a pure functional core: one parameter, two pure functions, one DOM sink. Verified against source at a8b0837 — every claim carries its file:line location.</p>
+</div>
+</header>
+<main id="acta-content">
+
+<section class="acta-section" aria-labelledby="tldr-title">
+<h2 id="tldr-title" class="acta-h2">TL;DR</h2>
+<div class="r-aside"><span class="r-k">Verified against source</span>
+<p>Every render is derived from the URL: parseTagFromSearch reads the single ?tag= parameter, filterByTag narrows visibleSkills() by inclusion, and app.mjs replaces the list DOM. Without JavaScript the full catalog with plain ?tag= chip links is already complete — the script only enhances it.</p>
+</div>
+</section>
+<section class="acta-section" aria-labelledby="map-title">
+<h2 id="map-title" class="acta-h2">System map</h2>
+<p>Four small modules, one dependency direction: the DOM depends on pure functions, never the reverse.</p>
+<div class="plotwrap"><svg viewBox="0 0 738 220" class="flowd" role="img" aria-label="System map for the feature" style="min-width:640px;max-width:738px">
+<polyline points="210,54 269,54" fill="none" stroke="var(--acta-rule-strong)" stroke-width="1.5"></polyline>
+<polygon points="276,54 269,50 269,58" fill="var(--acta-rule-strong)"></polygon>
+<polyline points="462,54 521,54" fill="none" stroke="var(--acta-rule-strong)" stroke-width="1.5"></polyline>
+<polygon points="528,54 521,50 521,58" fill="var(--acta-rule-strong)"></polygon>
+<polyline points="621,84 621,129" fill="none" stroke="var(--acta-rule-strong)" stroke-width="1.5"></polyline>
+<polygon points="621,136 617,129 625,129" fill="var(--acta-rule-strong)"></polygon>
+<polyline points="528,166 469,166" fill="none" stroke="var(--acta-action)" stroke-width="1.5"></polyline>
+<polygon points="462,166 469,170 469,162" fill="var(--acta-action)"></polygon>
+<rect x="24" y="24" width="186" height="60" rx="10" fill="var(--acta-paper)" stroke="var(--acta-rule-strong)" stroke-width="1.5"></rect>
+<text x="117" y="50" font-size="12.5" font-weight="600" fill="var(--acta-ink)" text-anchor="middle">location.search</text>
+<text x="117" y="67" font-size="11" fill="var(--acta-ink-muted)" text-anchor="middle">?tag=git</text>
+<rect x="276" y="24" width="186" height="60" rx="10" fill="var(--acta-paper)" stroke="var(--acta-rule-strong)" stroke-width="1.5"></rect>
+<text x="369" y="50" font-size="12.5" font-weight="600" fill="var(--acta-ink)" text-anchor="middle">parseTagFromSearch</text>
+<text x="369" y="67" font-size="11" fill="var(--acta-ink-muted)" text-anchor="middle">src/url-tag.mjs</text>
+<rect x="528" y="24" width="186" height="60" rx="10" fill="var(--acta-paper)" stroke="var(--acta-rule-strong)" stroke-width="1.5"></rect>
+<text x="621" y="50" font-size="12.5" font-weight="600" fill="var(--acta-ink)" text-anchor="middle">filterByTag</text>
+<text x="621" y="67" font-size="11" fill="var(--acta-ink-muted)" text-anchor="middle">src/catalog.mjs</text>
+<rect x="528" y="136" width="186" height="60" rx="10" fill="var(--acta-paper)" stroke="var(--acta-action)" stroke-width="1.5"></rect>
+<text x="621" y="162" font-size="12.5" font-weight="600" fill="var(--acta-ink)" text-anchor="middle">renderFromUrl</text>
+<text x="621" y="179" font-size="11" fill="var(--acta-ink-muted)" text-anchor="middle">src/app.mjs</text>
+<rect x="276" y="136" width="186" height="60" rx="10" fill="var(--acta-code-bg)" stroke="var(--acta-code-bg)" stroke-width="1.5"></rect>
+<text x="369" y="162" font-size="12.5" font-weight="600" fill="var(--acta-code-ink)" text-anchor="middle">catalog DOM</text>
+<text x="369" y="179" font-size="11" fill="var(--acta-code-muted)" text-anchor="middle">replaceChildren</text>
+<text x="239.5" y="45" font-size="11" fill="var(--acta-ink-muted)" text-anchor="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="5" stroke-linejoin="round">tag | null</text>
+<text x="491.5" y="45" font-size="11" fill="var(--acta-ink-muted)" text-anchor="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="5" stroke-linejoin="round">skills, tag</text>
+<text x="629" y="106.5" font-size="11" fill="var(--acta-ink-muted)" text-anchor="start" paint-order="stroke" stroke="#FFFFFF" stroke-width="5" stroke-linejoin="round">visible list</text>
+<text x="498.5" y="157" font-size="11" fill="var(--acta-action)" text-anchor="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="5" stroke-linejoin="round">replaceChildren</text>
+</svg></div>
+<p class="flowd-caption">Solid edges run on every navigation and popstate. The dark node is the only mutable surface in the feature.</p>
+</section>
+<section class="acta-section" aria-labelledby="path-title">
+<h2 id="path-title" class="acta-h2">The operational path, step by step</h2>
+
+<article class="fx-step">
+<p class="fx-step-head"><span class="fx-n">01</span><span class="fx-step-title">Identify the requested tag</span><span class="r-loc">src/url-tag.mjs:6</span></p>
+<p class="fx-step-body">parseTagFromSearch(location.search) reads the single ?tag= parameter via URLSearchParams and returns the tag string or null. Duplicate parameters resolve to the first occurrence; there is deliberately no multi-tag syntax.</p>
+</article>
+
+<article class="fx-step">
+<p class="fx-step-head"><span class="fx-n">02</span><span class="fx-step-title">Narrow the catalog</span><span class="r-loc">src/catalog.mjs:8</span></p>
+<p class="fx-step-body">filterByTag(skills, tag) returns the full list for a null tag and filters by tags.includes(tag) otherwise, preserving input order. It is a plain export — node --test imports it directly.</p>
+</article>
+
+<article class="fx-step">
+<p class="fx-step-head"><span class="fx-n">03</span><span class="fx-step-title">Re-derive the DOM</span><span class="r-loc">src/app.mjs:14</span></p>
+<p class="fx-step-body">renderFromUrl() pipes the two pure functions and calls replaceChildren with either the visible rows or — when a tag is present and the list is empty — the accepted explain-and-suggest empty state.</p>
+</article>
+
+<article class="fx-step">
+<p class="fx-step-head"><span class="fx-n">04</span><span class="fx-step-title">History traversal replays the same path</span><span class="r-loc">src/app.mjs:27</span></p>
+<p class="fx-step-body">popstate re-invokes renderFromUrl; there is no separate history handler, so back/forward can never diverge from a fresh load of the same URL.</p>
+</article>
+</section>
+<section class="acta-section" aria-labelledby="usage-title">
+<h2 id="usage-title" class="acta-h2">Using it</h2>
+<p>Adding a taggable skill requires no middleware knowledge — tags live next to the skill entry and the chips derive from them.</p>
+<div class="a2-code"><div class="c-path">src/catalog.mjs (excerpt)</div><div class="codewrap"><pre><code><span class="tok-kw">export</span> <span class="tok-kw">function</span> <span class="tok-fn">visibleSkills</span>() {
+  <span class="tok-kw">return</span> [
+    { name: <span class="tok-str">&quot;Changed-file summarizer&quot;</span>, tags: [<span class="tok-str">&quot;git&quot;</span>, <span class="tok-str">&quot;review&quot;</span>] },
+    { name: <span class="tok-str">&quot;Test-gap finder&quot;</span>, tags: [<span class="tok-str">&quot;tests&quot;</span>, <span class="tok-str">&quot;review&quot;</span>] },
+    <span class="tok-com">// add a new entry here — its tags become filter chips automatically</span>
+  ];
+}</code></pre></div></div>
+</section>
+<section class="acta-section" aria-labelledby="gotchas-title">
+<h2 id="gotchas-title" class="acta-h2">Gotchas worth knowing</h2>
+<ul class="fx-gotchas">
+<li><strong>The no-JS page is the baseline, not a fallback.</strong> index.html ships the complete catalog with working ?tag= links; app.mjs enhances it after load. Testing with JavaScript disabled exercises a real supported path.</li>
+<li><strong>A missing tag and an unknown tag are different states.</strong> null (no ?tag=) renders the full catalog; an unknown tag renders the empty state. Collapsing the two was the root cause of incident INC-0721.</li>
+<li><strong>Order stability is asserted, not assumed.</strong> filterByTag preserves visibleSkills() order by construction, and test/catalog.test.mjs pins it — reorderings are test failures, not surprises.</li>
+</ul>
+</section>
+<section class="acta-section" aria-labelledby="faq-title">
+<h2 id="faq-title" class="acta-h2">FAQ</h2>
+
+<h3 class="acta-h3">How do I add a new tag?</h3>
+<p>Add it to any skill's tags array — chips and filters derive from the data; nothing else changes.</p>
+
+<h3 class="acta-h3">Can users filter by two tags?</h3>
+<p>No — multi-tag was an explicit Gate A non-goal. The URL schema (single ?tag=) would need a new spec round.</p>
+
+<h3 class="acta-h3">Where do I see what renders for an unknown tag?</h3>
+<p>Open any ?tag= value that no skill carries; the accepted empty state (interface-directions, direction B) renders with the real tag set as chips.</p>
+</section>
+</main>
+<section id="acta-sources" class="acta-section"><h2 class="acta-h2">Sources</h2><ol class="acta-sources">
+<li>[E1] src/catalog.mjs — filterByTag, visibleSkills</li>
+<li>[E2] src/url-tag.mjs — parseTagFromSearch</li>
+<li>[E3] src/app.mjs — browser glue</li>
+<li>[E4] index.html — static catalog markup</li>
+<li>[E5] test/catalog.test.mjs — behavior assertions</li>
+</ol></section>
+<footer class="acta-colophon"><p>Acta is a print-first engineering record. Fact = directly supported; Inference = reasoned from evidence; Simplification = deliberately reduced model. This record renders accepted canonical state only; open decisions live in the companion instrument.</p></footer>
+</div>
+</body>
+</html>

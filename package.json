@@ -10,6 +10,8 @@
   "scripts": {
     "acta": "node scripts/materialize-acta.mjs",
     "acta:check": "node scripts/materialize-acta.mjs --check",
+    "acta2": "node scripts/materialize-acta2.mjs",
+    "acta2:check": "node scripts/materialize-acta2.mjs --check",
     "catalog": "node scripts/generate-catalog.mjs",
     "catalog:check": "node scripts/generate-catalog.mjs --check",
     "check": "node scripts/check.mjs",
@@ -22,6 +24,7 @@
     "typecheck": "tsc -p jsconfig.json",
     "validate": "node scripts/validate.mjs",
     "validate:acta": "node scripts/validate-acta.mjs",
+    "validate:acta2": "node scripts/validate-acta2.mjs",
     "validate:repository": "node scripts/validate-repository.mjs"
   },
   "devDependencies": {

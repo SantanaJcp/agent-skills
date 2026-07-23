@@ -1,0 +1,150 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "quiz",
+ "decisionId": "understanding-check",
+ "acceptanceToken": "record-gaps",
+ "skill": "do-i-understand-this",
+ "artifactKind": "understanding-check",
+ "initiative": "tag-filter",
+ "title": "Do I understand this",
+ "question": "Do you understand what the tag-filter change actually did?",
+ "lede": "The five-slice tag-filter build is merged locally. Before you rely on it, check your model of it against the code that actually landed.",
+ "sourceRevision": "a8b083705553550eda289ddf9cf1d028df907682",
+ "inputs": [
+  "src/catalog.mjs — filterByTag",
+  "src/url-tag.mjs — parseTagFromSearch",
+  "src/app.mjs — browser glue",
+  "build-with-notes session record — STOP-01 resolution"
+ ],
+ "facts": [
+  { "value": "3", "label": "files changed" },
+  { "value": "+214", "label": "lines added", "tone": "plus" },
+  { "value": "−9", "label": "lines removed", "tone": "minus" }
+ ],
+ "model": {
+  "lede": "Where a catalog render comes from now, versus before the change.",
+  "before": {
+   "label": "Static list, rendered once at authoring time",
+   "flow": {
+    "nodes": [
+     { "id": "html", "label": "index.html", "sub": "hand-authored list", "col": 0, "row": 0 },
+     { "id": "dom", "label": "catalog DOM", "sub": "never changes", "col": 1, "row": 0, "tone": "dark" }
+    ],
+    "edges": [{ "from": "html", "to": "dom", "label": "parsed once" }]
+   }
+  },
+  "after": {
+   "label": "URL drives two pure functions; the DOM is re-derived",
+   "flow": {
+    "nodes": [
+     { "id": "url", "label": "location.search", "sub": "?tag=git", "col": 0, "row": 0 },
+     { "id": "parse", "label": "parseTagFromSearch", "sub": "url-tag.mjs", "col": 1, "row": 0 },
+     { "id": "filter", "label": "filterByTag", "sub": "catalog.mjs", "col": 1, "row": 1, "tone": "accent" },
+     { "id": "dom", "label": "catalog DOM", "sub": "replaceChildren", "col": 0, "row": 1, "tone": "dark" }
+    ],
+    "edges": [
+     { "from": "url", "to": "parse", "label": "tag | null" },
+     { "from": "parse", "to": "filter", "label": "skills, tag" },
+     { "from": "filter", "to": "dom", "label": "visible list", "tone": "accent" }
+    ]
+   }
+  }
+ },
+ "behaviorsTitle": "Three behaviors a diff skim won't tell you",
+ "behaviorsLede": "Each one is deliberate — the reasoning came out of the build session, not the diff.",
+ "behaviors": [
+  {
+   "title": "The no-JS page is complete before any script runs",
+   "what": "index.html ships the full catalog with every tag chip as a plain ?tag= link; app.mjs only re-renders after load.",
+   "why": "The spec's no-JS criterion is not a fallback — it is the baseline the script enhances. Chips work as normal navigation without JavaScript.",
+   "where": ["index.html:41", "src/app.mjs:12"]
+  },
+  {
+   "title": "Unknown tags render the accepted empty state, not a blank list",
+   "what": "filterByTag returns [] for unknown tags; the glue renders emptyState(tag) whenever the visible list is empty and a tag is present.",
+   "why": "STOP-01 resolved that unknown tags stay empty — no remote suggestions — and interface-directions chose the explain-and-suggest empty state.",
+   "where": ["src/app.mjs:19", "src/catalog.mjs:8"]
+  },
+  {
+   "title": "Back and forward re-run the same render path",
+   "what": "popstate calls the identical renderFromUrl used at load; there is no separate history handler.",
+   "why": "One render path means back/forward can never drift from a fresh load of the same URL.",
+   "where": ["src/app.mjs:27"]
+  }
+ ],
+ "questions": [
+  {
+   "id": "q1",
+   "prompt": "Where does filterByTag run?",
+   "options": [
+    { "id": "a", "label": "Only in the browser, after load" },
+    { "id": "b", "label": "In Node tests and the browser — same import" },
+    { "id": "c", "label": "Only in Node, at materialize time" }
+   ],
+   "answer": "b",
+   "explanation": "It is a plain export from src/catalog.mjs; node --test imports it directly and app.mjs imports the same file in the browser.",
+   "gap": "shared pure-function seam"
+  },
+  {
+   "id": "q2",
+   "prompt": "With JavaScript disabled, what does ?tag=git show?",
+   "options": [
+    { "id": "a", "label": "The full catalog — chips are plain links, filtering needs JS" },
+    { "id": "b", "label": "Only git-tagged skills — the server filters" },
+    { "id": "c", "label": "An error page" }
+   ],
+   "answer": "a",
+   "explanation": "There is no server; the static page always carries the complete catalog, and filtering is a client-side enhancement.",
+   "gap": "no-JS baseline behavior"
+  },
+  {
+   "id": "q3",
+   "prompt": "What renders for ?tag=deploy (a tag no skill has)?",
+   "options": [
+    { "id": "a", "label": "A blank list" },
+    { "id": "b", "label": "The full catalog, silently unfiltered" },
+    { "id": "c", "label": "The accepted explain-and-suggest empty state" }
+   ],
+   "answer": "c",
+   "explanation": "STOP-01 kept unknown tags empty and interface-directions chose direction B: the empty state names the miss and offers the real tag set.",
+   "gap": "unknown-tag fallback"
+  },
+  {
+   "id": "q4",
+   "prompt": "What state does the page persist between visits?",
+   "options": [
+    { "id": "a", "label": "The last-used filter, kept in browser storage" },
+    { "id": "b", "label": "Nothing — the URL is the only state" },
+    { "id": "c", "label": "A session cookie with the tag" }
+   ],
+   "answer": "b",
+   "explanation": "Persistence was an explicit non-goal at Gate A; the single ?tag= parameter carries all state, which is why back/forward just works.",
+   "gap": "URL-as-state non-goal"
+  },
+  {
+   "id": "q5",
+   "prompt": "Why does popstate reuse renderFromUrl instead of its own handler?",
+   "options": [
+    { "id": "a", "label": "So back/forward can never diverge from a fresh load" },
+    { "id": "b", "label": "To save bytes" },
+    { "id": "c", "label": "Because popstate cannot read location.search" }
+   ],
+   "answer": "a",
+   "explanation": "One render path is the whole invariant: any URL renders identically whether you arrived by load, click, or history traversal.",
+   "gap": "single render path invariant"
+  },
+  {
+   "id": "q6",
+   "prompt": "What was rejected at STOP-01 during the build?",
+   "options": [
+    { "id": "a", "label": "The empty-state design" },
+    { "id": "b", "label": "Fetching tag suggestions from a remote API" },
+    { "id": "c", "label": "The pure-function architecture" }
+   ],
+   "answer": "b",
+   "explanation": "Mid-session scope addition contradicted the approved non-goal (no network calls); it was rejected and the plan continued as specified.",
+   "gap": "scope-gate outcome"
+  }
+ ],
+ "unresolved": []
+}

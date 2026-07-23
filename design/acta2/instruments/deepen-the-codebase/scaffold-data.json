@@ -1,0 +1,242 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "decision",
+ "decisionId": "deepening-direction",
+ "skill": "deepen-the-codebase",
+ "artifactKind": "architecture-analysis",
+ "initiative": "initiative-slug",
+ "title": "Deepen the codebase",
+ "question": "Where should the architecture deepen next?",
+ "lede": "Candidate seam directions at equal fidelity; analysis only.",
+ "openStatusLabel": "Open — no direction selected yet",
+ "sourceRevision": null,
+ "inputs": [
+  "the modules and tests the analysis is grounded in"
+ ],
+ "currentMap": {
+  "caption": "Today: catalog.mjs owns both the data and the filtering; app.mjs owns both wiring and empty-state construction; tests import across two seams.",
+  "flow": {
+   "nodes": [
+    {
+     "id": "app",
+     "label": "app.mjs",
+     "sub": "glue + empty-state markup",
+     "col": 0,
+     "row": 0,
+     "tone": "accent"
+    },
+    {
+     "id": "catalog",
+     "label": "catalog.mjs",
+     "sub": "data + filterByTag",
+     "col": 1,
+     "row": 0
+    },
+    {
+     "id": "urltag",
+     "label": "url-tag.mjs",
+     "sub": "parseTagFromSearch",
+     "col": 2,
+     "row": 0
+    },
+    {
+     "id": "tests",
+     "label": "test/*.test.mjs",
+     "sub": "imports two modules",
+     "col": 1,
+     "row": 1,
+     "tone": "dark"
+    }
+   ],
+   "edges": [
+    {
+     "from": "app",
+     "to": "catalog",
+     "label": "data + filter"
+    },
+    {
+     "from": "app",
+     "to": "urltag",
+     "label": "parse"
+    },
+    {
+     "from": "tests",
+     "to": "catalog",
+     "label": "asserts"
+    }
+   ]
+  }
+ },
+ "options": [
+  {
+   "id": "a",
+   "label": "Split data from filtering",
+   "claim": "catalog.mjs quietly grew two jobs — the skill data and the filtering logic. Splitting them makes the data swappable without touching behavior.",
+   "flowCaption": "skills-data.mjs becomes a pure data module; filter.mjs depends on nothing but its input shape.",
+   "flow": {
+    "nodes": [
+     {
+      "id": "data",
+      "label": "skills-data.mjs",
+      "sub": "the catalog, nothing else",
+      "col": 0,
+      "row": 0
+     },
+     {
+      "id": "filter",
+      "label": "filter.mjs",
+      "sub": "pure behavior",
+      "col": 1,
+      "row": 0,
+      "tone": "accent"
+     },
+     {
+      "id": "app",
+      "label": "app.mjs",
+      "sub": "unchanged glue",
+      "col": 2,
+      "row": 0
+     }
+    ],
+    "edges": [
+     {
+      "from": "data",
+      "to": "filter",
+      "label": "skills[]"
+     },
+     {
+      "from": "filter",
+      "to": "app",
+      "label": "visible[]"
+     }
+    ]
+   },
+   "evidence": [
+    "path/file.mjs:1"
+   ],
+   "pros": [
+    "a real win observed in the code"
+   ],
+   "cons": [
+    "a real cost"
+   ],
+   "blueprintSeed": "Scope / non-goals / criteria this direction would hand to change-blueprint."
+  },
+  {
+   "id": "b",
+   "label": "Give the empty state a home",
+   "claim": "app.mjs builds the accepted empty state inline — markup, chips, and copy in glue code. Extracting empty-state.mjs makes the accepted design a named, tested artifact.",
+   "flowCaption": "empty-state.mjs renders from the same data island the catalog uses; app.mjs shrinks to pure wiring.",
+   "flow": {
+    "nodes": [
+     {
+      "id": "app",
+      "label": "app.mjs",
+      "sub": "wiring only",
+      "col": 0,
+      "row": 0
+     },
+     {
+      "id": "empty",
+      "label": "empty-state.mjs",
+      "sub": "accepted design, named",
+      "col": 1,
+      "row": 0,
+      "tone": "accent"
+     },
+     {
+      "id": "data",
+      "label": "catalog.mjs",
+      "sub": "tag set source",
+      "col": 2,
+      "row": 0
+     },
+     {
+      "id": "tests",
+      "label": "empty-state.test.mjs",
+      "sub": "new direct coverage",
+      "col": 1,
+      "row": 1,
+      "tone": "dark"
+     }
+    ],
+    "edges": [
+     {
+      "from": "app",
+      "to": "empty",
+      "label": "emptyState(tag)"
+     },
+     {
+      "from": "empty",
+      "to": "data",
+      "label": "real tag set"
+     },
+     {
+      "from": "tests",
+      "to": "empty",
+      "label": "asserts"
+     }
+    ]
+   },
+   "evidence": [
+    "path/file.mjs:1"
+   ],
+   "pros": [
+    "a real win observed in the code"
+   ],
+   "cons": [
+    "a real cost"
+   ],
+   "blueprintSeed": "Scope / non-goals / criteria this direction would hand to change-blueprint."
+  },
+  {
+   "id": "c",
+   "label": "Fold url-tag into catalog",
+   "claim": "Two modules for forty lines may be one seam too many — folding parseTagFromSearch into catalog.mjs trades a boundary for simplicity.",
+   "flowCaption": "One module owns tag semantics end to end; app.mjs imports a single surface.",
+   "flow": {
+    "nodes": [
+     {
+      "id": "app",
+      "label": "app.mjs",
+      "sub": "one import",
+      "col": 0,
+      "row": 0
+     },
+     {
+      "id": "catalog",
+      "label": "catalog.mjs",
+      "sub": "parse + data + filter",
+      "col": 1,
+      "row": 0,
+      "tone": "accent"
+     }
+    ],
+    "edges": [
+     {
+      "from": "app",
+      "to": "catalog",
+      "label": "everything tag"
+     }
+    ]
+   },
+   "evidence": [
+    "path/file.mjs:1"
+   ],
+   "pros": [
+    "a real win observed in the code"
+   ],
+   "cons": [
+    "a real cost"
+   ],
+   "blueprintSeed": "Scope / non-goals / criteria this direction would hand to change-blueprint."
+  }
+ ],
+ "recommendation": {
+  "option": "b",
+  "reason": "It is the only direction that turns an accepted decision (the empty state) into tested, named code — the other two move boxes without changing what can fail. The seed is small, the criteria are mechanical, and it reduces the file most likely to grow badly."
+ },
+ "unresolved": [
+  "conditions that would reopen the rejected directions"
+ ]
+}
