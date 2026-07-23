@@ -22,23 +22,32 @@ Follow [the evaluator runbook](evaluator-runbook.md). Each reviewer starts from 
 
 Record the exact stable client versions, every committed trigger/non-trigger case, observed activation, result against expectation, and confirmation that removing `agents/openai.yaml` does not change behavior.
 
+Completed evidence:
+
+- [Codex full client evidence](evidence/client-codex-full-santana-2026-07-23.md): `codex-cli 0.144.1`, 97/97 base cases plus corrected-revision supplements.
+- [Claude Code full client evidence](evidence/client-claude-full-santana-2026-07-23.md): Claude Code `2.1.206` / `claude-sonnet-5`, 69/69 routing cases and 30/30 material trigger-behavior cases.
+- Final corrected revision: `c24c366a8ebebb1abfe7e0bb9906a7b0b29e74c3`.
+- Deterministic repository seam at the final revision: `npm run check` — 76/76 passing.
+
 | Skill | Codex | Claude Code | Sidecar-independent | Verdict |
 | --- | --- | --- | --- | --- |
-| make-me-realize | Pending | Pending | Pending | Pending |
-| three-code-paths | Pending | Pending | Pending | Pending |
-| interface-directions | Pending | Pending | Pending | Pending |
-| change-blueprint | Pending | Pending | Pending | Pending |
-| build-with-notes | Pending | Pending | Pending | Pending |
-| do-i-understand-this | Pending | Pending | Pending | Pending |
-| feel-the-flow | Pending | Pending | Pending | Pending |
-| feature-xray | Pending | Pending | Pending | Pending |
-| concept-lab | Pending | Pending | Pending | Pending |
-| what-just-happened | Pending | Pending | Pending | Pending |
-| draw-the-flow | Pending | Pending | Pending | Pending |
-| draw-it-in-svg | Pending | Pending | Pending | Pending |
-| deepen-the-codebase | Pending | Pending | Pending | Pending |
-| find-the-cause | Pending | Pending | Pending | Pending |
-| learning-workbench | Pending | Pending | Pending | Pending |
+| make-me-realize | Pass | Pass | Pass | Pass |
+| three-code-paths | Pass | Pass | Pass | Pass |
+| interface-directions | Pass | Pass | Pass | Pass |
+| change-blueprint | Pass | Pass | Pass | Pass |
+| build-with-notes | Pass | Pass | Pass | Pass |
+| do-i-understand-this | Pass | Pass | Pass | Pass |
+| feel-the-flow | Pass | Pass | Pass | Pass |
+| feature-xray | Pass | Pass | Pass | Pass |
+| concept-lab | Pass | Pass | Pass | Pass |
+| what-just-happened | Pass | Pass | Pass | Pass |
+| draw-the-flow | Pass | Pass | Pass | Pass |
+| draw-it-in-svg | Pass | Pass | Pass | Pass |
+| deepen-the-codebase | Pass | Pass | Pass | Pass |
+| find-the-cause | Pass | Pass | Pass | Pass |
+| learning-workbench | Pass | Pass | Pass | Pass |
+
+All seven committed collision cases passed in both clients. Codex repeated one trigger and one adjacent non-trigger per skill without sidecars (30/30); Claude's portable trees were byte-identical and its two runtime spot checks passed. Superseded failures and the fixes that closed them remain documented in the client evidence files.
 
 ## Core-cycle end to end
 
