@@ -1,6 +1,10 @@
-# Acta suite 0.1.0 promotion evidence
+# Acta v2 suite 0.2.0 promotion evidence
 
-Status: superseded-before-promotion by [Acta v2 suite 0.2.0](acta-suite-0.2.0.md)
+Status: collecting-promotion-evidence
+
+Active artifact system: Acta v2 `0.2.0-pilot`. Acta `0.1.0` remains bundled
+only as the rollback path until this report passes and the migration is
+explicitly promoted.
 
 This report is the blocking manual record for the initial fifteen-skill promotion cohort. Deterministic checks do not replace the evidence below.
 
@@ -45,9 +49,9 @@ Run the scenario in `tests/fixtures/core-cycle-project/SCENARIO.md` unchanged in
 
 ## Browser matrix
 
-- Current Chrome: all fourteen recipe artifacts — Pending
-- Current Safari: representative Document, Compare, Explore, Edit plus critical interactions — Pending
-- Current Firefox: representative Document, Compare, Explore, Edit plus critical interactions — Pending
+- Current Chrome: all 13 instruments and all 13 records — Pending
+- Current Safari: every interactive kind, one representative record, and critical interactions — Pending
+- Current Firefox: every interactive kind, one representative record, and critical interactions — Pending
 
 Verify offline `file://`, no-JS reading, clipboard fallback, disclosures, quiz/editor controls, 320px reflow, actual 400% zoom, print/PDF, monochrome meaning, and reduced motion.
 

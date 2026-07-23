@@ -12,7 +12,7 @@ Tests observe public commands and installed files rather than private helpers. E
 
 ## Acta deterministic checks
 
-CI is static-only and credential-free. It validates deterministic materialization, protocol equality, all fourteen recipe structures, offline resources, safe DOM behavior, no browser storage, native controls, no-script content, print/reduced-motion declarations, token and contrast contracts, sidecars, provenance checksums, and catalog/install behavior. It does not install browsers, Axe, or pixel-snapshot tooling.
+CI is static-only and credential-free. It validates deterministic materialization, protocol equality, all 14 Acta v2 bundles and their 26 instrument/record fixtures, offline resources, safe DOM behavior, no browser storage, native controls, no-script content, print/reduced-motion declarations, token and contrast contracts, sidecars, provenance checksums, and catalog/install behavior. It does not install browsers, Axe, or pixel-snapshot tooling.
 
 Realistic recipe artifacts live in test fixtures, never installed bundles. Visual review uses component contracts and the immutable component sheet rather than golden screenshots.
 
@@ -34,8 +34,8 @@ Before moving any initial skill to stable:
 
 - run every committed trigger/non-trigger case in both clients;
 - run the complete six-stage scenario in the public synthetic fixture in both clients;
-- exercise all fourteen recipes in current Chrome;
-- exercise representative Document, Compare, Explore, Edit artifacts and critical interactions in current Safari and Firefox;
+- exercise all 13 instruments and 13 records in current Chrome;
+- exercise every interactive Acta v2 kind, a representative record, and critical interactions in current Safari and Firefox;
 - verify keyboard, 320px, actual 400% zoom, print/PDF, no-JS, reduced motion, VoiceOver, and NVDA.
 
 Record exact versions and results in the versioned Acta suite QA report. Windows CI is blocking; real-Windows serif rendering is documented but not blocking.

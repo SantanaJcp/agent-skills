@@ -24,6 +24,34 @@ const expectedSkills = [
   "three-code-paths",
   "what-just-happened",
 ];
+const expectedActa2Html = [
+  "build-with-notes/instrument.html",
+  "build-with-notes/record.html",
+  "change-blueprint/instrument-plan.html",
+  "change-blueprint/instrument-spec.html",
+  "change-blueprint/record.html",
+  "concept-lab/instrument.html",
+  "concept-lab/record.html",
+  "deepen-the-codebase/instrument.html",
+  "deepen-the-codebase/record.html",
+  "do-i-understand-this/instrument.html",
+  "do-i-understand-this/record.html",
+  "draw-it-in-svg/instrument.html",
+  "draw-it-in-svg/record.html",
+  "draw-the-flow/instrument.html",
+  "draw-the-flow/record.html",
+  "feature-xray/record.html",
+  "feel-the-flow/instrument.html",
+  "find-the-cause/instrument.html",
+  "find-the-cause/record.html",
+  "interface-directions/instrument.html",
+  "interface-directions/record.html",
+  "learning-workbench/instrument.html",
+  "learning-workbench/record.html",
+  "three-code-paths/instrument.html",
+  "three-code-paths/record.html",
+  "what-just-happened/record.html",
+];
 
 function runPreparer(args) {
   return spawnSync(process.execPath, [preparer, ...args], {
@@ -42,10 +70,11 @@ async function createCommittedSource(parent) {
   const source = path.join(parent, "source");
   const entries = [
     "design/acta/VERSION",
+    "design/acta2/VERSION",
     "docs/qa/evaluator-runbook.md",
     "docs/qa/evidence/template.md",
     "incubator",
-    "tests/fixtures/acta",
+    "tests/fixtures/acta2",
     "tests/fixtures/core-cycle-project",
     "tests/smoke",
   ];
@@ -96,9 +125,11 @@ test("evaluator can prepare isolated manual-QA harnesses for both clients", asyn
       await readFile(path.join(harness, "QA-MANIFEST.json"), "utf8"),
     );
     assert.deepEqual(manifest, {
-      schema_version: 1,
+      schema_version: 2,
       suite: "acta-development-skill-suite",
       acta_version: "0.1.0",
+      acta2_version: "0.2.0-pilot",
+      active_artifact_system: "acta2",
       source_revision: revision,
       variant,
       skills: expectedSkills,
@@ -117,12 +148,14 @@ test("evaluator can prepare isolated manual-QA harnesses for both clients", asyn
         .sort(),
       ["collisions.yaml", ...expectedSkills.map((name) => `${name}.yaml`)].sort(),
     );
-    assert.deepEqual(
-      (await readdir(path.join(harness, "acta-fixtures")))
-        .filter((name) => name.endsWith(".html"))
-        .sort(),
-      expectedSkills.filter((name) => name !== "make-me-realize").sort().map((name) => `${name}.html`),
-    );
+    const acta2Html = [];
+    for (const skill of await readdir(path.join(harness, "acta-fixtures"))) {
+      const skillRoot = path.join(harness, "acta-fixtures", skill);
+      for (const name of await readdir(skillRoot)) {
+        if (name.endsWith(".html")) acta2Html.push(`${skill}/${name}`);
+      }
+    }
+    assert.deepEqual(acta2Html.sort(), expectedActa2Html.sort());
 
     const baseline = spawnSync(process.execPath, ["--test", "test/*.test.mjs"], {
       cwd: harness,

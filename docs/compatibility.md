@@ -13,7 +13,7 @@ The initial fifteen skills remain incubating until joint evidence is complete. O
 | Node authoring runtime | `>=22.20.0` |
 | CI Node line | `24` |
 | skills CLI | `1.5.19` |
-| Acta authoring system | `0.1.0` |
+| Acta authoring system | `0.2.0-pilot` (promotion candidate; `0.1.0` rollback retained) |
 | Codex | Pending initial cohort evidence |
 | Claude Code | Pending initial cohort evidence |
 

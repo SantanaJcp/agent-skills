@@ -46,7 +46,7 @@ Skills may recommend a handoff, but never invoke the next stage automatically. M
 - [Stable catalog](CATALOG.md)
 - [Incubator](INCUBATOR.md)
 - [Acta architecture](docs/architecture.md)
-- [Acta promotion evidence](docs/qa/acta-suite-0.1.0.md)
+- [Acta v2 promotion evidence](docs/qa/acta-suite-0.2.0.md)
 
 ## Author
 
@@ -56,7 +56,7 @@ Requirements: Node `>=22.20.0` and npm.
 npm ci
 npm run new:skill -- my-skill
 npm run acta
-npm run acta2   # Acta v2 pilot (three skills; see ADR 0003)
+npm run acta2   # Acta v2 suite candidate (see ADR 0004)
 npm run catalog
 npm run check
 # For assigned manual evaluation:
