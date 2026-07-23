@@ -1,6 +1,6 @@
 ---
 name: feature-xray
-description: "Explain how an existing feature actually works through source-located evidence, operational flow, gotchas, and an Acta record. Use when someone needs a codebase-grounded feature walkthrough; do not use for general concept teaching or proposed implementation design."
+description: "Explain how an existing feature is implemented in this repository through source-located evidence, operational flow, gotchas, and an Acta record. Use for codebase-grounded walkthroughs such as explain how caching, password reset, or retries work here; do not use for general concept teaching or proposed implementation design."
 license: Apache-2.0
 metadata:
   tags: "codebase, explanation, documentation"

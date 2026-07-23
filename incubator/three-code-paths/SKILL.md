@@ -1,6 +1,6 @@
 ---
 name: three-code-paths
-description: "Compare exactly three structurally distinct code approaches at equal fidelity and record an explicit choice. Use when a change has a real implementation-shape decision; do not use for cosmetic variants, interface styling, or direct implementation."
+description: "Compare exactly three structurally distinct code, API, data-model, database-schema, or architecture approaches at equal fidelity and record an explicit choice. Use for implementation-shape decisions such as compare three schemas or design a new retry architecture; do not use for cosmetic variants, interface styling, or direct implementation."
 license: Apache-2.0
 metadata:
   tags: "architecture, comparison, planning"

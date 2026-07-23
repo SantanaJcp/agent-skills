@@ -1,6 +1,6 @@
 ---
 name: build-with-notes
-description: "Implement an explicitly requested change test-first while maintaining live Acta notes, checks, deviations, and STOP gates. Use when the user asks to build from a spec, plan, ticket, or direct contract; do not activate for planning, diagnosis-only work, or read-only review."
+description: "Implement an explicitly requested code change test-first while maintaining live Acta notes, checks, deviations, and STOP gates. Use for direct mutation requests such as implement, build, fix, refactor this module now, or execute an approved spec, plan, ticket, or contract; do not activate for planning, diagnosis-only work, or read-only review."
 license: Apache-2.0
 metadata:
   tags: "implementation, tdd, review"

@@ -1,6 +1,6 @@
 ---
 name: find-the-cause
-description: "Diagnose a hard bug or performance regression through a tight red-capable loop, minimization, falsifiable hypotheses, and one-variable probes without applying the production fix. Use when the cause is unknown; do not use when the fix is already specified or implementation is requested."
+description: "Diagnose why a bug, failing test, unexpected behavior, or performance regression occurs through a tight red-capable loop, minimization, falsifiable hypotheses, and one-variable probes without applying the production fix. Use for requests such as find why this test is failing when the cause is unknown; do not use when the fix is already specified or implementation is requested."
 license: Apache-2.0
 metadata:
   tags: "debugging, diagnosis, testing"

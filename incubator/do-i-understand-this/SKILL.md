@@ -1,6 +1,6 @@
 ---
 name: do-i-understand-this
-description: "Diagnose a user's understanding of an actual completed change with an evidence-grounded quiz, gap export, explanation, and retry. Use after implementation or review when comprehension matters; never use as a merge gate or generic code review."
+description: "Diagnose a user's understanding of an actual completed change with an evidence-grounded quiz, gap export, explanation, and retry. Use after implementation or review for requests such as quiz me on the pull request or change we just implemented; never use as a merge gate or generic code review."
 license: Apache-2.0
 metadata:
   tags: "learning, review, quiz"
