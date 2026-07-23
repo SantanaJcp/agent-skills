@@ -12,7 +12,7 @@ metadata:
 
 Preserve what happened, its evidence, impact, cause state, and real follow-up ownership. During an active incident this skill documents only; it does not direct response.
 
-Read [the Acta artifact protocol](references/acta-protocol.md) and use [the Document scaffold](references/acta-scaffold.html).
+Read [the Acta v2 protocol](references/acta2-protocol.md). The postmortem is a **record-only** artifact — no fake active-incident controls, no invented owners. Write `scenario.json` (impact facts, an epistemically typed timeline of fact/hypothesis/mitigation/recovery entries, root cause, contributing conditions, follow-ups) and, after the report is reviewed and accepted in chat, `canonical.json`; generate the record with [the bundled generator](references/acta2/generate-record.mjs). [record.html](references/record.html) is a rendered example. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains only as rollback until the v2 migration is approved.
 
 ## Process
 

@@ -1,0 +1,10 @@
+.fx-step{border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);margin:0 0 var(--sp-3);overflow:hidden}
+.fx-step .fx-step-head{display:flex;gap:12px;align-items:baseline;background:var(--acta-tint);border-bottom:1px solid var(--acta-rule-faint);padding:11px 18px;margin:0}
+.fx-step .fx-n{flex:none;font:700 12px/1.5 var(--acta-font-data);color:var(--acta-ink-muted)}
+.fx-step .fx-step-title{font:600 16px/1.4 var(--acta-font-text);flex:1 1 auto}
+.fx-step .fx-step-head .r-loc{margin:0;background:var(--acta-paper)}
+.fx-step .fx-step-body{margin:0;padding:12px 18px 14px;font-size:14.5px;line-height:1.6;max-width:none}
+.fx-gotchas{margin:0;padding:0;list-style:none;max-width:80ch}
+.fx-gotchas li{position:relative;padding:10px 0 10px 22px;border-bottom:1px solid var(--acta-rule-faint);font-size:15px;line-height:1.6}
+.fx-gotchas li:last-child{border-bottom:0}
+.fx-gotchas li::before{content:"";position:absolute;left:2px;top:19px;width:7px;height:7px;border-radius:50%;background:var(--acta-warning)}

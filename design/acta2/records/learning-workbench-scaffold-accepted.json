@@ -1,0 +1,27 @@
+{
+ "status": "approved",
+ "stamp": "ACCEPTED",
+ "acceptedVia": "chat — session export confirmed",
+ "recordTitle": "Learning session record",
+ "summary": "One paragraph: score, waypoints, what to review next.",
+ "canonicalPath": "learning/topic-slug.md",
+ "decisions": [
+  {
+   "id": "session-close",
+   "selection": "record-session",
+   "rationale": "The honest session takeaway.",
+   "acceptedVia": "chat — explicit confirmation"
+  }
+ ],
+ "exampleWorking": {
+  "answers": {
+   "q1": "a"
+  },
+  "reflection": "What clicked."
+ },
+ "derived": {
+  "correct": 1,
+  "total": 1
+ },
+ "canonicalBody": "# Learning session record\n\nScore, review waypoints, reflection."
+}

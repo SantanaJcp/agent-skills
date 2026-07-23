@@ -1,0 +1,29 @@
+{
+ "status": "approved",
+ "stamp": "ACCEPTED",
+ "acceptedVia": "chat — Gate B confirmed; Gate A previously accepted",
+ "recordTitle": "Accepted change blueprint",
+ "summary": "One paragraph: what was specified, how it will be built, and why both gates closed.",
+ "canonicalPath": "blueprints/initiative-slug.md",
+ "decisions": [
+  {
+   "id": "gate-b-plan",
+   "selection": "approve-plan",
+   "rationale": "The accepted plan rationale.",
+   "acceptedVia": "chat — explicit confirmation"
+  },
+  {
+   "id": "gate-a-spec",
+   "selection": "approve-spec",
+   "rationale": "The accepted spec rationale.",
+   "acceptedVia": "chat — explicit confirmation",
+   "artifactPath": "spec.md",
+   "acceptedRevision": "approved-spec-revision"
+  }
+ ],
+ "exampleWorking": {
+  "selected": "approve-plan",
+  "rationale": "The accepted plan rationale."
+ },
+ "canonicalBody": "# Accepted change blueprint\n\nGate A locked scope and non-goals; Gate B accepted the slice plan."
+}

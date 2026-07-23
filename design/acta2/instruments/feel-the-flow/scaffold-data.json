@@ -1,0 +1,77 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "prototype",
+ "decisionId": "filter-feel",
+ "acceptanceToken": "record-feel",
+ "skill": "feel-the-flow",
+ "artifactKind": "interaction-prototype",
+ "initiative": "initiative-slug",
+ "title": "Feel the flow",
+ "question": "How should this interaction feel?",
+ "lede": "Feel the behavior with real parameters before anything is specced.",
+ "sourceRevision": null,
+ "inputs": [
+  "the data or baseline behavior the prototype exercises"
+ ],
+ "dataset": {
+  "skills": [
+   {
+    "name": "Changed-file summarizer",
+    "tags": [
+     "git",
+     "review"
+    ]
+   },
+   {
+    "name": "Test-gap finder",
+    "tags": [
+     "tests",
+     "review"
+    ]
+   },
+   {
+    "name": "Release-notes drafter",
+    "tags": [
+     "git",
+     "docs"
+    ]
+   }
+  ]
+ },
+ "playground": {
+  "placeholder": "Type a skill name — try “test”…",
+  "emptyText": "Nothing matches what you typed (yet).",
+  "note": "The pending marker shows the configured delay while it elapses — that pause is the thing being decided.",
+  "conclusionPlaceholder": "What did it feel like? e.g. 300 ms reads as broken; 100 ms with instant first keystroke feels immediate."
+ },
+ "params": [
+  {
+   "id": "debounce",
+   "label": "Debounce",
+   "min": 0,
+   "max": 600,
+   "step": 50,
+   "default": 300,
+   "unit": " ms"
+  },
+  {
+   "id": "minChars",
+   "label": "Minimum characters",
+   "min": 0,
+   "max": 3,
+   "step": 1,
+   "default": 0,
+   "unit": ""
+  }
+ ],
+ "toggles": [
+  {
+   "id": "instantFirst",
+   "label": "Instant first keystroke (debounce only after)",
+   "default": false
+  }
+ ],
+ "unresolved": [
+  "the prototype informs a future decision; it does not make one"
+ ]
+}

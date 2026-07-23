@@ -1,0 +1,197 @@
+{
+  "scenario": {
+    "acta2": "0.2.0-pilot",
+    "kind": "checklist",
+    "decisionId": "diagnosis",
+    "acceptanceToken": "record-diagnosis",
+    "skill": "find-the-cause",
+    "artifactKind": "diagnosis",
+    "initiative": "tag-filter",
+    "title": "Find the cause — stale rows after back navigation",
+    "question": "Why does back navigation intermittently show rows from the previous filter?",
+    "lede": "Reproduced three times in QA: filter by ?tag=review, click through to ?tag=git, press back — sometimes the git rows linger under the review URL. Four falsifiable hypotheses, each with its probe and observation; judge them and record the diagnosis.",
+    "sourceRevision": "a8b083705553550eda289ddf9cf1d028df907682",
+    "inputs": [
+      "qa notes 2026-07-23 — repro steps and frequency",
+      "src/app.mjs — popstate wiring",
+      "browser devtools traces from the repro session"
+    ],
+    "conclusionRequired": true,
+    "conclusionNote": "The diagnosis must name the validated cause and why the falsified hypotheses are dead — a fix is a separate, later decision.",
+    "conclusionPlaceholder": "e.g. H2 is the cause: bfcache restores the pre-navigation DOM and popstate does not fire on restore; H1/H3 falsified by direct probes.",
+    "facts": [
+      {
+        "value": "3 / 10",
+        "label": "repro rate on back-nav"
+      },
+      {
+        "value": "Safari only",
+        "label": "observed scope so far"
+      },
+      {
+        "value": "render-only",
+        "label": "blast radius"
+      }
+    ],
+    "causalMap": {
+      "caption": "Each hypothesis attacks one edge of the render path: H1 the event, H2 the cache restore, H3 the filter, H4 the timing between them.",
+      "flow": {
+        "nodes": [
+          {
+            "id": "back",
+            "label": "back navigation",
+            "sub": "history traversal",
+            "col": 0,
+            "row": 0
+          },
+          {
+            "id": "restore",
+            "label": "page restore",
+            "sub": "bfcache or reload?",
+            "col": 1,
+            "row": 0,
+            "tone": "danger"
+          },
+          {
+            "id": "pop",
+            "label": "popstate?",
+            "sub": "H1 · H2 attack here",
+            "col": 2,
+            "row": 0,
+            "tone": "accent"
+          },
+          {
+            "id": "render",
+            "label": "renderFromUrl",
+            "sub": "H3 · H4 attack here",
+            "col": 2,
+            "row": 1
+          },
+          {
+            "id": "dom",
+            "label": "visible rows",
+            "sub": "the stale symptom",
+            "col": 1,
+            "row": 1,
+            "tone": "dark"
+          }
+        ],
+        "edges": [
+          {
+            "from": "back",
+            "to": "restore",
+            "label": "traversal"
+          },
+          {
+            "from": "restore",
+            "to": "pop",
+            "label": "fires event?",
+            "tone": "danger",
+            "dashed": true
+          },
+          {
+            "from": "pop",
+            "to": "render",
+            "label": "re-run glue"
+          },
+          {
+            "from": "render",
+            "to": "dom",
+            "label": "replaceChildren"
+          }
+        ]
+      }
+    },
+    "verdicts": [
+      {
+        "id": "validated",
+        "label": "Validated",
+        "tone": "positive"
+      },
+      {
+        "id": "falsified",
+        "label": "Falsified",
+        "tone": "plain"
+      },
+      {
+        "id": "still-open",
+        "label": "Still open",
+        "tone": "warning"
+      }
+    ],
+    "items": [
+      {
+        "id": "h-popstate-missing",
+        "label": "popstate never fires on back",
+        "predicts": "A log line inside the popstate handler would never appear on any back navigation.",
+        "probe": "Instrumented the handler and pressed back ten times across Safari and Chrome.",
+        "observed": "The handler fired on every non-reproducing traversal and on all Chrome traversals — the event wiring itself is sound.",
+        "evidence": [
+          "src/app.mjs:27",
+          "trace 2026-07-23 §2"
+        ]
+      },
+      {
+        "id": "h-bfcache",
+        "label": "bfcache restores the old DOM without any event",
+        "predicts": "Reproducing traversals would show a pageshow event with persisted=true and no popstate at all.",
+        "probe": "Logged pageshow.persisted alongside popstate during twenty Safari traversals.",
+        "observed": "All three reproductions showed persisted=true with no popstate; every clean traversal showed a normal load or a popstate. Exact correlation.",
+        "evidence": [
+          "trace 2026-07-23 §4",
+          "webkit bfcache notes"
+        ]
+      },
+      {
+        "id": "h-filter-order",
+        "label": "filterByTag returns stale or reordered results",
+        "predicts": "Calling the pure function directly with the review tag would sometimes return git rows.",
+        "probe": "Property-tested filterByTag with the full dataset and both tags, five thousand iterations in Node.",
+        "observed": "Identical, order-stable output every iteration — the pure core cannot produce the symptom.",
+        "evidence": [
+          "src/catalog.mjs:8",
+          "test run 2026-07-23"
+        ]
+      },
+      {
+        "id": "h-race",
+        "label": "A render race lets the old list win",
+        "predicts": "Two renderFromUrl invocations would interleave, with the earlier one finishing last.",
+        "probe": "Added invocation counters; renderFromUrl is synchronous end to end — there is nothing to interleave.",
+        "observed": "Single invocation per event in every trace; the function has no await points.",
+        "evidence": [
+          "src/app.mjs:14-31"
+        ]
+      }
+    ],
+    "unresolved": [
+      "whether the eventual fix listens to pageshow or opts out of bfcache — a change-blueprint question, not a diagnosis one"
+    ]
+  },
+  "accepted": {
+    "status": "approved",
+    "stamp": "ACCEPTED",
+    "acceptedVia": "chat 2026-07-23 — diagnosis candidate pasted and confirmed after the board was fully judged",
+    "recordTitle": "Diagnosis: bfcache restore without popstate",
+    "summary": "Safari's back-forward cache restores the pre-navigation DOM without firing popstate, so the URL changes while the list does not. H2 validated by exact correlation with pageshow.persisted; the event wiring, the pure filter, and the race hypothesis were each falsified by direct probes.",
+    "canonicalPath": "diagnoses/back-nav-stale-rows.md",
+    "decisions": [
+      {
+        "id": "diagnosis",
+        "selection": "record-diagnosis",
+        "rationale": "H2 correlates perfectly across twenty traversals; the other three died to direct probes, not intuition.",
+        "acceptedVia": "chat 2026-07-23 — explicit confirmation"
+      }
+    ],
+    "exampleWorking": {
+      "marks": {
+        "h-popstate-missing": "falsified",
+        "h-bfcache": "validated",
+        "h-filter-order": "falsified",
+        "h-race": "falsified"
+      },
+      "conclusion": "H2 is the cause: Safari bfcache restores the pre-navigation DOM with pageshow.persisted=true and no popstate, so renderFromUrl never re-runs. H1 falsified (handler fires everywhere else), H3 falsified (pure core property-tested stable), H4 falsified (synchronous render, nothing to race). Fix direction — pageshow listener vs bfcache opt-out — is deliberately out of scope here."
+    },
+    "canonicalBody": "# Diagnosis — stale rows after back navigation\n\nValidated: bfcache restore without popstate (exact correlation with\npageshow.persisted across twenty traversals). Falsified: missing popstate\nwiring, filter instability, render race — each by a direct probe. The fix\nis a separate decision; this record is the diagnosis only."
+  }
+}

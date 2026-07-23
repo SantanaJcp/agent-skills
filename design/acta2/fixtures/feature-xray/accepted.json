@@ -1,0 +1,17 @@
+{
+ "status": "approved",
+ "stamp": "ACCEPTED",
+ "acceptedVia": "chat 2026-07-23 — explanation verified against the five source files listed as inputs",
+ "recordTitle": "How tag filtering works in the skills catalog",
+ "summary": "URL-derived rendering over a pure functional core: one parameter, two pure functions, one DOM sink. Verified against source at a8b0837 — every claim carries its file:line location.",
+ "canonicalPath": "explanations/tag-filter-xray.md",
+ "decisions": [
+  {
+   "id": "publish-xray",
+   "selection": "publish-record",
+   "rationale": "Walked each claim against the code; the map and steps match what actually landed.",
+   "acceptedVia": "chat 2026-07-23 — explicit confirmation"
+  }
+ ],
+ "canonicalBody": "# Feature X-ray — tag filtering\n\nEvery render derives from the URL: parseTagFromSearch → filterByTag →\nreplaceChildren. The no-JS catalog is the baseline the script enhances.\nUnknown tags render the accepted empty state; back/forward replay the same\nsingle render path. Claims verified file-by-file at a8b0837."
+}

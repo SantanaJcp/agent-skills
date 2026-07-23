@@ -1,0 +1,170 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "decision",
+ "decisionId": "gate-b-plan",
+ "skill": "change-blueprint",
+ "artifactKind": "implementation-plan",
+ "initiative": "initiative-slug",
+ "title": "Change blueprint — implementation plan",
+ "question": "Will this plan build the accepted specification safely?",
+ "lede": "Gate B reviews how the accepted spec becomes code.",
+ "gatePhase": "plan",
+ "gateLabel": "Gate B — implementation plan",
+ "gateQuestion": "Approve this plan as the build contract?",
+ "sourceRevision": null,
+ "inputs": [
+  "spec.md — accepted at Gate A"
+ ],
+ "specContext": {
+  "acceptedVia": "accepted in chat after Gate A review",
+  "summary": "One-paragraph restatement of the accepted scope and non-goals."
+ },
+ "requiredPriorDecisions": [
+  {
+   "id": "gate-a-spec",
+   "allowedSelections": [
+    "approve-spec"
+   ],
+   "artifactPath": "spec.md",
+   "acceptedRevision": "approved-spec-revision"
+  }
+ ],
+ "facts": [
+  {
+   "value": "3",
+   "label": "slices"
+  },
+  {
+   "value": "2",
+   "label": "files touched"
+  },
+  {
+   "value": "6",
+   "label": "planned assertions"
+  },
+  {
+   "value": "1 commit",
+   "label": "rollback unit"
+  }
+ ],
+ "slicesLede": "Vertical slices; every slice leaves the tests green.",
+ "slices": [
+  {
+   "id": "s1",
+   "window": "Slice 1",
+   "title": "First independently green slice",
+   "detail": "What lands and how it is proven.",
+   "touches": [
+    "path/one"
+   ]
+  },
+  {
+   "id": "s2",
+   "window": "Slice 2",
+   "title": "Second slice",
+   "detail": "What lands and how it is proven.",
+   "touches": [
+    "path/two"
+   ]
+  },
+  {
+   "id": "s3",
+   "window": "Slice 3",
+   "title": "User-visible wiring",
+   "detail": "The slice where behavior becomes visible.",
+   "touches": [
+    "path/one",
+    "path/two"
+   ]
+  }
+ ],
+ "flow": {
+  "lede": "State the dependency direction the plan preserves.",
+  "caption": "Explain what solid and dashed edges mean here.",
+  "nodes": [
+   {
+    "id": "in",
+    "label": "input",
+    "sub": "where data enters",
+    "col": 0,
+    "row": 0
+   },
+   {
+    "id": "core",
+    "label": "pure core",
+    "sub": "testable alone",
+    "col": 1,
+    "row": 0
+   },
+   {
+    "id": "out",
+    "label": "effectful edge",
+    "sub": "the only stateful surface",
+    "col": 1,
+    "row": 1,
+    "tone": "dark"
+   }
+  ],
+  "edges": [
+   {
+    "from": "in",
+    "to": "core",
+    "label": "parsed value"
+   },
+   {
+    "from": "core",
+    "to": "out",
+    "label": "result",
+    "dashed": true,
+    "tone": "accent"
+   }
+  ]
+ },
+ "riskyCode": {
+  "lede": "The single trickiest surface in the plan, shown as real code.",
+  "path": "path/planned-surface.mjs (planned)",
+  "snippet": "export function plannedSurface(input) {\n  // the invariant this code must hold\n  return transform(input);\n}"
+ },
+ "risks": [
+  {
+   "risk": "A real failure mode of this plan",
+   "likelihood": "medium",
+   "mitigation": "How a slice or test bounds it."
+  }
+ ],
+ "tests": [
+  "what proves the core",
+  "what proves the wiring"
+ ],
+ "rollout": [
+  "how the slices reach users safely"
+ ],
+ "rollback": [
+  "the single step that undoes the change"
+ ],
+ "options": [
+  {
+   "id": "approve-plan",
+   "label": "Approve the plan",
+   "consequence": "Implementation is authorized against this exact slice list."
+  },
+  {
+   "id": "request-changes",
+   "label": "Request changes",
+   "consequence": "The plan reopens with your notes."
+  },
+  {
+   "id": "reject-plan",
+   "label": "Reject the plan",
+   "consequence": "The spec stands; this build approach is discarded."
+  }
+ ],
+ "recommendation": {
+  "option": "approve-plan",
+  "reason": "State why, grounded in the slices and risks above."
+ },
+ "unresolved": [
+  "anything decided during the build"
+ ],
+ "openStatusLabel": "Gate B open — no resolution proposed yet"
+}

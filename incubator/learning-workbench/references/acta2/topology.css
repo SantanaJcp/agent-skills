@@ -1,0 +1,57 @@
+/* learning-workbench topology: mission → waypoints → source-grounded lessons
+   (each with its model) → retrieval practice → session close. The waypoint
+   rail and per-lesson source tags distinguish this workspace from a one-off
+   understanding check. */
+.lwb-question{font:400 32px/1.25 var(--acta-font-text);margin:var(--sp-6) 0 var(--sp-3);max-width:46ch}
+.lwb-mission{background:var(--acta-tint-strong);border-radius:var(--acta-radius-lg);padding:14px 20px;margin:0 0 var(--sp-4);font-size:15px;line-height:1.6;max-width:100ch}
+.lwb-mission .a2-k{margin-bottom:3px}
+
+.lwb-waypoints{margin:0 0 var(--sp-6)}
+.lwb-waypoints ol{margin:0;padding:0;list-style:none;display:flex;gap:10px;flex-wrap:wrap}
+.lwb-waypoints a{display:inline-flex;gap:8px;align-items:baseline;border:1px solid var(--acta-rule);border-radius:var(--acta-radius-lg);background:var(--acta-card);padding:8px 16px;font:600 13.5px/1.4 var(--acta-font-ui);color:var(--acta-ink);text-decoration:none}
+.lwb-waypoints a:hover{border-color:var(--acta-action)}
+.lwb-waypoints .w-n{font:700 11px/1.4 var(--acta-font-data);color:var(--acta-ink-muted)}
+.lwb-waypoints .is-practice a{border-style:dashed}
+
+.lwb-lesson{background:var(--acta-card);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:24px 28px;margin:0 0 var(--sp-5)}
+.lwb-lesson h2{display:flex;gap:12px;align-items:baseline;font:600 22px/1.3 var(--acta-font-text);margin:0 0 var(--sp-3)}
+.lwb-lesson .l-n{flex:none;background:var(--acta-tint-strong);border-radius:var(--acta-radius);padding:5px 10px;font:700 12.5px/1 var(--acta-font-data);color:var(--acta-ink)}
+.lwb-lesson .l-body{font-size:15px;line-height:1.65;max-width:76ch;margin:0 0 var(--sp-3)}
+.lwb-model{border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:16px 20px;margin:var(--sp-4) 0}
+.lwb-facts{margin:var(--sp-3) 0 0;padding:0;list-style:none;font-size:13.5px;line-height:1.6;color:var(--acta-ink-muted)}
+.lwb-facts li{margin:0 0 8px}
+.lwb-facts li:last-child{margin-bottom:0}
+.lwb-tag{display:inline-block;font:600 9.5px/1.3 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--acta-positive);color:var(--acta-positive);border-radius:var(--acta-radius);padding:1px 5px;margin-right:8px}
+
+.lwb-practice h2,.lwb-close h2{font:600 22px/1.3 var(--acta-font-text);margin:56px 0 var(--sp-3);border-bottom:1px solid var(--acta-rule);padding-bottom:12px}
+.lwb-practicelede{font-size:14.5px;line-height:1.6;color:var(--acta-ink-muted);margin:0 0 var(--sp-4);max-width:72ch}
+.lwb-scoreline{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:0 0 var(--sp-4)}
+.lwb-score{font:600 13px/1.5 var(--acta-font-data);color:var(--acta-ink-muted);font-variant-numeric:tabular-nums}
+.lwb-q{background:var(--acta-card);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:20px 24px;margin:0 0 var(--sp-4)}
+.lwb-q .q-prompt{display:flex;gap:12px;align-items:baseline;font:600 16.5px/1.45 var(--acta-font-ui);margin:0 0 var(--sp-3)}
+.lwb-q .q-n{flex:none;background:var(--acta-tint-strong);border-radius:var(--acta-radius);padding:4px 8px;font:700 11.5px/1 var(--acta-font-data);color:var(--acta-ink)}
+.lwb-q .q-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3);margin:0 0 var(--sp-3)}
+.lwb-q .q-opt{font-size:14.5px;line-height:1.5;align-items:center}
+.lwb-q .q-opt input{margin-top:0}
+.lwb-q[data-state="correct"]{border-color:var(--acta-positive)}
+.lwb-q[data-state="incorrect"]{border-color:var(--acta-danger)}
+.lwb-q[data-state="correct"] .q-n{background:var(--acta-positive-tint);color:var(--acta-positive)}
+.lwb-q[data-state="incorrect"] .q-n{background:var(--acta-danger-tint);color:var(--acta-danger)}
+.lwb-q .q-reveal{margin:0}
+.lwb-q .q-answer{margin:0 0 6px}
+.lwb-q .q-gapline{margin:8px 0 0;font-size:13.5px;color:var(--acta-ink-muted)}
+.lwb-gaptag{display:inline-block;border:1px solid var(--acta-action);color:var(--acta-action);border-radius:var(--acta-radius-lg);background:var(--acta-action-tint);padding:1px 10px;font:600 11.5px/1.7 var(--acta-font-data)}
+
+.lwb-gapsline{font-size:14.5px;line-height:1.7;color:var(--acta-ink-muted);max-width:80ch;margin:0 0 var(--sp-3)}
+.lwb-close .a2-field{max-width:78ch}
+.lwb-hint{font:13px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin:8px 0 0;max-width:78ch}
+
+@media (max-width:719px){
+  .lwb-lesson{padding:var(--sp-4)}
+  .lwb-q .q-options{grid-template-columns:1fr}
+  .lwb-waypoints a{flex:1 1 auto;justify-content:center}
+}
+@media print{
+  .lwb-lesson,.lwb-q,.lwb-model{break-inside:avoid}
+  .lwb-waypoints{display:none}
+}

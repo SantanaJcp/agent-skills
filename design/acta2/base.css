@@ -1,0 +1,154 @@
+/* Acta v2 pilot — shared technical primitives.
+   Layout topology is deliberately absent: each instrument ships its own
+   topology.css. This file carries only tokens, safety, accessibility,
+   disclosure, trust strip, export panel, print, and reflow contracts.
+
+   Spacing system: a 4px base scale (--sp-*). Page composition: one shared
+   working width and gutter so every instrument sits on the same page frame.
+   Alignment rules: prose left-aligned, numeric table values right-aligned,
+   annotations aligned to their marks; nothing is centered by default. */
+
+:root{
+  --acta-paper:#FDFDFB; --acta-canvas:#F7F4EC; --acta-card:#FFFFFF; --acta-tint:#F1EDE0; --acta-tint-strong:#E7E1D1; --acta-inverse:#23252B;
+  --acta-ink:#1D1F24; --acta-ink-muted:#50545C; --acta-ink-inverse:#E7E5DE;
+  --acta-rule:#D8D6CC; --acta-rule-strong:#8E8B7E; --acta-rule-faint:#E7E5DB;
+  --acta-action:#2B4C7E; --acta-action-tint:#E9EEF5;
+  --acta-positive:#276140; --acta-positive-tint:#E8F0E9;
+  --acta-warning:#7A5600; --acta-warning-tint:#F6EFDC;
+  --acta-danger:#8C2F23; --acta-danger-tint:#F6E9E6;
+  --acta-code-bg:#22252B; --acta-code-head:#1B1D22; --acta-code-rule:#383B44;
+  --acta-code-ink:#E7E5DE; --acta-code-muted:#9DA2AC; --acta-code-accent:#A8BFDE;
+  --acta-font-text:Charter,"Iowan Old Style","Palatino Linotype",Georgia,"Times New Roman",serif;
+  --acta-font-data:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --acta-font-ui:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,sans-serif;
+  --acta-radius:2px; --acta-radius-lg:14px; --acta-quick:90ms linear;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px;
+  --acta-maxw:1320px; --acta-gutter:clamp(16px,4vw,44px);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0 auto;max-width:var(--acta-maxw);padding:0 var(--acta-gutter) var(--sp-7);background:var(--acta-canvas);color:var(--acta-ink);font:16px/1.6 var(--acta-font-ui)}
+code,pre,kbd,samp{font-family:var(--acta-font-data)}
+pre{margin:0;white-space:pre-wrap;word-break:break-word}
+a{color:var(--acta-action)}
+button{font:inherit;cursor:pointer}
+h1,h2,h3{text-wrap:balance}
+p{text-wrap:pretty}
+:focus-visible{outline:2px solid var(--acta-action);outline-offset:2px}
+.visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.skip{position:absolute;left:-9999px}
+.skip:focus{position:fixed;left:12px;top:12px;background:var(--acta-action);color:#fff;padding:8px 14px;z-index:99;font:600 13px/1 var(--acta-font-ui)}
+.codewrap,.tablewrap,.flowwrap{overflow-x:auto}
+/* absolutely-positioned a11y text must not escape the scroll container */
+.codewrap,.tablewrap,.flowwrap{position:relative}
+/* local scroll container for spatial visualizations (same reflow contract) */
+.plotwrap{overflow-x:auto;position:relative}
+
+/* ---- shared metadata label: one quiet voice for small annotations ---- */
+.a2-k{display:block;font:600 10.5px/1.4 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;color:var(--acta-ink-muted)}
+
+/* ---- dark code island: the only dark surface on the page ---- */
+.a2-code{background:var(--acta-code-bg);color:var(--acta-code-ink);border-radius:var(--acta-radius-lg);overflow:hidden}
+.a2-code .c-path{font:500 12px/1.5 var(--acta-font-data);letter-spacing:.02em;color:var(--acta-code-muted);background:var(--acta-code-head);border-bottom:1px solid var(--acta-code-rule);padding:8px 16px}
+.a2-code pre{white-space:pre;word-break:normal;overflow-x:auto;padding:14px 16px;font-size:12.5px;line-height:1.65;tab-size:2}
+.a2-code ::selection{background:#3D4A61;color:#fff}
+/* Build-time token palette (design/acta2/lib/highlight.mjs) — all >=4.5:1 on the island. */
+.a2-code .tok-kw{color:#E8926F}
+.a2-code .tok-fn{color:#8FB6E3}
+.a2-code .tok-str{color:#A3C293}
+.a2-code .tok-num{color:#D9BC8C}
+.a2-code .tok-com{color:#8A9099;font-style:italic}
+
+/* ---- shared flow diagrams (lib/flow.mjs output) ---- */
+.flowd{display:block;width:100%;height:auto}
+.flowd text{font-family:var(--acta-font-data)}
+.flowd-caption{font:12.5px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin:10px 0 0;max-width:90ch}
+
+/* ---- trust strip: compact provenance, expandable, full in print ---- */
+.a2-trust{border-bottom:1px solid var(--acta-rule);font:12px/1.5 var(--acta-font-data);color:var(--acta-ink-muted)}
+.a2-trust>summary{list-style:none;cursor:pointer;padding:9px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.a2-trust>summary::-webkit-details-marker{display:none}
+.a2-trust>summary::after{content:"▸ provenance";color:var(--acta-action)}
+.a2-trust[open]>summary::after{content:"▾ provenance"}
+.a2-trust .t-sep{color:var(--acta-rule-strong)}
+.a2-trust dl{margin:0 0 12px;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:3px 16px}
+.a2-trust dt{font-weight:600;text-transform:uppercase;letter-spacing:.1em;font-size:10px;color:var(--acta-ink-muted)}
+.a2-trust dd{margin:0;overflow-wrap:anywhere}
+
+/* ---- status ---- */
+.a2-status{display:inline-block;border:1.5px solid currentColor;border-radius:var(--acta-radius);padding:5px 12px;font:600 11.5px/1.2 var(--acta-font-data);letter-spacing:.08em;text-transform:uppercase}
+body[data-acta2-status="candidate-ready"] .a2-status{color:var(--acta-action)}
+body[data-acta2-status="stopped"] .a2-status{color:var(--acta-danger)}
+body[data-acta2-status="open-unselected"] .a2-status,body[data-acta2-status="exploring"] .a2-status{color:var(--acta-warning)}
+.a2-integrity{display:none;border:2px solid var(--acta-danger);background:var(--acta-danger-tint);color:var(--acta-danger);padding:10px 14px;margin:10px 0;font:600 13px/1.4 var(--acta-font-ui)}
+body[data-acta2-integrity="mismatch"] .a2-integrity{display:block}
+
+/* ---- generic controls ---- */
+.a2-btn{background:var(--acta-card);border:1px solid var(--acta-ink);color:var(--acta-ink);padding:10px 18px;font:600 13px/1.3 var(--acta-font-data);border-radius:var(--acta-radius);transition:background var(--acta-quick),color var(--acta-quick)}
+.a2-btn:hover:not(:disabled){background:var(--acta-ink);color:var(--acta-paper)}
+.a2-btn.is-primary{border-color:var(--acta-action);color:var(--acta-action)}
+.a2-btn.is-primary:hover:not(:disabled){background:var(--acta-action);color:#fff}
+.a2-btn[aria-pressed="true"]{background:var(--acta-ink);color:var(--acta-paper)}
+.a2-choice{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:14px 16px;background:var(--acta-tint);cursor:pointer;transition:border-color var(--acta-quick),background var(--acta-quick)}
+.a2-choice:hover:not(:has(input:disabled)){border-color:var(--acta-action)}
+.a2-choice input{margin:2px 0 0;width:16px;height:16px;flex:none;accent-color:var(--acta-action)}
+.a2-choice:has(input:checked){border-color:var(--acta-action);background:var(--acta-action-tint);outline:1px solid var(--acta-action);outline-offset:-3px}
+/* Disabled controls must LOOK disabled: no pointer cursor, no hover affordance,
+   dimmed. They ship this way and only the runtime enables them. */
+button:disabled,input:disabled,textarea:disabled,select:disabled{cursor:not-allowed;opacity:.45}
+.a2-btn:disabled{background:var(--acta-card);color:var(--acta-ink)}
+.a2-btn.is-primary:disabled{color:var(--acta-action)}
+.a2-choice:has(input:disabled){cursor:not-allowed;opacity:.55;border-color:var(--acta-rule)}
+.a2-choice:has(input:disabled) input{opacity:1}
+textarea:disabled{background:var(--acta-tint)}
+.a2-field{display:block;margin:var(--sp-3) 0}
+.a2-field span{display:block;font:600 11px/1.4 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;color:var(--acta-ink-muted);margin-bottom:7px}
+.a2-field textarea,.a2-field input[type=text]{width:100%;border:1px solid var(--acta-rule);border-radius:var(--acta-radius);padding:12px 14px;font:15px/1.55 var(--acta-font-ui);background:var(--acta-card);color:var(--acta-ink)}
+
+/* ---- disclosure ---- */
+details.a2-more{border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);background:var(--acta-card);margin:var(--sp-2) 0}
+details.a2-more>summary{cursor:pointer;padding:11px 14px;font:600 13.5px/1.4 var(--acta-font-ui);list-style-position:inside;color:var(--acta-ink-muted)}
+details.a2-more>summary:hover{background:var(--acta-tint);color:var(--acta-ink)}
+details.a2-more[open]>summary{color:var(--acta-ink)}
+details.a2-more>div{padding:4px 16px 14px;border-top:1px solid var(--acta-rule-faint);font-size:14px;line-height:1.6}
+
+/* ---- export panel: audit layer, visually subordinate to the decision layer ---- */
+.a2-export{border-top:3px double var(--acta-rule-strong);margin-top:var(--sp-7);padding-top:var(--sp-4)}
+.a2-export h2{font:600 20px/1.3 var(--acta-font-text);margin:0 0 8px}
+.a2-export .x-note{font:12.5px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin:0 0 12px;max-width:78ch}
+.a2-export pre{border:1px solid var(--acta-rule-faint);background:var(--acta-card);border-radius:var(--acta-radius);padding:14px 16px;font-size:12px;line-height:1.6;max-height:320px;overflow:auto}
+.a2-export .x-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:var(--sp-3) 0}
+.a2-live{font:12px/1.5 var(--acta-font-data);color:var(--acta-positive);min-height:1.2em}
+.a2-live.is-error{color:var(--acta-danger)}
+
+/* ---- noscript & honest-degradation notes ---- */
+.a2-noscript{border:1px solid var(--acta-warning);background:var(--acta-warning-tint);border-radius:var(--acta-radius);padding:12px 16px;font-size:14px;margin:14px 0}
+/* Inline fallback beside controls: visible until the runtime enables them. */
+.a2-jsnote{border-left:3px solid var(--acta-warning);background:var(--acta-warning-tint);color:var(--acta-warning);padding:8px 12px;font-size:13px;margin:8px 0;max-width:70ch}
+body[data-acta2-ready="true"] .a2-jsnote{display:none}
+/* Print policy: the durable print artifact is the Acta record; instruments
+   print as a working snapshot with textual state instead of controls. */
+.a2-printnote{display:none}
+
+/* ---- motion & print & reflow contracts ---- */
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+@media (max-width:959px){.a2-trust>summary{font-size:11px}}
+@media (max-width:479px){.a2-trust dl{grid-template-columns:1fr}.a2-trust dt{margin-top:6px}}
+@media (max-width:719px){
+  .a2-export .x-actions{flex-direction:column;align-items:stretch}
+  .a2-export .x-actions .a2-btn{width:100%}
+}
+@media print{
+  body{background:#fff;font-size:11pt;max-width:none;padding:0}
+  .a2-btn,.skip,.a2-noscript,.a2-jsnote,[data-print-hide]{display:none!important}
+  input,textarea,select{display:none!important}
+  .a2-live{display:none}
+  .a2-printnote{display:block;border:1px solid #555;padding:6px 10px;font:10px/1.4 var(--acta-font-data)}
+  details,details.a2-more{border:none}
+  a[href^="http"]::after{content:" (" attr(href) ")";font:9px/1 var(--acta-font-data);color:#555}
+  /* Dark islands print light: paper output stays ink-efficient and legible. */
+  .a2-code{background:#fff;color:#000;border:1px solid #888}
+  .a2-code .c-path{background:#fff;color:#333;border-bottom:1px solid #888}
+  .a2-code pre{white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}
+  .a2-code pre span{color:inherit!important;font-style:normal}
+}

@@ -1,0 +1,2054 @@
+<!-- acta2-materialized: v0.2.0-pilot instrument=draw-the-flow sha256=a479b127eddc23bf8c172c7ff44243a996cc9c245326d0824730b776af9c1772; do not edit by hand — regenerate from scenario JSON -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Draw the flow — tag-filter navigation — instrument · Acta v2</title>
+<style>
+/* Acta v2 pilot — shared technical primitives.
+   Layout topology is deliberately absent: each instrument ships its own
+   topology.css. This file carries only tokens, safety, accessibility,
+   disclosure, trust strip, export panel, print, and reflow contracts.
+
+   Spacing system: a 4px base scale (--sp-*). Page composition: one shared
+   working width and gutter so every instrument sits on the same page frame.
+   Alignment rules: prose left-aligned, numeric table values right-aligned,
+   annotations aligned to their marks; nothing is centered by default. */
+
+:root{
+  --acta-paper:#FDFDFB; --acta-canvas:#F7F4EC; --acta-card:#FFFFFF; --acta-tint:#F1EDE0; --acta-tint-strong:#E7E1D1; --acta-inverse:#23252B;
+  --acta-ink:#1D1F24; --acta-ink-muted:#50545C; --acta-ink-inverse:#E7E5DE;
+  --acta-rule:#D8D6CC; --acta-rule-strong:#8E8B7E; --acta-rule-faint:#E7E5DB;
+  --acta-action:#2B4C7E; --acta-action-tint:#E9EEF5;
+  --acta-positive:#276140; --acta-positive-tint:#E8F0E9;
+  --acta-warning:#7A5600; --acta-warning-tint:#F6EFDC;
+  --acta-danger:#8C2F23; --acta-danger-tint:#F6E9E6;
+  --acta-code-bg:#22252B; --acta-code-head:#1B1D22; --acta-code-rule:#383B44;
+  --acta-code-ink:#E7E5DE; --acta-code-muted:#9DA2AC; --acta-code-accent:#A8BFDE;
+  --acta-font-text:Charter,"Iowan Old Style","Palatino Linotype",Georgia,"Times New Roman",serif;
+  --acta-font-data:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --acta-font-ui:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,sans-serif;
+  --acta-radius:2px; --acta-radius-lg:14px; --acta-quick:90ms linear;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px;
+  --acta-maxw:1320px; --acta-gutter:clamp(16px,4vw,44px);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0 auto;max-width:var(--acta-maxw);padding:0 var(--acta-gutter) var(--sp-7);background:var(--acta-canvas);color:var(--acta-ink);font:16px/1.6 var(--acta-font-ui)}
+code,pre,kbd,samp{font-family:var(--acta-font-data)}
+pre{margin:0;white-space:pre-wrap;word-break:break-word}
+a{color:var(--acta-action)}
+button{font:inherit;cursor:pointer}
+h1,h2,h3{text-wrap:balance}
+p{text-wrap:pretty}
+:focus-visible{outline:2px solid var(--acta-action);outline-offset:2px}
+.visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.skip{position:absolute;left:-9999px}
+.skip:focus{position:fixed;left:12px;top:12px;background:var(--acta-action);color:#fff;padding:8px 14px;z-index:99;font:600 13px/1 var(--acta-font-ui)}
+.codewrap,.tablewrap,.flowwrap{overflow-x:auto}
+/* absolutely-positioned a11y text must not escape the scroll container */
+.codewrap,.tablewrap,.flowwrap{position:relative}
+/* local scroll container for spatial visualizations (same reflow contract) */
+.plotwrap{overflow-x:auto;position:relative}
+
+/* ---- shared metadata label: one quiet voice for small annotations ---- */
+.a2-k{display:block;font:600 10.5px/1.4 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;color:var(--acta-ink-muted)}
+
+/* ---- dark code island: the only dark surface on the page ---- */
+.a2-code{background:var(--acta-code-bg);color:var(--acta-code-ink);border-radius:var(--acta-radius-lg);overflow:hidden}
+.a2-code .c-path{font:500 12px/1.5 var(--acta-font-data);letter-spacing:.02em;color:var(--acta-code-muted);background:var(--acta-code-head);border-bottom:1px solid var(--acta-code-rule);padding:8px 16px}
+.a2-code pre{white-space:pre;word-break:normal;overflow-x:auto;padding:14px 16px;font-size:12.5px;line-height:1.65;tab-size:2}
+.a2-code ::selection{background:#3D4A61;color:#fff}
+/* Build-time token palette (design/acta2/lib/highlight.mjs) — all >=4.5:1 on the island. */
+.a2-code .tok-kw{color:#E8926F}
+.a2-code .tok-fn{color:#8FB6E3}
+.a2-code .tok-str{color:#A3C293}
+.a2-code .tok-num{color:#D9BC8C}
+.a2-code .tok-com{color:#8A9099;font-style:italic}
+
+/* ---- shared flow diagrams (lib/flow.mjs output) ---- */
+.flowd{display:block;width:100%;height:auto}
+.flowd text{font-family:var(--acta-font-data)}
+.flowd-caption{font:12.5px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin:10px 0 0;max-width:90ch}
+
+/* ---- trust strip: compact provenance, expandable, full in print ---- */
+.a2-trust{border-bottom:1px solid var(--acta-rule);font:12px/1.5 var(--acta-font-data);color:var(--acta-ink-muted)}
+.a2-trust>summary{list-style:none;cursor:pointer;padding:9px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.a2-trust>summary::-webkit-details-marker{display:none}
+.a2-trust>summary::after{content:"▸ provenance";color:var(--acta-action)}
+.a2-trust[open]>summary::after{content:"▾ provenance"}
+.a2-trust .t-sep{color:var(--acta-rule-strong)}
+.a2-trust dl{margin:0 0 12px;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:3px 16px}
+.a2-trust dt{font-weight:600;text-transform:uppercase;letter-spacing:.1em;font-size:10px;color:var(--acta-ink-muted)}
+.a2-trust dd{margin:0;overflow-wrap:anywhere}
+
+/* ---- status ---- */
+.a2-status{display:inline-block;border:1.5px solid currentColor;border-radius:var(--acta-radius);padding:5px 12px;font:600 11.5px/1.2 var(--acta-font-data);letter-spacing:.08em;text-transform:uppercase}
+body[data-acta2-status="candidate-ready"] .a2-status{color:var(--acta-action)}
+body[data-acta2-status="stopped"] .a2-status{color:var(--acta-danger)}
+body[data-acta2-status="open-unselected"] .a2-status,body[data-acta2-status="exploring"] .a2-status{color:var(--acta-warning)}
+.a2-integrity{display:none;border:2px solid var(--acta-danger);background:var(--acta-danger-tint);color:var(--acta-danger);padding:10px 14px;margin:10px 0;font:600 13px/1.4 var(--acta-font-ui)}
+body[data-acta2-integrity="mismatch"] .a2-integrity{display:block}
+
+/* ---- generic controls ---- */
+.a2-btn{background:var(--acta-card);border:1px solid var(--acta-ink);color:var(--acta-ink);padding:10px 18px;font:600 13px/1.3 var(--acta-font-data);border-radius:var(--acta-radius);transition:background var(--acta-quick),color var(--acta-quick)}
+.a2-btn:hover:not(:disabled){background:var(--acta-ink);color:var(--acta-paper)}
+.a2-btn.is-primary{border-color:var(--acta-action);color:var(--acta-action)}
+.a2-btn.is-primary:hover:not(:disabled){background:var(--acta-action);color:#fff}
+.a2-btn[aria-pressed="true"]{background:var(--acta-ink);color:var(--acta-paper)}
+.a2-choice{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:14px 16px;background:var(--acta-tint);cursor:pointer;transition:border-color var(--acta-quick),background var(--acta-quick)}
+.a2-choice:hover:not(:has(input:disabled)){border-color:var(--acta-action)}
+.a2-choice input{margin:2px 0 0;width:16px;height:16px;flex:none;accent-color:var(--acta-action)}
+.a2-choice:has(input:checked){border-color:var(--acta-action);background:var(--acta-action-tint);outline:1px solid var(--acta-action);outline-offset:-3px}
+/* Disabled controls must LOOK disabled: no pointer cursor, no hover affordance,
+   dimmed. They ship this way and only the runtime enables them. */
+button:disabled,input:disabled,textarea:disabled,select:disabled{cursor:not-allowed;opacity:.45}
+.a2-btn:disabled{background:var(--acta-card);color:var(--acta-ink)}
+.a2-btn.is-primary:disabled{color:var(--acta-action)}
+.a2-choice:has(input:disabled){cursor:not-allowed;opacity:.55;border-color:var(--acta-rule)}
+.a2-choice:has(input:disabled) input{opacity:1}
+textarea:disabled{background:var(--acta-tint)}
+.a2-field{display:block;margin:var(--sp-3) 0}
+.a2-field span{display:block;font:600 11px/1.4 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;color:var(--acta-ink-muted);margin-bottom:7px}
+.a2-field textarea,.a2-field input[type=text]{width:100%;border:1px solid var(--acta-rule);border-radius:var(--acta-radius);padding:12px 14px;font:15px/1.55 var(--acta-font-ui);background:var(--acta-card);color:var(--acta-ink)}
+
+/* ---- disclosure ---- */
+details.a2-more{border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);background:var(--acta-card);margin:var(--sp-2) 0}
+details.a2-more>summary{cursor:pointer;padding:11px 14px;font:600 13.5px/1.4 var(--acta-font-ui);list-style-position:inside;color:var(--acta-ink-muted)}
+details.a2-more>summary:hover{background:var(--acta-tint);color:var(--acta-ink)}
+details.a2-more[open]>summary{color:var(--acta-ink)}
+details.a2-more>div{padding:4px 16px 14px;border-top:1px solid var(--acta-rule-faint);font-size:14px;line-height:1.6}
+
+/* ---- export panel: audit layer, visually subordinate to the decision layer ---- */
+.a2-export{border-top:3px double var(--acta-rule-strong);margin-top:var(--sp-7);padding-top:var(--sp-4)}
+.a2-export h2{font:600 20px/1.3 var(--acta-font-text);margin:0 0 8px}
+.a2-export .x-note{font:12.5px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin:0 0 12px;max-width:78ch}
+.a2-export pre{border:1px solid var(--acta-rule-faint);background:var(--acta-card);border-radius:var(--acta-radius);padding:14px 16px;font-size:12px;line-height:1.6;max-height:320px;overflow:auto}
+.a2-export .x-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:var(--sp-3) 0}
+.a2-live{font:12px/1.5 var(--acta-font-data);color:var(--acta-positive);min-height:1.2em}
+.a2-live.is-error{color:var(--acta-danger)}
+
+/* ---- noscript & honest-degradation notes ---- */
+.a2-noscript{border:1px solid var(--acta-warning);background:var(--acta-warning-tint);border-radius:var(--acta-radius);padding:12px 16px;font-size:14px;margin:14px 0}
+/* Inline fallback beside controls: visible until the runtime enables them. */
+.a2-jsnote{border-left:3px solid var(--acta-warning);background:var(--acta-warning-tint);color:var(--acta-warning);padding:8px 12px;font-size:13px;margin:8px 0;max-width:70ch}
+body[data-acta2-ready="true"] .a2-jsnote{display:none}
+/* Print policy: the durable print artifact is the Acta record; instruments
+   print as a working snapshot with textual state instead of controls. */
+.a2-printnote{display:none}
+
+/* ---- motion & print & reflow contracts ---- */
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+@media (max-width:959px){.a2-trust>summary{font-size:11px}}
+@media (max-width:479px){.a2-trust dl{grid-template-columns:1fr}.a2-trust dt{margin-top:6px}}
+@media (max-width:719px){
+  .a2-export .x-actions{flex-direction:column;align-items:stretch}
+  .a2-export .x-actions .a2-btn{width:100%}
+}
+@media print{
+  body{background:#fff;font-size:11pt;max-width:none;padding:0}
+  .a2-btn,.skip,.a2-noscript,.a2-jsnote,[data-print-hide]{display:none!important}
+  input,textarea,select{display:none!important}
+  .a2-live{display:none}
+  .a2-printnote{display:block;border:1px solid #555;padding:6px 10px;font:10px/1.4 var(--acta-font-data)}
+  details,details.a2-more{border:none}
+  a[href^="http"]::after{content:" (" attr(href) ")";font:9px/1 var(--acta-font-data);color:#555}
+  /* Dark islands print light: paper output stays ink-efficient and legible. */
+  .a2-code{background:#fff;color:#000;border:1px solid #888}
+  .a2-code .c-path{background:#fff;color:#333;border-bottom:1px solid #888}
+  .a2-code pre{white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}
+  .a2-code pre span{color:inherit!important;font-style:normal}
+}
+
+/* ---- draw-the-flow topology ---- */
+/* draw-the-flow topology: overview-first semantic flow.
+   The diagram leads; focus buttons emphasize one named path (ephemeral view
+   state); the textual equivalent rides beside it as four path cards; an
+   accuracy gate closes the loop. */
+.dtf-question{font:400 32px/1.25 var(--acta-font-text);margin:var(--sp-6) 0 var(--sp-3);max-width:46ch}
+.dtf-lede{font-size:15.5px;line-height:1.6;color:var(--acta-ink-muted);margin:0 0 var(--sp-5);max-width:70ch}
+
+.dtf-stage{background:var(--acta-card);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:20px 24px;margin:0 0 var(--sp-5)}
+.dtf-focus{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 var(--sp-4)}
+.dtf-plot [data-paths]{transition:opacity var(--acta-quick)}
+.dtf-plot[data-focus="normal"] [data-paths]:not([data-paths~="normal"]),
+.dtf-plot[data-focus="decision"] [data-paths]:not([data-paths~="decision"]),
+.dtf-plot[data-focus="failure"] [data-paths]:not([data-paths~="failure"]),
+.dtf-plot[data-focus="recovery"] [data-paths]:not([data-paths~="recovery"]){opacity:.14}
+
+.dtf-paths h2,.dtf-decide h2{font:600 22px/1.3 var(--acta-font-text);margin:56px 0 var(--sp-4);border-bottom:1px solid var(--acta-rule);padding-bottom:12px}
+.dtf-pathgrid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)}
+.dtf-path{background:var(--acta-card);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:18px 22px;transition:border-color var(--acta-quick)}
+.dtf-path[data-emphasized="true"]{border-color:var(--acta-action);outline:1px solid var(--acta-action);outline-offset:-3px}
+.dtf-path h3{display:flex;gap:10px;align-items:center;font:600 16.5px/1.4 var(--acta-font-text);margin:0 0 var(--sp-3)}
+.dtf-path .p-swatch{flex:none;width:12px;height:12px;border-radius:50%}
+.dtf-path .p-swatch.is-normal{background:var(--acta-rule-strong)}
+.dtf-path .p-swatch.is-decision{background:var(--acta-action)}
+.dtf-path .p-swatch.is-failure{background:var(--acta-danger)}
+.dtf-path .p-swatch.is-recovery{background:var(--acta-positive)}
+.dtf-path ol{margin:0;padding-left:1.3em;font-size:14.5px;line-height:1.65}
+.dtf-path li{margin:0 0 6px}
+.dtf-path li:last-child{margin-bottom:0}
+
+.dtf-decide{border:2px solid var(--acta-ink);border-radius:var(--acta-radius-lg);background:var(--acta-card);padding:var(--sp-5) 28px 28px;margin:56px 0}
+.dtf-decide h2{margin-top:0;border-bottom:0;padding-bottom:0}
+.dtf-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-4);margin:0 0 var(--sp-5)}
+.dtf-choices .a2-choice{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;align-items:start;padding:18px 20px}
+@supports (grid-template-rows:subgrid){
+  .dtf-choices .a2-choice{grid-template-rows:subgrid;grid-row:span 2}
+}
+.dtf-choices .a2-choice input{grid-row:1;margin-top:1px}
+.dtf-choices .c-label{grid-column:2;font:600 15px/1.45 var(--acta-font-ui);color:var(--acta-ink)}
+.dtf-choices .c-consequence{grid-column:2;font-size:13.5px;line-height:1.6;color:var(--acta-ink-muted);margin-top:6px}
+.dtf-decide .d-selection{font:600 15.5px/1.5 var(--acta-font-ui);margin:0 0 var(--sp-3)}
+.dtf-decide .a2-field{max-width:78ch}
+.dtf-decide>p:last-child{font-size:13.5px;line-height:1.6;color:var(--acta-ink-muted);max-width:78ch;margin-bottom:0}
+
+@media (max-width:959px){
+  .dtf-pathgrid{grid-template-columns:1fr}
+  .dtf-choices{grid-template-columns:1fr}
+}
+@media (max-width:719px){
+  .dtf-stage{padding:14px 14px}
+  .dtf-focus .a2-btn{flex:1 1 auto}
+}
+@media print{
+  .dtf-focus{display:none}
+  .dtf-stage,.dtf-path,.dtf-decide{break-inside:avoid}
+  .dtf-plot [data-paths]{opacity:1!important}
+}
+</style>
+</head>
+<body data-acta2-status="open-unselected" data-acta2-integrity="ok">
+<a class="skip" href="#a2-main">Skip to content</a>
+<div class="a2-integrity" role="alert">Integrity check failed: a displayed export no longer matches working state. Do not paste either export.</div>
+<p class="a2-printnote">Working snapshot for reference only — the durable print artifact is the Acta record generated after acceptance.</p>
+<header>
+<details class="a2-trust">
+<summary><span>draw-the-flow</span><span class="t-sep">·</span><span>tag-filter</span><span class="t-sep">·</span><span>rev a8b0837</span><span class="t-sep">·</span><span>Acta v2 instrument — working state, candidate only</span></summary>
+<dl>
+<dt>Artifact</dt><dd>Draw the flow — tag-filter navigation — Acta v2 instrument — working state, candidate only</dd>
+<dt>Producer skill</dt><dd>draw-the-flow</dd>
+<dt>Initiative</dt><dd>tag-filter</dd>
+<dt>Source revision</dt><dd>a8b083705553550eda289ddf9cf1d028df907682</dd>
+<dt>Inputs</dt><dd><span>src/app.mjs — renderFromUrl and popstate wiring</span><br><span>src/catalog.mjs — filterByTag</span><br><span>src/url-tag.mjs — parseTagFromSearch</span><br><span>interface-directions record — accepted empty state</span></dd>
+<dt>Acta</dt><dd>v0.2.0-pilot · generated from structured scenario data · regenerate when inputs change</dd>
+<dt>Authority</dt><dd>Working surface only. Canonical state lives in Markdown/JSON and changes solely after explicit acceptance in chat.</dd>
+</dl>
+</details>
+</header>
+<main id="a2-main">
+
+<h1 class="dtf-question">How does a tag-filter navigation actually flow, end to end?</h1>
+<p class="dtf-lede">One drawing, four named paths. Emphasize a path to trace it; the same flow is written out in words below, so nothing lives only in the picture.</p>
+<section class="dtf-stage" aria-label="Flow diagram">
+<div class="dtf-focus" role="group" aria-label="Emphasize one path (view only — never exported)">
+<button disabled data-a2-enable type="button" class="a2-btn" data-flow-focus="all" aria-pressed="true">Whole flow</button>
+<button disabled data-a2-enable type="button" class="a2-btn" data-flow-focus="normal" aria-pressed="false">Normal path</button>
+<button disabled data-a2-enable type="button" class="a2-btn" data-flow-focus="decision" aria-pressed="false">The decision</button>
+<button disabled data-a2-enable type="button" class="a2-btn" data-flow-focus="failure" aria-pressed="false">Failure path</button>
+<button disabled data-a2-enable type="button" class="a2-btn" data-flow-focus="recovery" aria-pressed="false">Recovery path</button>
+</div>
+<div class="dtf-plot" data-focus="all"><div class="plotwrap"><svg viewBox="0 0 990 220" class="flowd" role="img" aria-label="Tag-filter navigation flow with normal, decision, failure, and recovery paths" style="min-width:640px;max-width:990px">
+<polyline points="210,54 269,54" fill="none" stroke="var(--acta-rule-strong)" stroke-width="1.5" data-paths="normal failure recovery"></polyline>
+<polygon points="276,54 269,50 269,58" fill="var(--acta-rule-strong)" data-paths="normal failure recovery"></polygon>
+<polyline points="462,54 521,54" fill="none" stroke="var(--acta-rule-strong)" stroke-width="1.5" data-paths="normal failure recovery"></polyline>
+<polygon points="528,54 521,50 521,58" fill="var(--acta-rule-strong)" data-paths="normal failure recovery"></polygon>
+<polyline points="714,54 773,54" fill="none" stroke="var(--acta-rule-strong)" stroke-width="1.5" data-paths="normal decision"></polyline>
+<polygon points="780,54 773,50 773,58" fill="var(--acta-rule-strong)" data-paths="normal decision"></polygon>
+<polyline points="873,84 873,129" fill="none" stroke="var(--acta-rule-strong)" stroke-width="1.5" data-paths="normal"></polyline>
+<polygon points="873,136 869,129 877,129" fill="var(--acta-rule-strong)" data-paths="normal"></polygon>
+<polyline points="621,84 621,129" fill="none" stroke="var(--acta-danger)" stroke-width="1.5" data-paths="decision failure"></polyline>
+<polygon points="621,136 617,129 625,129" fill="var(--acta-danger)" data-paths="decision failure"></polygon>
+<polyline points="528,166 469,166" fill="none" stroke="var(--acta-rule-strong)" stroke-width="1.5" stroke-dasharray="4 4" data-paths="recovery"></polyline>
+<polygon points="462,166 469,170 469,162" fill="var(--acta-rule-strong)" data-paths="recovery"></polygon>
+<polyline points="276,166 217,166" fill="none" stroke="var(--acta-action)" stroke-width="1.5" data-paths="recovery"></polyline>
+<polygon points="210,166 217,170 217,162" fill="var(--acta-action)" data-paths="recovery"></polygon>
+<rect x="24" y="24" width="186" height="60" rx="10" fill="var(--acta-paper)" stroke="var(--acta-rule-strong)" stroke-width="1.5" data-paths="normal failure recovery"></rect>
+<text x="117" y="50" font-size="12.5" font-weight="600" fill="var(--acta-ink)" text-anchor="middle">navigation</text>
+<text x="117" y="67" font-size="11" fill="var(--acta-ink-muted)" text-anchor="middle">?tag=… or popstate</text>
+<rect x="276" y="24" width="186" height="60" rx="10" fill="var(--acta-paper)" stroke="var(--acta-rule-strong)" stroke-width="1.5" data-paths="normal failure recovery"></rect>
+<text x="369" y="50" font-size="12.5" font-weight="600" fill="var(--acta-ink)" text-anchor="middle">parseTagFromSearch</text>
+<text x="369" y="67" font-size="11" fill="var(--acta-ink-muted)" text-anchor="middle">src/url-tag.mjs</text>
+<rect x="528" y="24" width="186" height="60" rx="10" fill="var(--acta-paper)" stroke="var(--acta-action)" stroke-width="1.5" data-paths="normal decision failure"></rect>
+<text x="621" y="50" font-size="12.5" font-weight="600" fill="var(--acta-ink)" text-anchor="middle">tag known?</text>
+<text x="621" y="67" font-size="11" fill="var(--acta-ink-muted)" text-anchor="middle">any skill carries it</text>
+<rect x="780" y="24" width="186" height="60" rx="10" fill="var(--acta-paper)" stroke="var(--acta-rule-strong)" stroke-width="1.5" data-paths="normal decision"></rect>
+<text x="873" y="50" font-size="12.5" font-weight="600" fill="var(--acta-ink)" text-anchor="middle">filterByTag</text>
+<text x="873" y="67" font-size="11" fill="var(--acta-ink-muted)" text-anchor="middle">src/catalog.mjs</text>
+<rect x="780" y="136" width="186" height="60" rx="10" fill="var(--acta-code-bg)" stroke="var(--acta-code-bg)" stroke-width="1.5" data-paths="normal"></rect>
+<text x="873" y="162" font-size="12.5" font-weight="600" fill="var(--acta-code-ink)" text-anchor="middle">matching rows</text>
+<text x="873" y="179" font-size="11" fill="var(--acta-code-muted)" text-anchor="middle">replaceChildren</text>
+<rect x="528" y="136" width="186" height="60" rx="10" fill="var(--acta-paper)" stroke="var(--acta-danger)" stroke-width="1.5" data-paths="decision failure recovery"></rect>
+<text x="621" y="162" font-size="12.5" font-weight="600" fill="var(--acta-ink)" text-anchor="middle">empty state</text>
+<text x="621" y="179" font-size="11" fill="var(--acta-ink-muted)" text-anchor="middle">explain + suggest chips</text>
+<rect x="276" y="136" width="186" height="60" rx="10" fill="var(--acta-paper)" stroke="var(--acta-rule-strong)" stroke-width="1.5" data-paths="recovery"></rect>
+<text x="369" y="162" font-size="12.5" font-weight="600" fill="var(--acta-ink)" text-anchor="middle">clear filter</text>
+<text x="369" y="179" font-size="11" fill="var(--acta-ink-muted)" text-anchor="middle">user action</text>
+<rect x="24" y="136" width="186" height="60" rx="10" fill="var(--acta-code-bg)" stroke="var(--acta-code-bg)" stroke-width="1.5" data-paths="recovery"></rect>
+<text x="117" y="162" font-size="12.5" font-weight="600" fill="var(--acta-code-ink)" text-anchor="middle">full catalog</text>
+<text x="117" y="179" font-size="11" fill="var(--acta-code-muted)" text-anchor="middle">all 5 skills</text>
+<text x="239.5" y="45" font-size="11" fill="var(--acta-ink-muted)" text-anchor="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="5" stroke-linejoin="round" data-paths="normal failure recovery">tag | null</text>
+<text x="491.5" y="45" font-size="11" fill="var(--acta-ink-muted)" text-anchor="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="5" stroke-linejoin="round" data-paths="normal failure recovery">requested tag</text>
+<text x="743.5" y="45" font-size="11" fill="var(--acta-ink-muted)" text-anchor="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="5" stroke-linejoin="round" data-paths="normal decision">known</text>
+<text x="881" y="106.5" font-size="11" fill="var(--acta-ink-muted)" text-anchor="start" paint-order="stroke" stroke="#FFFFFF" stroke-width="5" stroke-linejoin="round" data-paths="normal">visible rows</text>
+<text x="629" y="106.5" font-size="11" fill="var(--acta-danger)" text-anchor="start" paint-order="stroke" stroke="#FFFFFF" stroke-width="5" stroke-linejoin="round" data-paths="decision failure">unknown</text>
+<text x="498.5" y="157" font-size="11" fill="var(--acta-ink-muted)" text-anchor="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="5" stroke-linejoin="round" data-paths="recovery">user clicks</text>
+<text x="246.5" y="157" font-size="11" fill="var(--acta-action)" text-anchor="middle" paint-order="stroke" stroke="#FFFFFF" stroke-width="5" stroke-linejoin="round" data-paths="recovery">renders all</text>
+</svg></div>
+<p class="flowd-caption">Every navigation walks left to right; the branch at “tag known?” separates the normal render from the empty-state path, and “clear filter” is the recovery route back to the full catalog.</p></div>
+</section>
+<section class="dtf-paths" aria-label="Textual equivalent, path by path">
+<h2>The same flow, in words</h2>
+<div class="dtf-pathgrid">
+
+<section class="dtf-path" data-path-card="normal" aria-labelledby="dtf-p-normal">
+<h3 id="dtf-p-normal"><span class="p-swatch is-normal" aria-hidden="true"></span>Normal path</h3>
+<ol>
+<li>A navigation (or back/forward) carries ?tag= in the URL</li>
+<li>parseTagFromSearch returns the tag, or null when absent</li>
+<li>The tag matches at least one skill, so the branch takes “known”</li>
+<li>filterByTag narrows visibleSkills() preserving order</li>
+<li>replaceChildren swaps in exactly the matching rows</li>
+</ol>
+</section>
+
+<section class="dtf-path" data-path-card="decision" aria-labelledby="dtf-p-decision">
+<h3 id="dtf-p-decision"><span class="p-swatch is-decision" aria-hidden="true"></span>The decision</h3>
+<ol>
+<li>The single branch in the flow: does any skill carry the requested tag?</li>
+<li>“Known” continues to the normal render; there is no partial match</li>
+<li>“Unknown” is not an error — it routes to the accepted empty state</li>
+<li>A null tag skips the branch entirely and renders the full catalog</li>
+</ol>
+</section>
+
+<section class="dtf-path" data-path-card="failure" aria-labelledby="dtf-p-failure">
+<h3 id="dtf-p-failure"><span class="p-swatch is-failure" aria-hidden="true"></span>Failure path</h3>
+<ol>
+<li>The requested tag matches no skill (a stale or mistyped link)</li>
+<li>filterByTag would return [], so the flow never reaches it</li>
+<li>The empty state renders: it names the miss and shows the real tag set</li>
+<li>Nothing is silently swallowed — the URL still shows what was asked</li>
+</ol>
+</section>
+
+<section class="dtf-path" data-path-card="recovery" aria-labelledby="dtf-p-recovery">
+<h3 id="dtf-p-recovery"><span class="p-swatch is-recovery" aria-hidden="true"></span>Recovery path</h3>
+<ol>
+<li>From the empty state, “clear filter” is the one-click exit</li>
+<li>It navigates to the bare URL (no ?tag=)</li>
+<li>The same render path runs with a null tag</li>
+<li>The full five-skill catalog renders — orientation restored</li>
+</ol>
+</section>
+</div>
+</section>
+<section class="dtf-decide" aria-label="Accuracy gate">
+<h2>Is this flow the shared understanding?</h2>
+<div class="dtf-choices" role="group" aria-label="Verification options">
+
+<label class="a2-choice"><input disabled data-a2-enable type="radio" name="acta2-option" value="confirm-accurate">
+<span class="c-label">The flow is accurate</span>
+<span class="c-consequence">This drawing and its textual equivalent become the recorded shared understanding of the navigation.</span></label>
+
+<label class="a2-choice"><input disabled data-a2-enable type="radio" name="acta2-option" value="needs-correction">
+<span class="c-label">Needs correction</span>
+<span class="c-consequence">Name what is wrong or missing in the rationale; the flow is redrawn before anything is recorded.</span></label>
+
+<label class="a2-choice"><input disabled data-a2-enable type="radio" name="acta2-option" value="wrong-scope">
+<span class="c-label">Wrong question</span>
+<span class="c-consequence">The flow answers a different question than the one that matters; scope is restated before redrawing.</span></label>
+</div>
+<p class="d-selection" data-bind="selection-line">No verdict proposed yet.</p>
+<p class="a2-status" data-bind="status-label">Open — flow not yet verified</p>
+<label class="a2-field"><span>Corrections or rationale (optional)</span><textarea disabled data-a2-enable rows="2" data-working="rationale" placeholder="What is wrong or missing, in your words"></textarea></label>
+<div class="x-actions">
+<button disabled data-a2-enable type="button" class="a2-btn" data-acta2-reset>Reset verdict</button>
+</div>
+<p class="a2-jsnote">JavaScript is off, so the verdict controls are disabled and path emphasis stays on the whole flow. The textual equivalent above is complete; decide in chat instead — for example: “the flow is accurate” or “missing: retry path”.</p>
+<p>Confirming here only prepares a candidate. The flow becomes the recorded understanding when you confirm the pasted candidate in chat — silence never approves.</p>
+</section>
+</main>
+<section class="a2-export" aria-label="Candidate export">
+<h2>Candidate export</h2>
+<p class="x-note">Derived live from your working state above. Copy it, paste it in chat, and confirm — this page never updates files by itself.</p>
+<div class="x-actions">
+<button disabled data-a2-enable type="button" class="a2-btn is-primary" data-copy-from="a2-export-md" data-copy-label="Candidate Markdown">Copy candidate Markdown</button>
+<button disabled data-a2-enable type="button" class="a2-btn" data-copy-from="a2-export-json" data-copy-label="Candidate JSON">Copy candidate JSON</button>
+<span class="a2-live" data-a2-live aria-live="polite"></span>
+</div>
+<p class="a2-jsnote">JavaScript is off, so these copy controls stay disabled. State your decision in chat instead; the agent records it only after your explicit confirmation.</p>
+<details class="a2-more" open><summary>Markdown payload (derived, never pre-authored)</summary><div><pre id="a2-export-md" data-derived-export="markdown">(The candidate appears here while JavaScript runs. Without JavaScript, state your choice in chat instead.)</pre></div></details>
+<details class="a2-more"><summary>JSON payload</summary><div><pre id="a2-export-json" data-derived-export="json">(derived from working state)</pre></div></details>
+<p class="visually-hidden" data-selftest></p>
+</section>
+<noscript><div class="a2-noscript">JavaScript is off. Everything above remains readable and every control is disabled — nothing here only pretends to work. Decide by replying in chat (for example, “choose Path A — rationale: …”); the agent records it only after your explicit confirmation.</div></noscript>
+<script type="application/json" id="acta2-data">{
+ "acta2": "0.2.0-pilot",
+ "kind": "decision",
+ "decisionId": "flow-verification",
+ "skill": "draw-the-flow",
+ "artifactKind": "process-flow",
+ "initiative": "tag-filter",
+ "title": "Draw the flow — tag-filter navigation",
+ "question": "How does a tag-filter navigation actually flow, end to end?",
+ "lede": "One drawing, four named paths. Emphasize a path to trace it; the same flow is written out in words below, so nothing lives only in the picture.",
+ "openStatusLabel": "Open — flow not yet verified",
+ "sourceRevision": "a8b083705553550eda289ddf9cf1d028df907682",
+ "inputs": [
+  "src/app.mjs — renderFromUrl and popstate wiring",
+  "src/catalog.mjs — filterByTag",
+  "src/url-tag.mjs — parseTagFromSearch",
+  "interface-directions record — accepted empty state"
+ ],
+ "flow": {
+  "ariaLabel": "Tag-filter navigation flow with normal, decision, failure, and recovery paths",
+  "caption": "Every navigation walks left to right; the branch at “tag known?” separates the normal render from the empty-state path, and “clear filter” is the recovery route back to the full catalog.",
+  "nodes": [
+   {
+    "id": "url",
+    "label": "navigation",
+    "sub": "?tag=… or popstate",
+    "col": 0,
+    "row": 0,
+    "paths": [
+     "normal",
+     "failure",
+     "recovery"
+    ]
+   },
+   {
+    "id": "parse",
+    "label": "parseTagFromSearch",
+    "sub": "src/url-tag.mjs",
+    "col": 1,
+    "row": 0,
+    "paths": [
+     "normal",
+     "failure",
+     "recovery"
+    ]
+   },
+   {
+    "id": "decide",
+    "label": "tag known?",
+    "sub": "any skill carries it",
+    "col": 2,
+    "row": 0,
+    "tone": "accent",
+    "paths": [
+     "normal",
+     "decision",
+     "failure"
+    ]
+   },
+   {
+    "id": "filter",
+    "label": "filterByTag",
+    "sub": "src/catalog.mjs",
+    "col": 3,
+    "row": 0,
+    "paths": [
+     "normal",
+     "decision"
+    ]
+   },
+   {
+    "id": "domlist",
+    "label": "matching rows",
+    "sub": "replaceChildren",
+    "col": 3,
+    "row": 1,
+    "tone": "dark",
+    "paths": [
+     "normal"
+    ]
+   },
+   {
+    "id": "empty",
+    "label": "empty state",
+    "sub": "explain + suggest chips",
+    "col": 2,
+    "row": 1,
+    "tone": "danger",
+    "paths": [
+     "decision",
+     "failure",
+     "recovery"
+    ]
+   },
+   {
+    "id": "clear",
+    "label": "clear filter",
+    "sub": "user action",
+    "col": 1,
+    "row": 1,
+    "paths": [
+     "recovery"
+    ]
+   },
+   {
+    "id": "full",
+    "label": "full catalog",
+    "sub": "all 5 skills",
+    "col": 0,
+    "row": 1,
+    "tone": "dark",
+    "paths": [
+     "recovery"
+    ]
+   }
+  ],
+  "edges": [
+   {
+    "from": "url",
+    "to": "parse",
+    "label": "tag | null",
+    "paths": [
+     "normal",
+     "failure",
+     "recovery"
+    ]
+   },
+   {
+    "from": "parse",
+    "to": "decide",
+    "label": "requested tag",
+    "paths": [
+     "normal",
+     "failure",
+     "recovery"
+    ]
+   },
+   {
+    "from": "decide",
+    "to": "filter",
+    "label": "known",
+    "paths": [
+     "normal",
+     "decision"
+    ]
+   },
+   {
+    "from": "filter",
+    "to": "domlist",
+    "label": "visible rows",
+    "paths": [
+     "normal"
+    ]
+   },
+   {
+    "from": "decide",
+    "to": "empty",
+    "label": "unknown",
+    "tone": "danger",
+    "paths": [
+     "decision",
+     "failure"
+    ]
+   },
+   {
+    "from": "empty",
+    "to": "clear",
+    "label": "user clicks",
+    "dashed": true,
+    "paths": [
+     "recovery"
+    ]
+   },
+   {
+    "from": "clear",
+    "to": "full",
+    "label": "renders all",
+    "tone": "accent",
+    "paths": [
+     "recovery"
+    ]
+   }
+  ]
+ },
+ "pathViews": [
+  {
+   "id": "all",
+   "label": "Whole flow",
+   "steps": []
+  },
+  {
+   "id": "normal",
+   "label": "Normal path",
+   "steps": [
+    "A navigation (or back/forward) carries ?tag= in the URL",
+    "parseTagFromSearch returns the tag, or null when absent",
+    "The tag matches at least one skill, so the branch takes “known”",
+    "filterByTag narrows visibleSkills() preserving order",
+    "replaceChildren swaps in exactly the matching rows"
+   ]
+  },
+  {
+   "id": "decision",
+   "label": "The decision",
+   "steps": [
+    "The single branch in the flow: does any skill carry the requested tag?",
+    "“Known” continues to the normal render; there is no partial match",
+    "“Unknown” is not an error — it routes to the accepted empty state",
+    "A null tag skips the branch entirely and renders the full catalog"
+   ]
+  },
+  {
+   "id": "failure",
+   "label": "Failure path",
+   "steps": [
+    "The requested tag matches no skill (a stale or mistyped link)",
+    "filterByTag would return [], so the flow never reaches it",
+    "The empty state renders: it names the miss and shows the real tag set",
+    "Nothing is silently swallowed — the URL still shows what was asked"
+   ]
+  },
+  {
+   "id": "recovery",
+   "label": "Recovery path",
+   "steps": [
+    "From the empty state, “clear filter” is the one-click exit",
+    "It navigates to the bare URL (no ?tag=)",
+    "The same render path runs with a null tag",
+    "The full five-skill catalog renders — orientation restored"
+   ]
+  }
+ ],
+ "options": [
+  {
+   "id": "confirm-accurate",
+   "label": "The flow is accurate",
+   "consequence": "This drawing and its textual equivalent become the recorded shared understanding of the navigation."
+  },
+  {
+   "id": "needs-correction",
+   "label": "Needs correction",
+   "consequence": "Name what is wrong or missing in the rationale; the flow is redrawn before anything is recorded."
+  },
+  {
+   "id": "wrong-scope",
+   "label": "Wrong question",
+   "consequence": "The flow answers a different question than the one that matters; scope is restated before redrawing."
+  }
+ ],
+ "recommendation": {
+  "option": "confirm-accurate",
+  "reason": "Every node and edge was walked against src/app.mjs at the recorded revision."
+ },
+ "unresolved": [
+  "whether chip-click interception (slice 5 open question) changes the recovery path"
+ ]
+}</script>
+<script>
+/*
+ * Acta v2 pilot — pure state/export core.
+ *
+ * One source of truth for: status derivation, per-kind derived consequences,
+ * and candidate export building (Markdown + JSON). This file runs in two
+ * places from the same bytes:
+ *   - imported by Node tests and the materializer (ESM exports below);
+ *   - inlined into every instrument by scripts/materialize-acta2.mjs, which
+ *     strips the block between the ACTA2-ESM markers.
+ *
+ * Rules: no imports, no I/O, no randomness, no clock reads, no DOM access.
+ * Everything here must be deterministic for identical inputs.
+ */
+
+const ACTA2_PROTOCOL = "0.2";
+
+/* Identifiers coming from instrument data (param/toggle/option/gate-option
+   ids) are untrusted: they become YAML frontmatter keys, DOM attribute
+   values, and state-map keys. Only a conservative shape is accepted — this
+   blocks newline/colon YAML injection, duplicate-key smuggling, and
+   prototype-shaped keys ("__proto__" fails the leading-letter rule). */
+const SAFE_ID = /^[a-zA-Z][a-zA-Z0-9_-]{0,40}$/;
+const RESERVED_IDS = new Set(["__proto__", "prototype", "constructor"]);
+
+function assertSafeIdList(ids, kindLabel) {
+  const seen = new Set();
+  for (const id of ids) {
+    if (typeof id !== "string" || !SAFE_ID.test(id) || RESERVED_IDS.has(id)) {
+      throw new Error(
+        `Unsafe ${kindLabel} identifier ${JSON.stringify(id)}: identifiers must match ${SAFE_ID}.`,
+      );
+    }
+    if (seen.has(id)) {
+      throw new Error(`Duplicate ${kindLabel} identifier ${JSON.stringify(id)}.`);
+    }
+    seen.add(id);
+  }
+}
+
+function assertSafeInstrumentData(data) {
+  switch (data.kind) {
+    case "decision":
+      assertSafeIdList([data.decisionId], "decision");
+      assertSafeIdList((data.options ?? []).map((option) => option.id), "option");
+      if (data.requiredPriorDecisions !== undefined) {
+        if (!Array.isArray(data.requiredPriorDecisions)) {
+          throw new Error("requiredPriorDecisions must be an array when present.");
+        }
+        assertSafeIdList(
+          data.requiredPriorDecisions.map((decision) => decision.id),
+          "required prior decision",
+        );
+        for (const prior of data.requiredPriorDecisions) {
+          if (prior.id === data.decisionId) {
+            throw new Error(`Required prior decision ${JSON.stringify(prior.id)} cannot be the current decision.`);
+          }
+          if (!Array.isArray(prior.allowedSelections) || prior.allowedSelections.length === 0) {
+            throw new Error(
+              `Required prior decision ${JSON.stringify(prior.id)} must declare at least one allowed selection.`,
+            );
+          }
+          assertSafeIdList(prior.allowedSelections, `required prior decision ${prior.id} selection`);
+          if (typeof prior.artifactPath !== "string" || prior.artifactPath.trim() === "") {
+            throw new Error(`Required prior decision ${JSON.stringify(prior.id)} must identify its artifact path.`);
+          }
+          if (typeof prior.acceptedRevision !== "string" || prior.acceptedRevision.trim() === "") {
+            throw new Error(`Required prior decision ${JSON.stringify(prior.id)} must identify its accepted revision.`);
+          }
+        }
+      }
+      break;
+    case "stop-gate":
+      assertSafeIdList([data.gate?.id], "STOP gate");
+      assertSafeIdList((data.gate?.options ?? []).map((option) => option.id), "gate option");
+      assertSafeIdList((data.entries ?? []).map((entry) => entry.id), "entry");
+      break;
+    case "model":
+      assertSafeIdList([data.decisionId], "decision");
+      assertSafeIdList([data.acceptanceToken], "model acceptance");
+      assertSafeIdList((data.params ?? []).map((param) => param.id), "parameter");
+      assertSafeIdList((data.toggles ?? []).map((toggle) => toggle.id), "toggle");
+      break;
+    case "prototype":
+      assertSafeIdList([data.decisionId], "decision");
+      assertSafeIdList([data.acceptanceToken], "prototype acceptance");
+      assertSafeIdList((data.params ?? []).map((param) => param.id), "parameter");
+      assertSafeIdList((data.toggles ?? []).map((toggle) => toggle.id), "toggle");
+      break;
+    case "quiz":
+      assertSafeIdList([data.decisionId], "decision");
+      assertSafeIdList([data.acceptanceToken], "quiz acceptance");
+      assertSafeIdList((data.questions ?? []).map((question) => question.id), "question");
+      for (const question of data.questions ?? []) {
+        assertSafeIdList((question.options ?? []).map((option) => option.id), `question ${question.id} option`);
+        assertSafeIdList([question.answer], `question ${question.id} answer`);
+      }
+      break;
+    case "checklist":
+      assertSafeIdList([data.decisionId], "decision");
+      assertSafeIdList([data.acceptanceToken], "checklist acceptance");
+      assertSafeIdList((data.items ?? []).map((item) => item.id), "item");
+      assertSafeIdList((data.verdicts ?? []).map((verdict) => verdict.id), "verdict");
+      break;
+    case "dossier":
+      /* Record-only evidence dossiers: no instrument working state exists.
+         The only decision is publishing the record after acceptance in chat. */
+      assertSafeIdList([data.decisionId], "decision");
+      assertSafeIdList([data.acceptanceToken], "dossier acceptance");
+      break;
+    default:
+      throw new Error(`Unknown instrument kind: ${data.kind}`);
+  }
+  return data;
+}
+
+const INSTRUMENT_STATUSES = {
+  "open-unselected": {
+    code: "open-unselected",
+    label: "Open — no path selected yet",
+  },
+  stopped: {
+    code: "stopped",
+    label: "STOP gate open — work is paused for your decision",
+  },
+  exploring: {
+    code: "exploring",
+    label: "Exploring — adjust the model, then record a conclusion",
+  },
+  "candidate-ready": {
+    code: "candidate-ready",
+    label: "Candidate ready — copy the export and confirm in chat",
+  },
+};
+
+function initialWorking(data) {
+  assertSafeInstrumentData(data);
+  switch (data.kind) {
+    case "decision":
+      return { selected: null, rationale: "" };
+    case "stop-gate":
+      /* `filter` is deliberately EPHEMERAL view state: it changes what the
+         human is looking at, never what they decided. It is excluded from
+         candidate exports and canonical state by contract. */
+      return { resolution: null, rationale: "", filter: "all" };
+    case "model":
+    case "prototype": {
+      const params = Object.create(null);
+      for (const param of data.params) params[param.id] = param.default;
+      const toggles = Object.create(null);
+      for (const toggle of data.toggles ?? []) toggles[toggle.id] = toggle.default;
+      return { params, toggles, conclusion: "" };
+    }
+    case "quiz": {
+      const answers = Object.create(null);
+      for (const question of data.questions) answers[question.id] = null;
+      return { answers, reflection: "" };
+    }
+    case "checklist": {
+      const marks = Object.create(null);
+      for (const item of data.items) marks[item.id] = null;
+      return { marks, conclusion: "" };
+    }
+    case "dossier":
+      throw new Error("dossier scenarios are record-only; no instrument working state exists.");
+    default:
+      throw new Error(`Unknown instrument kind: ${data.kind}`);
+  }
+}
+
+function deriveStatus(data, working) {
+  switch (data.kind) {
+    case "decision":
+      if (working.selected) return INSTRUMENT_STATUSES["candidate-ready"];
+      /* Scenario-provided open label keeps gate/direction/flow decisions
+         honest without changing the pilots' wording. */
+      return data.openStatusLabel
+        ? { code: "open-unselected", label: data.openStatusLabel }
+        : INSTRUMENT_STATUSES["open-unselected"];
+    case "stop-gate":
+      return working.resolution
+        ? INSTRUMENT_STATUSES["candidate-ready"]
+        : INSTRUMENT_STATUSES.stopped;
+    case "model":
+      return working.conclusion.trim()
+        ? INSTRUMENT_STATUSES["candidate-ready"]
+        : INSTRUMENT_STATUSES.exploring;
+    case "prototype":
+      return working.conclusion.trim()
+        ? INSTRUMENT_STATUSES["candidate-ready"]
+        : { code: "exploring", label: "Exploring — feel the prototype, then record your conclusion" };
+    case "quiz": {
+      const unanswered = data.questions.filter((question) => !working.answers[question.id]);
+      return unanswered.length === 0
+        ? INSTRUMENT_STATUSES["candidate-ready"]
+        : { code: "exploring", label: `In progress — ${unanswered.length} of ${data.questions.length} questions unanswered` };
+    }
+    case "checklist": {
+      const unmarked = data.items.filter((item) => !working.marks[item.id]);
+      const needsConclusion = Boolean(data.conclusionRequired) && !working.conclusion.trim();
+      return unmarked.length === 0 && !needsConclusion
+        ? INSTRUMENT_STATUSES["candidate-ready"]
+        : { code: "exploring", label: unmarked.length > 0
+            ? `In review — ${unmarked.length} of ${data.items.length} items still need a verdict`
+            : "In review — record the conclusion to ready the export" };
+    }
+    default:
+      throw new Error(`Unknown instrument kind: ${data.kind}`);
+  }
+}
+
+function optionById(options, id) {
+  for (const option of options ?? []) if (option.id === id) return option;
+  return null;
+}
+
+/* ---------- model kind: deterministic exponential backoff ---------- */
+
+function deriveBackoff(params, toggles) {
+  const rows = [];
+  let worstCaseTotalMs = 0;
+  let expectedTotalMs = 0;
+  for (let attempt = 0; attempt < params.retries; attempt += 1) {
+    const raw = params.base * params.factor ** attempt;
+    const delayMs = Math.min(params.cap, Math.round(raw));
+    const rangeLowMs = toggles.fullJitter ? 0 : Math.round(delayMs / 2);
+    const rangeMs = [rangeLowMs, delayMs];
+    worstCaseTotalMs += delayMs;
+    expectedTotalMs += Math.round((rangeLowMs + delayMs) / 2);
+    rows.push({
+      attempt: attempt + 1,
+      delayMs,
+      rangeMs,
+      cappedAtLimit: raw > params.cap,
+      cumulativeWorstMs: worstCaseTotalMs,
+    });
+  }
+  return {
+    rows,
+    totals: {
+      attempts: params.retries,
+      worstCaseTotalMs,
+      expectedTotalMs,
+    },
+  };
+}
+
+/* ---------- quiz kind: score and gaps derived from the answer key ---------- */
+
+function deriveQuizScore(data, working) {
+  let correct = 0;
+  const gaps = [];
+  for (const question of data.questions) {
+    const chosen = working.answers[question.id] ?? null;
+    if (chosen === question.answer) {
+      correct += 1;
+    } else {
+      gaps.push({
+        question: question.id,
+        prompt: question.prompt,
+        gap: question.gap,
+        chosen,
+        answer: question.answer,
+      });
+    }
+  }
+  return { correct, total: data.questions.length, gaps };
+}
+
+/* ---------- checklist kind: verdict tallies ---------- */
+
+function deriveChecklistSummary(data, working) {
+  const byVerdict = Object.create(null);
+  for (const verdict of data.verdicts) byVerdict[verdict.id] = 0;
+  let marked = 0;
+  for (const item of data.items) {
+    const mark = working.marks[item.id];
+    if (mark) {
+      marked += 1;
+      if (mark in byVerdict) byVerdict[mark] += 1;
+    }
+  }
+  return { marked, total: data.items.length, byVerdict };
+}
+
+/* Shared plot geometry for the backoff model. One implementation feeds the
+   Node static renderer, the browser redraw, and tests — every attribute a
+   renderer writes (positions, sizes, dash state, label text) comes from
+   these items, so static and live SVG cannot diverge semantically.
+
+   Composition (720×240 viewBox, near-1:1 pixels in the instrument column):
+     y  50  worst-case total label (anchored to the end mark)
+     y  88  attempt labels, above their bands (thinned when bands crowd)
+     y  96–180  jitter bands sitting on the axis; deterministic-delay ticks
+     y 180  cumulative axis with minor boundary ticks; expected-total mark
+     y 198  origin "0"
+     y 220  axis caption (left) and expected-total label (at its mark)
+   Label-collision rules are deterministic and part of the spec: attempt
+   labels are skipped when their centers come closer than attemptLabelMinGap,
+   the inline "capped" tag is skipped on bands narrower than capTagMinWidth,
+   and the expected-total label is clamped inside the drawable width. */
+const PLOT = {
+  viewW: 720,
+  viewH: 240,
+  marginL: 46,
+  marginR: 26,
+  axisY: 180,
+  bandTop: 96,
+  bandH: 84,
+  attemptLabelY: 88,
+  attemptLabelMinGap: 20,
+  capTagMinWidth: 46,
+  totalLabelY: 50,
+  endmarkTop: 60,
+  axisTickLen: 6,
+  zeroLabelY: 198,
+  footnoteY: 220,
+  footnoteHalfWidth: 62,
+};
+
+function plotRound(value) {
+  return Math.round(value * 100) / 100;
+}
+
+function backoffPlotSpec(params, toggles) {
+  const backoff = deriveBackoff(params, toggles);
+  const worst = backoff.totals.worstCaseTotalMs || 1;
+  const drawW = PLOT.viewW - PLOT.marginL - PLOT.marginR;
+  const scale = drawW / worst;
+  const xOf = (t) => plotRound(PLOT.marginL + t * scale);
+  const bandBottom = PLOT.bandTop + PLOT.bandH;
+  const items = [];
+
+  items.push({ el: "axis-line", x1: xOf(0), y1: PLOT.axisY, x2: xOf(worst), y2: PLOT.axisY });
+  items.push({ el: "zero-label", x: xOf(0), y: PLOT.zeroLabelY, text: "0" });
+  items.push({
+    el: "caption",
+    x: PLOT.marginL,
+    y: PLOT.footnoteY,
+    text: "cumulative worst-case wait (ms) →",
+  });
+
+  let prev = 0;
+  /** @type {number | null} */
+  let lastAttemptLabelX = null;
+  for (const row of backoff.rows) {
+    const x1 = xOf(prev + row.rangeMs[0]);
+    const x2 = xOf(prev + row.rangeMs[1]);
+    const width = plotRound(Math.max(x2 - x1, 2));
+    const tickX = xOf(prev + row.delayMs);
+    const center = plotRound((x1 + x2) / 2);
+    items.push({ el: "axis-tick", x: xOf(prev), y1: PLOT.axisY, y2: PLOT.axisY + PLOT.axisTickLen });
+    items.push({ el: "band", x: x1, y: PLOT.bandTop, width, height: PLOT.bandH, capped: row.cappedAtLimit });
+    items.push({ el: "tick", x: tickX, y1: PLOT.bandTop - 6, y2: bandBottom + 6 });
+    if (row.cappedAtLimit && width >= PLOT.capTagMinWidth) {
+      items.push({ el: "cap-label", x: center, y: PLOT.bandTop + PLOT.bandH / 2 + 3.5, text: "capped" });
+    }
+    if (lastAttemptLabelX === null || center - lastAttemptLabelX >= PLOT.attemptLabelMinGap) {
+      items.push({ el: "attempt-label", x: center, y: PLOT.attemptLabelY, text: `#${row.attempt}` });
+      lastAttemptLabelX = center;
+    }
+    prev = row.cumulativeWorstMs;
+  }
+
+  const expectedX = xOf(backoff.totals.expectedTotalMs);
+  const expectedLabelX = plotRound(
+    Math.min(
+      Math.max(expectedX, PLOT.marginL + PLOT.footnoteHalfWidth),
+      PLOT.viewW - PLOT.marginR - PLOT.footnoteHalfWidth,
+    ),
+  );
+  items.push({ el: "expected-mark", x: expectedX, y1: PLOT.axisY - 6, y2: PLOT.axisY + 12 });
+  items.push({
+    el: "expected-label",
+    x: expectedLabelX,
+    y: PLOT.footnoteY,
+    text: `expected ≈ ${backoff.totals.expectedTotalMs} ms`,
+  });
+  items.push({ el: "endmark", x1: xOf(worst), y1: PLOT.endmarkTop, x2: xOf(worst), y2: PLOT.axisY });
+  items.push({ el: "total-label", x: xOf(worst), y: PLOT.totalLabelY, text: `worst case ${worst} ms` });
+
+  return { view: { w: PLOT.viewW, h: PLOT.viewH }, backoff, items };
+}
+
+/* ---------- stop-gate kind: typed session entries ---------- */
+
+function deriveCounts(entries) {
+  let deviations = 0;
+  let needsHuman = 0;
+  let checksFailed = 0;
+  for (const entry of entries) {
+    if (entry.type === "deviation") deviations += 1;
+    if (entry.needsHuman) needsHuman += 1;
+    if (entry.type === "check" && entry.state !== "pass") checksFailed += 1;
+  }
+  return { all: entries.length, deviations, needsHuman, checksFailed };
+}
+
+function filterEntries(entries, filter) {
+  switch (filter) {
+    case "deviations":
+      return entries.filter((entry) => entry.type === "deviation");
+    case "needs-human":
+      return entries.filter((entry) => Boolean(entry.needsHuman));
+    case "checks":
+      return entries.filter((entry) => entry.type === "check");
+    default:
+      return entries.slice();
+  }
+}
+
+/* ---------- record boundary ---------- */
+
+/* The ONLY statuses that may produce a durable record. Working/candidate
+   statuses are structurally incapable of reaching record generation. */
+const ACCEPTED_RECORD_STATUSES = ["approved", "completed"];
+
+/** Shared gate between canonical state and record generation, used by the
+ * publisher materializer and every installed bundle. Throws on any canonical
+ * document that is not genuinely accepted. */
+function validateCanonicalForRecord(canonical) {
+  if (!canonical || typeof canonical !== "object") {
+    throw new Error("Record generation requires a canonical document.");
+  }
+  const scenario = canonical.scenario;
+  const accepted = canonical.accepted;
+  if (!scenario || !accepted) {
+    throw new Error("Canonical state must contain scenario and accepted blocks.");
+  }
+  assertSafeInstrumentData(scenario);
+
+  const status = String(accepted.status ?? "");
+  if (!ACCEPTED_RECORD_STATUSES.includes(status)) {
+    throw new Error(
+      `Records require an accepted terminal status (${ACCEPTED_RECORD_STATUSES.join("|")}); ` +
+        `got ${JSON.stringify(status)}. Candidate or open state never produces a record.`,
+    );
+  }
+  if (typeof accepted.acceptedVia !== "string" || accepted.acceptedVia.trim() === "") {
+    throw new Error("Canonical state must record acceptedVia — how acceptance happened in chat.");
+  }
+  if (!Array.isArray(accepted.decisions) || accepted.decisions.length === 0) {
+    throw new Error("Canonical state must record at least one accepted decision.");
+  }
+  for (const decision of accepted.decisions) {
+    if (typeof decision.acceptedVia !== "string" || decision.acceptedVia.trim() === "") {
+      throw new Error(
+        `Decision ${JSON.stringify(decision.id ?? "?")} is missing acceptedVia evidence.`,
+      );
+    }
+  }
+
+  const working = accepted.exampleWorking;
+  const primary = accepted.decisions[0];
+  for (const required of scenario.requiredPriorDecisions ?? []) {
+    const matches = accepted.decisions.filter((decision) => decision.id === required.id);
+    if (matches.length !== 1) {
+      throw new Error(
+        `Required prior decision ${JSON.stringify(required.id)} must appear exactly once in accepted canonical state.`,
+      );
+    }
+    const prior = matches[0];
+    if (!required.allowedSelections.includes(prior.selection)) {
+      throw new Error(
+        `Prior decision ${JSON.stringify(required.id)} selection ${JSON.stringify(prior.selection)} is not accepted; ` +
+          `expected one of ${required.allowedSelections.map((selection) => JSON.stringify(selection)).join(", ")}.`,
+      );
+    }
+    if (prior.artifactPath !== required.artifactPath) {
+      throw new Error(
+        `Prior decision ${JSON.stringify(required.id)} artifact path does not match the accepted prerequisite.`,
+      );
+    }
+    if (prior.acceptedRevision !== required.acceptedRevision) {
+      throw new Error(
+        `Prior decision ${JSON.stringify(required.id)} revision does not match the accepted prerequisite.`,
+      );
+    }
+  }
+  if (scenario.kind === "decision") {
+    if (primary.id !== scenario.decisionId) {
+      throw new Error(
+        `Accepted decision id ${JSON.stringify(primary.id)} does not match scenario decision id ${JSON.stringify(scenario.decisionId)}.`,
+      );
+    }
+    const optionIds = (scenario.options ?? []).map((option) => option.id);
+    if (!optionIds.includes(primary.selection)) {
+      throw new Error(
+        `Accepted selection ${JSON.stringify(primary.selection)} is not an option in the scenario.`,
+      );
+    }
+    if (!working || working.selected !== primary.selection) {
+      throw new Error(
+        "Accepted working state disagrees with the recorded decision (selected option mismatch).",
+      );
+    }
+    if (working.rationale !== primary.rationale) {
+      throw new Error(
+        "Accepted working rationale disagrees with the recorded decision rationale.",
+      );
+    }
+  } else if (scenario.kind === "stop-gate") {
+    if (primary.id !== scenario.gate.id) {
+      throw new Error(
+        `Accepted decision id ${JSON.stringify(primary.id)} does not match STOP gate id ${JSON.stringify(scenario.gate.id)}.`,
+      );
+    }
+    const optionIds = (scenario.gate?.options ?? []).map((option) => option.id);
+    if (!optionIds.includes(primary.selection)) {
+      throw new Error(
+        `Accepted resolution ${JSON.stringify(primary.selection)} is not a gate option in the scenario.`,
+      );
+    }
+    if (!working || working.resolution !== primary.selection) {
+      throw new Error(
+        "Accepted working state disagrees with the recorded decision (resolution mismatch).",
+      );
+    }
+    if (Object.hasOwn(working, "filter")) {
+      throw new Error(
+        "STOP-board filter is ephemeral view state and must not enter accepted canonical state.",
+      );
+    }
+    if (working.rationale !== primary.rationale) {
+      throw new Error(
+        "Accepted working rationale disagrees with the recorded decision rationale.",
+      );
+    }
+  } else if (scenario.kind === "model") {
+    if (primary.id !== scenario.decisionId) {
+      throw new Error(
+        `Accepted decision id ${JSON.stringify(primary.id)} does not match scenario decision id ${JSON.stringify(scenario.decisionId)}.`,
+      );
+    }
+    if (primary.selection !== scenario.acceptanceToken) {
+      throw new Error(
+        `Accepted model acceptance ${JSON.stringify(primary.selection)} does not match scenario acceptance token ${JSON.stringify(scenario.acceptanceToken)}.`,
+      );
+    }
+    if (!working || !working.params || !working.toggles) {
+      throw new Error("Model canonical state must carry the accepted working parameters.");
+    }
+    const derived = accepted.derived;
+    if (!derived) {
+      throw new Error("Model canonical state must carry the derived block recorded at acceptance.");
+    }
+    const recomputed = deriveBackoff(working.params, working.toggles);
+    const firstCapped = recomputed.rows.find((row) => row.cappedAtLimit);
+    const consistent =
+      derived.attempts === recomputed.totals.attempts &&
+      derived.worstCaseTotalMs === recomputed.totals.worstCaseTotalMs &&
+      derived.expectedTotalMs === recomputed.totals.expectedTotalMs &&
+      (derived.firstCappedAttempt ?? null) === (firstCapped ? firstCapped.attempt : null);
+    if (!consistent) {
+      throw new Error(
+        "Model canonical derived values disagree with the shared core calculation — the record would misstate the model.",
+      );
+    }
+  } else if (
+    scenario.kind === "prototype" ||
+    scenario.kind === "quiz" ||
+    scenario.kind === "checklist" ||
+    scenario.kind === "dossier"
+  ) {
+    if (primary.id !== scenario.decisionId) {
+      throw new Error(
+        `Accepted decision id ${JSON.stringify(primary.id)} does not match scenario decision id ${JSON.stringify(scenario.decisionId)}.`,
+      );
+    }
+    if (primary.selection !== scenario.acceptanceToken) {
+      throw new Error(
+        `Accepted selection ${JSON.stringify(primary.selection)} does not match the scenario acceptance token ${JSON.stringify(scenario.acceptanceToken)}.`,
+      );
+    }
+    if (scenario.kind === "prototype") {
+      if (!working || !working.params || !working.toggles) {
+        throw new Error("Prototype canonical state must carry the accepted felt parameters.");
+      }
+    } else if (scenario.kind === "quiz") {
+      if (!working || !working.answers) {
+        throw new Error("Quiz canonical state must carry the accepted answers.");
+      }
+      for (const question of scenario.questions) {
+        const chosen = working.answers[question.id];
+        if (!chosen) {
+          throw new Error(`Quiz canonical state is missing an answer for ${JSON.stringify(question.id)}.`);
+        }
+        if (!(question.options ?? []).some((option) => option.id === chosen)) {
+          throw new Error(`Quiz canonical answer ${JSON.stringify(chosen)} is not an option of ${JSON.stringify(question.id)}.`);
+        }
+      }
+      const recomputed = deriveQuizScore(scenario, working);
+      const derived = accepted.derived;
+      if (!derived || derived.correct !== recomputed.correct || derived.total !== recomputed.total) {
+        throw new Error(
+          "Quiz canonical score disagrees with the recomputed score — the record would misstate the result.",
+        );
+      }
+    } else if (scenario.kind === "checklist") {
+      if (!working || !working.marks) {
+        throw new Error("Checklist canonical state must carry the accepted item verdicts.");
+      }
+      const verdictIds = (scenario.verdicts ?? []).map((verdict) => verdict.id);
+      for (const item of scenario.items) {
+        const mark = working.marks[item.id];
+        if (!mark) {
+          throw new Error(`Checklist canonical state is missing a verdict for ${JSON.stringify(item.id)}.`);
+        }
+        if (!verdictIds.includes(mark)) {
+          throw new Error(`Checklist canonical verdict ${JSON.stringify(mark)} is not a declared verdict.`);
+        }
+      }
+      if (scenario.conclusionRequired && !(working.conclusion ?? "").trim()) {
+        throw new Error("Checklist canonical state requires a conclusion before a record exists.");
+      }
+    }
+    /* dossier: acceptance-token match above is the whole working-state contract. */
+  }
+  return canonical;
+}
+
+/* ---------- candidate export ---------- */
+
+function yamlValue(value) {
+  if (value === null || value === undefined) return "null";
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return JSON.stringify(String(value));
+}
+
+function yamlLines(pairs) {
+  return pairs.map(([key, value]) => `${key}: ${yamlValue(value)}`).join("\n");
+}
+
+function markdownList(items, empty) {
+  if (!items || items.length === 0) return `- ${empty}`;
+  return items.map((item) => `- ${item}`).join("\n");
+}
+
+function buildCandidate(data, working) {
+  assertSafeInstrumentData(data);
+  const status = deriveStatus(data, working);
+  const commonFront = [
+    ["acta_protocol", ACTA2_PROTOCOL],
+    ["payload", "candidate"],
+    ["artifact_kind", data.artifactKind],
+    ["producer_skill", data.skill],
+    ["initiative", data.initiative],
+    ["instrument", data.kind],
+    ["status", status.code],
+    ["source_revision", data.sourceRevision],
+  ];
+  const json = {
+    acta_protocol: ACTA2_PROTOCOL,
+    payload: "candidate",
+    artifact_kind: data.artifactKind,
+    producer_skill: data.skill,
+    initiative: data.initiative,
+    instrument: data.kind,
+    status: status.code,
+    source_revision: data.sourceRevision,
+    inputs: (data.inputs ?? []).slice(),
+    unresolved: (data.unresolved ?? []).slice(),
+  };
+
+  const preamble = [
+    `# Candidate — ${data.title}`,
+    "",
+    "This payload is a candidate, not canonical state. Apply it only after",
+    "explicit acceptance in chat; silence is never approval.",
+    "",
+    `Question: ${data.question}`,
+    `Working status: ${status.label}`,
+  ];
+
+  let kindFront = [];
+  let body = [];
+
+  if (data.kind === "decision") {
+    const selected = optionById(data.options, working.selected);
+    kindFront = [["selected_option", working.selected]];
+    json.selection = {
+      option: working.selected,
+      label: selected ? selected.label : null,
+      rationale: working.rationale || null,
+    };
+    body = [
+      "## Working selection",
+      "",
+      selected
+        ? `Selected: **${selected.label}** (\`${selected.id}\`)`
+        : "No option selected yet.",
+      working.rationale ? `Rationale: ${working.rationale}` : "Rationale: (none volunteered)",
+      "",
+      "## Alternatives on the table",
+      "",
+      markdownList(
+        data.options.map((option) =>
+          option.id === working.selected ? `${option.label} ← selected` : option.label,
+        ),
+        "none",
+      ),
+    ];
+  } else if (data.kind === "stop-gate") {
+    const resolution = optionById(data.gate.options, working.resolution);
+    kindFront = [
+      ["stop_gate", data.gate.id],
+      ["stop_resolution", working.resolution],
+    ];
+    json.gate = {
+      id: data.gate.id,
+      title: data.gate.title,
+      state: working.resolution ? "resolution-proposed" : "open",
+    };
+    json.resolution = {
+      option: working.resolution,
+      label: resolution ? resolution.label : null,
+      rationale: working.rationale || null,
+    };
+    body = [
+      `## ${data.gate.id} — ${data.gate.title}`,
+      "",
+      resolution
+        ? `Proposed resolution: **${resolution.label}** (\`${resolution.id}\`)`
+        : "The gate is open. No resolution proposed yet; work stays paused.",
+      working.rationale ? `Rationale: ${working.rationale}` : "Rationale: (none volunteered)",
+      "",
+      "Work resumes only after explicit acceptance in chat records this resolution",
+      "in canonical state.",
+    ];
+  } else if (data.kind === "model") {
+    const derived = deriveBackoff(working.params, working.toggles);
+    kindFront = [
+      ...Object.entries(working.params).map(([id, value]) => [`param_${id}`, value]),
+      ...Object.entries(working.toggles).map(([id, value]) => [`toggle_${id}`, value]),
+    ];
+    json.parameters = { ...working.params };
+    json.toggles = { ...working.toggles };
+    json.conclusion = working.conclusion.trim() || null;
+    json.derived = {
+      attempts: derived.totals.attempts,
+      worstCaseTotalMs: derived.totals.worstCaseTotalMs,
+      expectedTotalMs: derived.totals.expectedTotalMs,
+    };
+    body = [
+      "## Chosen parameters",
+      "",
+      markdownList(
+        data.params.map(
+          (param) => `${param.label}: ${working.params[param.id]}${param.unit}`,
+        ),
+        "defaults",
+      ),
+      markdownList(
+        (data.toggles ?? []).map(
+          (toggle) => `${toggle.label}: ${working.toggles[toggle.id] ? "on" : "off"}`,
+        ),
+        "no toggles",
+      ),
+      "",
+      "## Derived consequence",
+      "",
+      `Worst-case total wait across ${derived.totals.attempts} attempts: ${derived.totals.worstCaseTotalMs}ms` +
+        ` (expected ≈ ${derived.totals.expectedTotalMs}ms).`,
+      "",
+      "## Observed conclusion",
+      "",
+      working.conclusion.trim() || "(record what the model showed you before exporting)",
+      "",
+      "## Declared simplifications",
+      "",
+      markdownList(data.simplifications, "none declared"),
+    ];
+  } else if (data.kind === "prototype") {
+    kindFront = [
+      ...Object.entries(working.params).map(([id, value]) => [`param_${id}`, value]),
+      ...Object.entries(working.toggles).map(([id, value]) => [`toggle_${id}`, value]),
+    ];
+    json.parameters = { ...working.params };
+    json.toggles = { ...working.toggles };
+    json.conclusion = working.conclusion.trim() || null;
+    body = [
+      "## Felt parameters",
+      "",
+      markdownList(
+        data.params.map(
+          (param) => `${param.label}: ${working.params[param.id]}${param.unit}`,
+        ),
+        "defaults",
+      ),
+      markdownList(
+        (data.toggles ?? []).map(
+          (toggle) => `${toggle.label}: ${working.toggles[toggle.id] ? "on" : "off"}`,
+        ),
+        "no toggles",
+      ),
+      "",
+      "## Felt conclusion",
+      "",
+      working.conclusion.trim() || "(record how the prototype felt before exporting)",
+      "",
+      "The prototype itself is disposable; only these parameters and this",
+      "conclusion carry forward.",
+    ];
+  } else if (data.kind === "quiz") {
+    const score = deriveQuizScore(data, working);
+    kindFront = [
+      ["score_correct", score.correct],
+      ["score_total", score.total],
+      ["gaps", score.gaps.length],
+    ];
+    json.answers = { ...working.answers };
+    json.score = { correct: score.correct, total: score.total };
+    json.gaps = score.gaps.map((gap) => ({ question: gap.question, gap: gap.gap ?? null }));
+    json.reflection = (working.reflection ?? "").trim() || null;
+    body = [
+      "## Self-check result",
+      "",
+      `Score: ${score.correct} / ${score.total}. This check is diagnostic — never a merge gate.`,
+      "",
+      "## Answers",
+      "",
+      markdownList(
+        data.questions.map((question) => {
+          const chosen = working.answers[question.id];
+          const mark = chosen === question.answer ? "✓" : chosen ? "✗" : "—";
+          return `${mark} ${question.prompt} (chose: ${chosen ?? "unanswered"})`;
+        }),
+        "no questions",
+      ),
+      "",
+      "## Gaps to close",
+      "",
+      markdownList(
+        score.gaps.map((gap) => `${gap.gap ?? gap.prompt}`),
+        "none — every answer matched the evidence",
+      ),
+    ];
+  } else if (data.kind === "checklist") {
+    const summary = deriveChecklistSummary(data, working);
+    const verdictById = Object.create(null);
+    for (const verdict of data.verdicts) verdictById[verdict.id] = verdict;
+    kindFront = data.items.map((item) => [`mark_${item.id}`, working.marks[item.id]]);
+    json.marks = { ...working.marks };
+    json.counts = { ...summary.byVerdict };
+    json.conclusion = (working.conclusion ?? "").trim() || null;
+    body = [
+      "## Item verdicts",
+      "",
+      markdownList(
+        data.items.map((item) => {
+          const mark = working.marks[item.id];
+          const verdict = mark ? verdictById[mark] : null;
+          return `${item.label}: ${verdict ? verdict.label : "(no verdict yet)"}`;
+        }),
+        "no items",
+      ),
+      "",
+      "## Conclusion",
+      "",
+      (working.conclusion ?? "").trim() || "(none recorded)",
+    ];
+  } else {
+    throw new Error(`Unknown instrument kind: ${data.kind}`);
+  }
+
+  const closing = [
+    "## Unresolved",
+    "",
+    markdownList(data.unresolved, "nothing recorded"),
+    "",
+    "## Provenance inputs",
+    "",
+    markdownList(data.inputs, "none recorded"),
+  ];
+
+  const markdown = [
+    "---",
+    yamlLines([...commonFront, ...kindFront]),
+    "---",
+    "",
+    ...preamble,
+    "",
+    ...body,
+    "",
+    ...closing,
+    "",
+  ].join("\n");
+
+  return { markdown, json };
+}
+
+/* ESM exports stripped for inline use */
+
+/* Acta v2 pilot — shared instrument runtime.
+   Inlined after export-core; expects the core functions in scope
+   (initialWorking, deriveStatus, buildCandidate, deriveBackoff,
+   deriveCounts, filterEntries).
+
+   Responsibilities:
+   - parse the #acta2-data island into `data`;
+   - own `working` state and route all input events into it;
+   - re-derive status + candidate export on every change and write them
+     into the DOM via textContent (never markup sinks);
+   - verify displayed export === recomputed export (integrity contract);
+   - clipboard copy with honest fallback;
+   - optional in-page self-test (?acta2selftest=1) for headless assertion.
+
+   The browser NEVER persists anything: no storage, no network, no file
+   writes. The only exit is human-carried text. */
+
+(function () {
+  "use strict";
+
+  var dataNode = document.getElementById("acta2-data");
+  if (!dataNode) return;
+  var data;
+  try {
+    data = JSON.parse(dataNode.textContent);
+  } catch (error) {
+    document.body.setAttribute("data-acta2-integrity", "mismatch");
+    return;
+  }
+
+  var working = initialWorking(data);
+  var renderHooks = [];
+  var currentExport = { markdown: "", json: null };
+
+  function text(selector, value) {
+    document.querySelectorAll(selector).forEach(function (node) {
+      node.textContent = value;
+    });
+  }
+
+  function announce(message, isError) {
+    var region = document.querySelector("[data-a2-live]");
+    if (!region) return;
+    region.classList.toggle("is-error", Boolean(isError));
+    region.textContent = message;
+  }
+
+  function expectedExportText(format) {
+    var fresh = buildCandidate(data, working);
+    return format === "json" ? JSON.stringify(fresh.json, null, 2) : fresh.markdown;
+  }
+
+  /* Both displayed payloads must equal a fresh recompute from working state.
+     A single stale format is a full integrity failure. */
+  function verifyIntegrity() {
+    var ok = true;
+    ["markdown", "json"].forEach(function (format) {
+      var displayed = document.querySelector('[data-derived-export="' + format + '"]');
+      if (!displayed || displayed.textContent !== expectedExportText(format)) ok = false;
+    });
+    document.body.setAttribute("data-acta2-integrity", ok ? "ok" : "mismatch");
+    return ok;
+  }
+
+  function render() {
+    var status = deriveStatus(data, working);
+    document.body.setAttribute("data-acta2-status", status.code);
+    text("[data-bind='status-label']", status.label);
+    currentExport = buildCandidate(data, working);
+    text("[data-derived-export='markdown']", currentExport.markdown);
+    text("[data-derived-export='json']", JSON.stringify(currentExport.json, null, 2));
+    renderHooks.forEach(function (hook) {
+      hook(data, working, status);
+    });
+    verifyIntegrity();
+  }
+
+  /* ---------- generic input routing ---------- */
+
+  document.addEventListener("change", function (event) {
+    var node = event.target;
+    if (!(node instanceof HTMLElement)) return;
+    if (node.matches("input[name='acta2-option']")) {
+      working.selected = node.value;
+      render();
+    } else if (node.matches("input[name='acta2-resolution']")) {
+      working.resolution = node.value;
+      render();
+    } else if (node.matches("[data-toggle]")) {
+      working.toggles[node.getAttribute("data-toggle")] = node.checked;
+      render();
+    } else if (node.matches("[data-quiz-answer]")) {
+      working.answers[node.getAttribute("data-quiz-answer")] = node.value;
+      render();
+    } else if (node.matches("[data-mark-item]")) {
+      working.marks[node.getAttribute("data-mark-item")] = node.value;
+      render();
+    }
+  });
+
+  document.addEventListener("input", function (event) {
+    var node = event.target;
+    if (!(node instanceof HTMLElement)) return;
+    if (node.matches("[data-param]")) {
+      working.params[node.getAttribute("data-param")] = Number(node.value);
+      render();
+    } else if (node.matches("[data-working]")) {
+      working[node.getAttribute("data-working")] = node.value;
+      render();
+    }
+  });
+
+  document.addEventListener("click", function (event) {
+    var button = event.target instanceof Element ? event.target.closest("button") : null;
+    if (!button) return;
+    if (button.hasAttribute("data-acta2-reset")) {
+      working = initialWorking(data);
+      document.querySelectorAll(
+        "input[name='acta2-option'],input[name='acta2-resolution'],[data-quiz-answer],[data-mark-item]"
+      ).forEach(function (radio) {
+        radio.checked = false;
+      });
+      document.querySelectorAll("[data-param]").forEach(function (input) {
+        var id = input.getAttribute("data-param");
+        input.value = String(working.params[id]);
+      });
+      document.querySelectorAll("[data-toggle]").forEach(function (input) {
+        input.checked = Boolean(working.toggles[input.getAttribute("data-toggle")]);
+      });
+      document.querySelectorAll("[data-working]").forEach(function (input) {
+        input.value = "";
+      });
+      if (working.filter !== undefined) {
+        working.filter = "all";
+        document.querySelectorAll("[data-filter]").forEach(function (candidate) {
+          candidate.setAttribute("aria-pressed", String(candidate.getAttribute("data-filter") === "all"));
+        });
+      }
+      render();
+      announce("Working state reset.");
+      return;
+    }
+    if (button.hasAttribute("data-filter")) {
+      if (working.filter !== undefined) {
+        working.filter = button.getAttribute("data-filter");
+        document.querySelectorAll("[data-filter]").forEach(function (candidate) {
+          candidate.setAttribute("aria-pressed", String(candidate === button));
+        });
+        render();
+      }
+      return;
+    }
+    var plainCopyId = button.getAttribute("data-copy-text-from");
+    if (plainCopyId) {
+      var plainSource = document.getElementById(plainCopyId);
+      if (plainSource) {
+        copyText(plainSource.textContent, button.getAttribute("data-copy-label") || "Source");
+      }
+      return;
+    }
+    var copyId = button.getAttribute("data-copy-from");
+    if (copyId) {
+      var source = document.getElementById(copyId);
+      if (!source) return;
+      // Verify the EXACT format this button copies, plus overall integrity.
+      var format = source.getAttribute("data-derived-export") || "markdown";
+      var formatFresh = source.textContent === expectedExportText(format);
+      if (!verifyIntegrity() || !formatFresh) {
+        announce("Integrity check failed — do not paste this export.", true);
+        return;
+      }
+      copyText(source.textContent, button.getAttribute("data-copy-label") || "Export");
+    }
+  });
+
+  function copyText(value, label) {
+    function fallback() {
+      var area = document.createElement("textarea");
+      area.value = value;
+      document.body.appendChild(area);
+      area.select();
+      var copied = false;
+      try {
+        copied = document.execCommand("copy");
+      } catch (error) {
+        copied = false;
+      }
+      area.remove();
+      announce(
+        copied
+          ? label + " copied. Paste it in chat; it stays a candidate until you confirm."
+          : "Copy failed — select the export text manually.",
+        !copied,
+      );
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(value).then(function () {
+        announce(label + " copied. Paste it in chat; it stays a candidate until you confirm.");
+      }, fallback);
+    } else {
+      fallback();
+    }
+  }
+
+  window.addEventListener("beforeprint", function () {
+    document.querySelectorAll("details").forEach(function (detail) {
+      detail.open = true;
+    });
+  });
+
+  /* ---------- instrument hook API (topology-specific wiring) ---------- */
+
+  window.Acta2 = {
+    data: data,
+    getWorking: function () {
+      return working;
+    },
+    getExport: function () {
+      return currentExport;
+    },
+    onRender: function (hook) {
+      renderHooks.push(hook);
+    },
+    refresh: render,
+  };
+
+  /* ---------- self-test (headless assertion hook) ---------- */
+
+  function selfTest() {
+    var failures = [];
+    function expect(condition, message) {
+      if (!condition) failures.push(message);
+    }
+    function setInput(node, value) {
+      node.value = value;
+      node.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    try {
+      expect(
+        document.body.getAttribute("data-acta2-ready") === "true",
+        "runtime initialization marks the instrument ready",
+      );
+      expect(
+        document.querySelectorAll("[data-a2-enable][disabled]").length === 0,
+        "all controls are enabled after successful initialization",
+      );
+      var jsnote = document.querySelector(".a2-jsnote");
+      expect(
+        !jsnote || getComputedStyle(jsnote).display === "none",
+        "no-JS fallback notes are hidden once the runtime is live",
+      );
+      if (data.kind === "decision") {
+        var radios = document.querySelectorAll("input[name='acta2-option']");
+        expect(radios.length >= 3, "decision instrument exposes option radios");
+        expect(
+          !document.querySelector("input[name='acta2-option'][checked]"),
+          "no option is preselected",
+        );
+        var second = radios[1];
+        second.checked = true;
+        second.dispatchEvent(new Event("change", { bubbles: true }));
+        expect(working.selected === second.value, "selection reaches working state");
+        expect(currentExport.json.selection.option === second.value, "selection reaches export");
+        var rationale = document.querySelector("[data-working='rationale']");
+        if (rationale) {
+          setInput(rationale, "selftest rationale");
+          expect(currentExport.markdown.indexOf("selftest rationale") !== -1, "rationale reaches export");
+        }
+        expect(currentExport.json.status === "candidate-ready", "status follows selection");
+        var first = radios[0];
+        first.checked = true;
+        first.dispatchEvent(new Event("change", { bubbles: true }));
+        expect(currentExport.json.selection.option === first.value, "selection can change before export");
+      } else if (data.kind === "stop-gate") {
+        expect(currentExport.json.gate.state === "open", "gate starts open");
+        var resolutions = document.querySelectorAll("input[name='acta2-resolution']");
+        expect(resolutions.length >= 2, "gate exposes resolution options");
+        resolutions[0].checked = true;
+        resolutions[0].dispatchEvent(new Event("change", { bubbles: true }));
+        expect(currentExport.json.resolution.option === resolutions[0].value, "resolution reaches export");
+        expect(currentExport.json.status === "candidate-ready", "status follows resolution");
+        var chip = document.querySelector("button[data-filter='deviations']");
+        if (chip) {
+          chip.click();
+          var expected = filterEntries(data.entries, "deviations").length;
+          var visible = document.querySelectorAll("[data-entry]:not([hidden])").length;
+          expect(visible === expected, "filter shows exactly the derived entries");
+          var resetForFilter = document.querySelector("[data-acta2-reset]");
+          if (resetForFilter) {
+            resetForFilter.click();
+            expect(
+              document.querySelectorAll("[data-entry]:not([hidden])").length === data.entries.length,
+              "reset restores the unfiltered timeline",
+            );
+            var allChip = document.querySelector("button[data-filter='all']");
+            expect(
+              !allChip || allChip.getAttribute("aria-pressed") === "true",
+              "reset restores the filter chips' pressed state",
+            );
+          }
+        }
+      } else if (data.kind === "model") {
+        var slider = document.querySelector("[data-param]");
+        expect(Boolean(slider), "model exposes parameter controls");
+        var id = slider.getAttribute("data-param");
+        setInput(slider, slider.max);
+        expect(currentExport.json.parameters[id] === Number(slider.max), "parameter reaches export");
+        var toggle = document.querySelector("[data-toggle]");
+        if (toggle) {
+          toggle.checked = !toggle.checked;
+          toggle.dispatchEvent(new Event("change", { bubbles: true }));
+          expect(
+            currentExport.json.toggles[toggle.getAttribute("data-toggle")] === toggle.checked,
+            "toggle reaches export",
+          );
+        }
+        var conclusion = document.querySelector("[data-working='conclusion']");
+        if (conclusion) {
+          setInput(conclusion, "selftest conclusion");
+          expect(currentExport.json.conclusion === "selftest conclusion", "conclusion reaches export");
+          expect(currentExport.json.status === "candidate-ready", "status follows conclusion");
+        }
+        /* Live plot equals the shared spec at these NON-default parameters:
+           every item, attribute, label, and capped state. */
+        var livePlot = document.querySelector("[data-clab-plot]");
+        if (livePlot && typeof backoffPlotSpec === "function") {
+          var liveSpec = backoffPlotSpec(working.params, working.toggles);
+          expect(
+            livePlot.children.length === liveSpec.items.length,
+            "live SVG has one node per spec item (" + livePlot.children.length + "/" + liveSpec.items.length + ")",
+          );
+          liveSpec.items.forEach(function (item, index) {
+            var node = livePlot.children[index];
+            if (!node) return;
+            var tag = node.tagName.toLowerCase();
+            if (item.el === "band") {
+              expect(tag === "rect", "spec item " + index + " renders a rect");
+              expect(node.getAttribute("x") === String(item.x), "band " + index + " x");
+              expect(node.getAttribute("y") === String(item.y), "band " + index + " y");
+              expect(node.getAttribute("width") === String(item.width), "band " + index + " width");
+              expect(node.getAttribute("height") === String(item.height), "band " + index + " height");
+              expect(
+                Boolean(node.getAttribute("stroke-dasharray")) === Boolean(item.capped),
+                "band " + index + " capped dash state",
+              );
+            } else if (item.el === "tick" || item.el === "axis-line" || item.el === "endmark") {
+              expect(tag === "line", "spec item " + index + " renders a line");
+              var x1 = item.el === "tick" ? item.x : item.x1;
+              var x2 = item.el === "tick" ? item.x : item.x2;
+              expect(node.getAttribute("x1") === String(x1), item.el + " " + index + " x1");
+              expect(node.getAttribute("x2") === String(x2), item.el + " " + index + " x2");
+              expect(node.getAttribute("y1") === String(item.y1), item.el + " " + index + " y1");
+              expect(node.getAttribute("y2") === String(item.y2), item.el + " " + index + " y2");
+            } else {
+              expect(tag === "text", "spec item " + index + " renders a text");
+              expect(node.textContent === item.text, item.el + " " + index + " label text");
+              expect(node.getAttribute("x") === String(item.x), item.el + " " + index + " x");
+              expect(node.getAttribute("y") === String(item.y), item.el + " " + index + " y");
+            }
+          });
+        }
+      }
+      if (data.kind === "quiz") {
+        var firstQuizRadio = document.querySelector("[data-quiz-answer]");
+        expect(Boolean(firstQuizRadio), "quiz exposes answer radios");
+        expect(
+          !document.querySelector("[data-quiz-answer][checked]"),
+          "no quiz answer is preselected",
+        );
+        firstQuizRadio.checked = true;
+        firstQuizRadio.dispatchEvent(new Event("change", { bubbles: true }));
+        var qid = firstQuizRadio.getAttribute("data-quiz-answer");
+        expect(working.answers[qid] === firstQuizRadio.value, "answer reaches working state");
+        expect(currentExport.json.answers[qid] === firstQuizRadio.value, "answer reaches export");
+      } else if (data.kind === "checklist") {
+        var firstMark = document.querySelector("[data-mark-item]");
+        expect(Boolean(firstMark), "checklist exposes verdict radios");
+        firstMark.checked = true;
+        firstMark.dispatchEvent(new Event("change", { bubbles: true }));
+        var itemId = firstMark.getAttribute("data-mark-item");
+        expect(working.marks[itemId] === firstMark.value, "verdict reaches working state");
+        expect(currentExport.json.marks[itemId] === firstMark.value, "verdict reaches export");
+      } else if (data.kind === "prototype") {
+        var protoSlider = document.querySelector("[data-param]");
+        expect(Boolean(protoSlider), "prototype exposes parameter controls");
+        setInput(protoSlider, protoSlider.max);
+        expect(
+          currentExport.json.parameters[protoSlider.getAttribute("data-param")] === Number(protoSlider.max),
+          "prototype parameter reaches export",
+        );
+        var feltConclusion = document.querySelector("[data-working='conclusion']");
+        if (feltConclusion) {
+          setInput(feltConclusion, "selftest felt conclusion");
+          expect(currentExport.json.conclusion === "selftest felt conclusion", "felt conclusion reaches export");
+          expect(currentExport.json.status === "candidate-ready", "status follows felt conclusion");
+        }
+      }
+      var displayed = document.querySelector('[data-derived-export="markdown"]');
+      expect(displayed && displayed.textContent === buildCandidate(data, working).markdown, "displayed export equals recomputed export");
+      expect(currentExport.markdown.indexOf('payload: "candidate"') !== -1, "export is marked candidate");
+
+      /* Tamper tests: each displayed format is independently guarded. */
+      var jsonNode = document.querySelector('[data-derived-export="json"]');
+      var liveRegion = document.querySelector("[data-a2-live]");
+      [
+        { node: displayed, label: "markdown" },
+        { node: jsonNode, label: "json" },
+      ].forEach(function (target) {
+        if (!target.node) {
+          expect(false, "missing " + target.label + " export node");
+          return;
+        }
+        var original = target.node.textContent;
+        target.node.textContent = original + "\ntampered";
+        expect(!verifyIntegrity(), "tampered " + target.label + " is detected");
+        expect(
+          document.body.getAttribute("data-acta2-integrity") === "mismatch",
+          "tampered " + target.label + " raises the integrity banner",
+        );
+        var copyButton = document.querySelector("[data-copy-from]");
+        if (copyButton && liveRegion) {
+          liveRegion.textContent = "";
+          copyButton.click();
+          expect(
+            liveRegion.textContent.indexOf("Integrity check failed") !== -1,
+            "copy refuses a stale " + target.label + " export",
+          );
+        }
+        target.node.textContent = original;
+        expect(verifyIntegrity(), "restoring " + target.label + " restores integrity");
+      });
+      var resetButton = document.querySelector("[data-acta2-reset]");
+      if (resetButton) {
+        resetButton.click();
+        var fresh = buildCandidate(data, initialWorking(data)).markdown;
+        expect(
+          document.querySelector('[data-derived-export="markdown"]').textContent === fresh,
+          "reset returns export to the initial state",
+        );
+      }
+    } catch (error) {
+      failures.push("exception: " + error.message);
+    }
+    var verdict = failures.length === 0 ? "ACTA2-SELFTEST-PASS" : "ACTA2-SELFTEST-FAIL: " + failures.join("; ");
+    document.title = verdict;
+    var report = document.querySelector("[data-selftest]");
+    if (report) report.textContent = verdict;
+  }
+
+  render();
+
+  /* Honest no-JS: controls ship disabled and only become operational once
+     the runtime has initialized and the first render+verify succeeded. */
+  if (verifyIntegrity()) {
+    document.querySelectorAll("[data-a2-enable]").forEach(function (control) {
+      control.removeAttribute("disabled");
+    });
+    document.body.setAttribute("data-acta2-ready", "true");
+  }
+
+  if (window.location.search.indexOf("acta2selftest=1") !== -1) {
+    selfTest();
+  }
+})();
+
+/* draw-the-flow topology wiring: ephemeral path emphasis (view state only —
+   deliberately NOT part of working state or any export) plus the verdict
+   selection line. */
+(function () {
+  "use strict";
+  if (!window.Acta2) return;
+
+  var plot = document.querySelector(".dtf-plot");
+
+  function setFocus(id) {
+    if (plot) plot.setAttribute("data-focus", id);
+    document.querySelectorAll("[data-flow-focus]").forEach(function (button) {
+      button.setAttribute("aria-pressed", String(button.getAttribute("data-flow-focus") === id));
+    });
+    document.querySelectorAll("[data-path-card]").forEach(function (card) {
+      card.setAttribute("data-emphasized", String(card.getAttribute("data-path-card") === id));
+    });
+  }
+
+  document.addEventListener("click", function (event) {
+    var button = event.target instanceof Element ? event.target.closest("button") : null;
+    if (!button) return;
+    if (button.hasAttribute("data-flow-focus")) {
+      setFocus(button.getAttribute("data-flow-focus"));
+    } else if (button.hasAttribute("data-acta2-reset")) {
+      setFocus("all");
+    }
+  });
+
+  window.Acta2.onRender(function (data, working) {
+    var line = document.querySelector("[data-bind='selection-line']");
+    if (line) {
+      if (working.selected) {
+        var selected = null;
+        data.options.forEach(function (option) {
+          if (option.id === working.selected) selected = option;
+        });
+        line.textContent =
+          "Proposed: " +
+          (selected ? selected.label : working.selected) +
+          " — candidate only, not yet accepted.";
+      } else {
+        line.textContent = "No verdict proposed yet.";
+      }
+    }
+  });
+
+  window.Acta2.refresh();
+})();
+</script>
+</body>
+</html>

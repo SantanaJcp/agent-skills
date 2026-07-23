@@ -1,0 +1,23 @@
+{
+ "status": "approved",
+ "stamp": "ACCEPTED",
+ "acceptedVia": "chat — per-figure verdicts confirmed",
+ "recordTitle": "Accepted figure sheet",
+ "summary": "One paragraph: which figures were approved and which return for revision.",
+ "canonicalPath": "figures/sheet-slug.md",
+ "decisions": [
+  {
+   "id": "figure-sheet",
+   "selection": "accept-figures",
+   "rationale": "The honest sheet verdict.",
+   "acceptedVia": "chat — explicit confirmation"
+  }
+ ],
+ "exampleWorking": {
+  "marks": {
+   "fig-example": "approve"
+  },
+  "conclusion": ""
+ },
+ "canonicalBody": "# Accepted figure sheet\n\nPer-figure verdicts with revision notes."
+}

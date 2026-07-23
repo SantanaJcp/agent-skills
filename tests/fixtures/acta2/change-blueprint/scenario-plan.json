@@ -1,0 +1,236 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "decision",
+ "decisionId": "gate-b-plan",
+ "skill": "change-blueprint",
+ "artifactKind": "implementation-plan",
+ "initiative": "tag-filter",
+ "title": "Change blueprint — implementation plan",
+ "question": "Will this plan build the accepted specification safely?",
+ "lede": "Gate B reviews how the accepted spec becomes code: the slices, the data flow, the riskiest surface, and the way out if it goes wrong. Approving it authorizes build-with-notes to start slice 1.",
+ "gatePhase": "plan",
+ "gateLabel": "Gate B — implementation plan",
+ "gateQuestion": "Approve this plan as the build contract for the tag-filter change?",
+ "sourceRevision": "a8b083705553550eda289ddf9cf1d028df907682",
+ "inputs": [
+  "spec.md — accepted at Gate A",
+  "src/catalog.mjs — visibleSkills() idiom",
+  "three-code-paths record — functional core, thin shell"
+ ],
+ "specContext": {
+  "acceptedVia": "accepted in chat 2026-07-22 after Gate A review",
+  "summary": "Single ?tag= filter over the static skills catalog; pure filterByTag testable in Node; chips as filter links; full catalog without JavaScript; no network, no multi-tag, no persistence."
+ },
+ "requiredPriorDecisions": [
+  {
+   "id": "gate-a-spec",
+   "allowedSelections": [
+    "approve-spec"
+   ],
+   "artifactPath": "spec.md",
+   "acceptedRevision": "tag-filter-spec-2026-07-22"
+  }
+ ],
+ "facts": [
+  {
+   "value": "5",
+   "label": "slices",
+   "sub": "each independently green"
+  },
+  {
+   "value": "3",
+   "label": "files touched",
+   "sub": "catalog · url-tag · app"
+  },
+  {
+   "value": "12",
+   "label": "planned assertions",
+   "sub": "node --test"
+  },
+  {
+   "value": "1 commit",
+   "label": "rollback unit",
+   "sub": "revert restores static catalog"
+  }
+ ],
+ "slicesLede": "Five vertical slices on the accepted functional-core shape; nothing is user-visible until slice 4, and every slice leaves node --test green.",
+ "slices": [
+  {
+   "id": "s1",
+   "window": "Slice 1",
+   "title": "Pure filterByTag with its own assertions",
+   "detail": "filterByTag(skills, tag) lands as a plain importable function: null tag returns the full list, unknown tags return empty, matches filter by inclusion.",
+   "touches": [
+    "src/catalog.mjs",
+    "test/catalog.test.mjs"
+   ]
+  },
+  {
+   "id": "s2",
+   "window": "Slice 2",
+   "title": "Pure parseTagFromSearch",
+   "detail": "parseTagFromSearch(search) reads the single ?tag= parameter via URLSearchParams and returns the tag or null; no DOM involved.",
+   "touches": [
+    "src/url-tag.mjs",
+    "test/url-tag.test.mjs"
+   ]
+  },
+  {
+   "id": "s3",
+   "window": "Slice 3",
+   "title": "Static chip markup in the no-JS catalog",
+   "detail": "Every skill row renders its tags as plain ?tag= links so the page is complete and navigable before any script runs.",
+   "touches": [
+    "index.html"
+   ]
+  },
+  {
+   "id": "s4",
+   "window": "Slice 4",
+   "title": "Browser glue: read URL, filter, replaceChildren",
+   "detail": "app.mjs wires location.search through the two pure functions and re-renders the list; the empty state from interface-directions renders for unknown tags.",
+   "touches": [
+    "src/app.mjs"
+   ]
+  },
+  {
+   "id": "s5",
+   "window": "Slice 5",
+   "title": "Back/forward wiring and final sweep",
+   "detail": "popstate re-runs the same glue; acceptance criteria walked end to end at 1440 and 320, with and without JavaScript.",
+   "touches": [
+    "src/app.mjs",
+    "qa notes"
+   ]
+  }
+ ],
+ "flow": {
+  "lede": "One direction of dependency: the DOM depends on pure functions, never the reverse. The dark node is the only stateful surface.",
+  "caption": "Solid = call path on every navigation. Dashed = the browser-only wiring added in slice 4; nothing to the left of it knows the DOM exists.",
+  "nodes": [
+   {
+    "id": "url",
+    "label": "location.search",
+    "sub": "?tag=git",
+    "col": 0,
+    "row": 0
+   },
+   {
+    "id": "parse",
+    "label": "parseTagFromSearch",
+    "sub": "src/url-tag.mjs",
+    "col": 1,
+    "row": 0
+   },
+   {
+    "id": "filter",
+    "label": "filterByTag",
+    "sub": "src/catalog.mjs",
+    "col": 2,
+    "row": 0
+   },
+   {
+    "id": "render",
+    "label": "replaceChildren",
+    "sub": "src/app.mjs",
+    "col": 2,
+    "row": 1,
+    "tone": "accent"
+   },
+   {
+    "id": "dom",
+    "label": "catalog DOM",
+    "sub": "static until slice 4",
+    "col": 1,
+    "row": 1,
+    "tone": "dark"
+   }
+  ],
+  "edges": [
+   {
+    "from": "url",
+    "to": "parse",
+    "label": "tag | null"
+   },
+   {
+    "from": "parse",
+    "to": "filter",
+    "label": "skills, tag"
+   },
+   {
+    "from": "filter",
+    "to": "render",
+    "label": "visible list"
+   },
+   {
+    "from": "render",
+    "to": "dom",
+    "label": "replaceChildren",
+    "dashed": true,
+    "tone": "accent"
+   }
+  ]
+ },
+ "riskyCode": {
+  "lede": "The only tricky surface: the browser glue must fall back to the full catalog when the URL has no tag, without double-rendering on load.",
+  "path": "src/app.mjs (planned, slice 4)",
+  "snippet": "import { filterByTag } from \"./catalog.mjs\";\nimport { parseTagFromSearch } from \"./url-tag.mjs\";\n\nfunction renderFromUrl() {\n  const tag = parseTagFromSearch(location.search);\n  const visible = filterByTag(visibleSkills(), tag);\n  // Empty list + known tag = accepted empty state, not a blank <ul>\n  replaceChildren(list, visible.length ? rows(visible) : emptyState(tag));\n}\n\nwindow.addEventListener(\"popstate\", renderFromUrl);\nrenderFromUrl();"
+ },
+ "risks": [
+  {
+   "risk": "Unknown ?tag= values render a blank list instead of the accepted empty state",
+   "likelihood": "medium",
+   "mitigation": "Slice 4 renders emptyState(tag) whenever the filtered list is empty; acceptance criterion 3 checks it explicitly."
+  },
+  {
+   "risk": "Chip links fight the JS re-render and cause a full page reload",
+   "likelihood": "medium",
+   "mitigation": "Chips stay plain links; slice 5 intercepts clicks only when history.pushState is available, so no-JS behavior is untouched."
+  },
+  {
+   "risk": "visibleSkills() ordering changes under filtering",
+   "likelihood": "low",
+   "mitigation": "filterByTag preserves input order by construction; a test asserts stable ordering."
+  }
+ ],
+ "tests": [
+  "filterByTag: null tag, matching tag, unknown tag, order preservation (4 assertions)",
+  "parseTagFromSearch: missing, present, duplicate parameters (3 assertions)",
+  "Static markup: every tag chip resolves to a real catalog tag (2 assertions)",
+  "Glue: unknown tag renders the empty state, popstate re-renders (3 assertions)"
+ ],
+ "rollout": [
+  "Slices land behind nothing — each is inert until slice 4 wires the glue",
+  "Slice 4 ships last, after 1–3 are green in CI",
+  "Manual sweep at 1440/320, JS on and off, before calling it done"
+ ],
+ "rollback": [
+  "Single revert of the slice-4 commit restores the static catalog exactly",
+  "Slices 1–3 are pure additions and can stay in place harmlessly"
+ ],
+ "options": [
+  {
+   "id": "approve-plan",
+   "label": "Approve the plan",
+   "consequence": "build-with-notes is authorized to start slice 1 against this exact slice list."
+  },
+  {
+   "id": "request-changes",
+   "label": "Request changes",
+   "consequence": "The plan reopens with your notes; no slice starts until Gate B is re-reviewed."
+  },
+  {
+   "id": "reject-plan",
+   "label": "Reject the plan",
+   "consequence": "The accepted spec stands, but this build approach is discarded; a new plan must be drafted."
+  }
+ ],
+ "recommendation": {
+  "option": "approve-plan",
+  "reason": "Every slice is independently verifiable, the dependency direction matches the accepted three-code-paths decision, and rollback is a single revert."
+ },
+ "unresolved": [
+  "whether slice 5 intercepts chip clicks or lets them navigate (decided during build)"
+ ],
+ "openStatusLabel": "Gate B open — no resolution proposed yet"
+}

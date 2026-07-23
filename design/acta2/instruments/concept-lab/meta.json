@@ -1,0 +1,16 @@
+{
+  "skill": "concept-lab",
+  "kind": "model",
+  "title": "Concept lab",
+  "instrumentName": "model-bench",
+  "brief": {
+    "humanQuestion": "How do base delay, growth factor, retry count, cap and jitter shape total retry wait?",
+    "cognitiveAction": "simulate",
+    "primaryRepresentation": "an SVG retry timeline over a live consequence table, driven by parameter sliders",
+    "humanAction": "adjust base delay, growth factor, retries, cap and jitter, then record what the model showed",
+    "consequence": "every change redraws the timeline and consequence table and rewrites the candidate export",
+    "firstViewport": "the question, the timeline visualization, the parameter controls, and the derived consequence readout",
+    "export": "candidate Markdown/JSON with chosen parameters, derived totals, the observed conclusion, and declared simplifications",
+    "noJs": "the default-state timeline, consequence table, and totals stay readable; describe your conclusion in chat"
+  }
+}

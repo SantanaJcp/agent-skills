@@ -1,0 +1,7 @@
+{
+  "skill": "feel-the-flow",
+  "kind": "prototype",
+  "role": "instrument-only",
+  "version": "0.2.0-pilot",
+  "materializer": "scripts/materialize-acta2.mjs"
+}

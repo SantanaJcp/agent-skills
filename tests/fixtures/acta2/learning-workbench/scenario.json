@@ -1,0 +1,144 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "quiz",
+ "decisionId": "session-close",
+ "acceptanceToken": "record-session",
+ "skill": "learning-workbench",
+ "artifactKind": "learning-session",
+ "initiative": "url-as-state",
+ "title": "Learning workbench — URL as state",
+ "question": "Workbench: URL-as-state, session 2",
+ "mission": "Understand the URL-as-state pattern well enough to design the next filterable surface without re-deriving it: where state lives, why the core stays pure, and what history traversal does to both.",
+ "practiceLede": "Not trivia — each question is a call you would make while designing or debugging a URL-driven surface. Misses map back to their waypoint.",
+ "sourceRevision": null,
+ "inputs": [
+  "feature-xray record — tag filtering, verified",
+  "find-the-cause record — bfcache diagnosis",
+  "MDN — History API and pageshow",
+  "spec.md — tag-filter scope"
+ ],
+ "lessons": [
+  {
+   "id": "state",
+   "title": "The URL is the only state",
+   "body": [
+    "The tag filter keeps zero state outside the address bar: no store, no cache, no persistence. Whatever question the page must answer — what is filtered, what should render, what does back mean — the answer is re-derived from location.search.",
+    "This is why sharing a link reproduces exactly what the sender saw, and why the Gate A non-goal (no persistence) was load-bearing rather than a limitation."
+   ],
+   "flow": {
+    "nodes": [
+     { "id": "url", "label": "URL", "sub": "the single source", "col": 0, "row": 0, "tone": "accent" },
+     { "id": "view", "label": "rendered view", "sub": "always derivable", "col": 1, "row": 0 }
+    ],
+    "edges": [{ "from": "url", "to": "view", "label": "derive, never store" }]
+   },
+   "flowCaption": "One direction: the view derives from the URL; nothing flows back except navigation.",
+   "facts": [
+    { "source": "E1", "text": "Sharing a URL reproduces the exact view — state travels with the link (feature-xray record)." },
+    { "source": "E4", "text": "Persistence was an explicit Gate A non-goal, which is what keeps back/forward trivially correct (spec.md)." }
+   ]
+  },
+  {
+   "id": "purity",
+   "title": "Pure core, effectful edge",
+   "body": [
+    "Two pure functions carry the whole behavior: parseTagFromSearch turns a URL into intent, filterByTag turns intent into a visible list. Both run identically in Node tests and the browser.",
+    "Only the outermost edge — replaceChildren — touches the DOM. Keeping mutation at one edge is what makes the render path testable and the invariant simple: same URL, same render, any entry route."
+   ],
+   "flow": {
+    "nodes": [
+     { "id": "parse", "label": "parseTagFromSearch", "sub": "pure", "col": 0, "row": 0 },
+     { "id": "filter", "label": "filterByTag", "sub": "pure", "col": 1, "row": 0 },
+     { "id": "dom", "label": "replaceChildren", "sub": "the one effect", "col": 2, "row": 0, "tone": "dark" }
+    ],
+    "edges": [
+     { "from": "parse", "to": "filter", "label": "intent" },
+     { "from": "filter", "to": "dom", "label": "list" }
+    ]
+   },
+   "flowCaption": "Purity gradient, left to right: everything testable until the final edge.",
+   "facts": [
+    { "source": "E1", "text": "node --test imports the same functions the browser runs — no shim, no mock DOM (feature-xray record)." }
+   ]
+  },
+  {
+   "id": "history",
+   "title": "History traversal is not a load",
+   "body": [
+    "Back and forward re-run the same render path via popstate — usually. Safari's back-forward cache can restore the whole page image without firing popstate at all, which is exactly how stale rows survived under a fresh URL.",
+    "The durable habit: treat pageshow with persisted=true as a first-class entry route, alongside load and popstate. Any URL-driven surface that forgets one entry route will eventually render a lie."
+   ],
+   "flow": {
+    "nodes": [
+     { "id": "load", "label": "load", "sub": "entry route 1", "col": 0, "row": 0 },
+     { "id": "pop", "label": "popstate", "sub": "entry route 2", "col": 1, "row": 0 },
+     { "id": "bfc", "label": "pageshow persisted", "sub": "entry route 3 — easy to forget", "col": 2, "row": 0, "tone": "danger" },
+     { "id": "render", "label": "renderFromUrl", "sub": "must own all three", "col": 1, "row": 1, "tone": "accent" }
+    ],
+    "edges": [
+     { "from": "load", "to": "render", "label": "fires" },
+     { "from": "pop", "to": "render", "label": "fires" },
+     { "from": "bfc", "to": "render", "label": "does NOT fire popstate", "tone": "danger", "dashed": true }
+    ]
+   },
+   "flowCaption": "Three entry routes into one render path; the dashed one is the diagnosed gap.",
+   "facts": [
+    { "source": "E2", "text": "bfcache restores showed pageshow.persisted=true with no popstate, in exact correlation with the stale rows (find-the-cause record)." },
+    { "source": "E3", "text": "pageshow fires on every restore from the back/forward cache; popstate only fires on history traversal within a live page (MDN)." }
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "id": "q1",
+   "prompt": "Where does the filter state live between two visits?",
+   "options": [
+    { "id": "a", "label": "In the URL — nowhere else" },
+    { "id": "b", "label": "In a small store synced to the URL" },
+    { "id": "c", "label": "In browser storage keyed by session" }
+   ],
+   "answer": "a",
+   "explanation": "The pattern's whole contract: any view is derivable from the address bar alone, which is what makes shared links exact.",
+   "gap": "01 · The URL is the only state"
+  },
+  {
+   "id": "q2",
+   "prompt": "Why do the two core functions stay free of DOM access?",
+   "options": [
+    { "id": "a", "label": "Performance — DOM reads are slow" },
+    { "id": "b", "label": "So the identical code runs in Node tests and the browser" },
+    { "id": "c", "label": "Because modules cannot import the DOM" }
+   ],
+   "answer": "b",
+   "explanation": "Purity is the testing seam: the same imports run under node --test and in app.mjs, so behavior is proven without a browser.",
+   "gap": "02 · Pure core, effectful edge"
+  },
+  {
+   "id": "q3",
+   "prompt": "A user presses back and the page shows the old list under the new URL. First suspect?",
+   "options": [
+    { "id": "a", "label": "The filter function returned stale data" },
+    { "id": "b", "label": "A render race between two handlers" },
+    { "id": "c", "label": "A bfcache restore that fired no popstate" }
+   ],
+   "answer": "c",
+   "explanation": "Cache restores resurrect the old DOM without re-running the glue — the diagnosed cause, and the entry route designs forget first.",
+   "gap": "03 · History traversal is not a load"
+  },
+  {
+   "id": "q4",
+   "prompt": "You are adding a second filterable surface. What is the first design commitment?",
+   "options": [
+    { "id": "a", "label": "Choose the state container and sync strategy" },
+    { "id": "b", "label": "Name the URL schema and derive everything from it" },
+    { "id": "c", "label": "Pick the rendering framework" }
+   ],
+   "answer": "b",
+   "explanation": "The pattern generalizes by starting from the address bar: one schema, pure derivation, one effectful edge, all entry routes owned.",
+   "gap": "01 · The URL is the only state"
+  }
+ ],
+ "unresolved": [
+  "session 3 candidate topic: applying the pattern to multi-parameter state"
+ ]
+}

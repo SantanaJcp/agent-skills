@@ -1,0 +1,56 @@
+/* draw-the-flow topology: overview-first semantic flow.
+   The diagram leads; focus buttons emphasize one named path (ephemeral view
+   state); the textual equivalent rides beside it as four path cards; an
+   accuracy gate closes the loop. */
+.dtf-question{font:400 32px/1.25 var(--acta-font-text);margin:var(--sp-6) 0 var(--sp-3);max-width:46ch}
+.dtf-lede{font-size:15.5px;line-height:1.6;color:var(--acta-ink-muted);margin:0 0 var(--sp-5);max-width:70ch}
+
+.dtf-stage{background:var(--acta-card);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:20px 24px;margin:0 0 var(--sp-5)}
+.dtf-focus{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 var(--sp-4)}
+.dtf-plot [data-paths]{transition:opacity var(--acta-quick)}
+.dtf-plot[data-focus="normal"] [data-paths]:not([data-paths~="normal"]),
+.dtf-plot[data-focus="decision"] [data-paths]:not([data-paths~="decision"]),
+.dtf-plot[data-focus="failure"] [data-paths]:not([data-paths~="failure"]),
+.dtf-plot[data-focus="recovery"] [data-paths]:not([data-paths~="recovery"]){opacity:.14}
+
+.dtf-paths h2,.dtf-decide h2{font:600 22px/1.3 var(--acta-font-text);margin:56px 0 var(--sp-4);border-bottom:1px solid var(--acta-rule);padding-bottom:12px}
+.dtf-pathgrid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)}
+.dtf-path{background:var(--acta-card);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:18px 22px;transition:border-color var(--acta-quick)}
+.dtf-path[data-emphasized="true"]{border-color:var(--acta-action);outline:1px solid var(--acta-action);outline-offset:-3px}
+.dtf-path h3{display:flex;gap:10px;align-items:center;font:600 16.5px/1.4 var(--acta-font-text);margin:0 0 var(--sp-3)}
+.dtf-path .p-swatch{flex:none;width:12px;height:12px;border-radius:50%}
+.dtf-path .p-swatch.is-normal{background:var(--acta-rule-strong)}
+.dtf-path .p-swatch.is-decision{background:var(--acta-action)}
+.dtf-path .p-swatch.is-failure{background:var(--acta-danger)}
+.dtf-path .p-swatch.is-recovery{background:var(--acta-positive)}
+.dtf-path ol{margin:0;padding-left:1.3em;font-size:14.5px;line-height:1.65}
+.dtf-path li{margin:0 0 6px}
+.dtf-path li:last-child{margin-bottom:0}
+
+.dtf-decide{border:2px solid var(--acta-ink);border-radius:var(--acta-radius-lg);background:var(--acta-card);padding:var(--sp-5) 28px 28px;margin:56px 0}
+.dtf-decide h2{margin-top:0;border-bottom:0;padding-bottom:0}
+.dtf-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-4);margin:0 0 var(--sp-5)}
+.dtf-choices .a2-choice{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 12px;align-items:start;padding:18px 20px}
+@supports (grid-template-rows:subgrid){
+  .dtf-choices .a2-choice{grid-template-rows:subgrid;grid-row:span 2}
+}
+.dtf-choices .a2-choice input{grid-row:1;margin-top:1px}
+.dtf-choices .c-label{grid-column:2;font:600 15px/1.45 var(--acta-font-ui);color:var(--acta-ink)}
+.dtf-choices .c-consequence{grid-column:2;font-size:13.5px;line-height:1.6;color:var(--acta-ink-muted);margin-top:6px}
+.dtf-decide .d-selection{font:600 15.5px/1.5 var(--acta-font-ui);margin:0 0 var(--sp-3)}
+.dtf-decide .a2-field{max-width:78ch}
+.dtf-decide>p:last-child{font-size:13.5px;line-height:1.6;color:var(--acta-ink-muted);max-width:78ch;margin-bottom:0}
+
+@media (max-width:959px){
+  .dtf-pathgrid{grid-template-columns:1fr}
+  .dtf-choices{grid-template-columns:1fr}
+}
+@media (max-width:719px){
+  .dtf-stage{padding:14px 14px}
+  .dtf-focus .a2-btn{flex:1 1 auto}
+}
+@media print{
+  .dtf-focus{display:none}
+  .dtf-stage,.dtf-path,.dtf-decide{break-inside:avoid}
+  .dtf-plot [data-paths]{opacity:1!important}
+}

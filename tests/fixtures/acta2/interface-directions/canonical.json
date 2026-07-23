@@ -1,0 +1,241 @@
+{
+  "scenario": {
+    "acta2": "0.2.0-pilot",
+    "kind": "decision",
+    "decisionId": "empty-state-direction",
+    "skill": "interface-directions",
+    "artifactKind": "interface-direction-decision",
+    "initiative": "tag-filter",
+    "title": "Interface directions",
+    "question": "Which visual direction should the empty tag-filter result take?",
+    "sourceRevision": "a8b083705553550eda289ddf9cf1d028df907682",
+    "inputs": [
+      "index.html — current catalog markup",
+      "spec.md — tag-filter scope and non-goals",
+      "STOP-01 resolution — unknown tags stay empty, no remote suggestions"
+    ],
+    "stageLabel": "skills catalog — ?tag=deploy",
+    "dataset": {
+      "queryTag": "deploy",
+      "skills": [
+        {
+          "name": "Changed-file summarizer",
+          "tags": [
+            "git",
+            "review"
+          ]
+        },
+        {
+          "name": "Test-gap finder",
+          "tags": [
+            "tests",
+            "review"
+          ]
+        },
+        {
+          "name": "Release-notes drafter",
+          "tags": [
+            "git",
+            "docs"
+          ]
+        },
+        {
+          "name": "API-doc linter",
+          "tags": [
+            "docs"
+          ]
+        },
+        {
+          "name": "Flaky-test bisector",
+          "tags": [
+            "tests"
+          ]
+        }
+      ]
+    },
+    "options": [
+      {
+        "id": "a",
+        "label": "Quiet text",
+        "claim": "An empty result is a non-event — the calmest possible sentence and one exit, nothing else.",
+        "mockup": {
+          "kind": "quiet",
+          "headline": "No skills match “deploy”",
+          "body": "Try another tag, or clear the filter to see all 5 skills.",
+          "action": "Clear filter"
+        },
+        "pros": [
+          "smallest possible surface; nothing to maintain",
+          "reads instantly at 320px",
+          "no new visual vocabulary"
+        ],
+        "cons": [
+          "gives no sense of what the catalog does contain",
+          "dead end unless the user notices the one action"
+        ]
+      },
+      {
+        "id": "b",
+        "label": "Explain and suggest",
+        "claim": "An empty result is a navigation moment — say why it is empty and show where the catalog actually is.",
+        "mockup": {
+          "kind": "suggest",
+          "headline": "Nothing is tagged “deploy” yet",
+          "body": "The catalog covers 5 skills across these tags:",
+          "suggestions": [
+            "git",
+            "review",
+            "tests",
+            "docs"
+          ],
+          "action": "Clear filter"
+        },
+        "pros": [
+          "turns the miss into a map of what exists",
+          "suggestion chips are real links into working filters",
+          "copy explains the emptiness honestly"
+        ],
+        "cons": [
+          "more moving parts to keep in sync with real tags",
+          "chip row wraps awkwardly if the tag set grows"
+        ]
+      },
+      {
+        "id": "c",
+        "label": "Catalog stays visible",
+        "claim": "Never blank the canvas — keep the full inventory in sight, dimmed, and mark the miss inline.",
+        "mockup": {
+          "kind": "dimmed",
+          "notice": "No skills match “deploy” — showing the full catalog, dimmed",
+          "action": "Clear filter"
+        },
+        "pros": [
+          "user never loses orientation or scroll position",
+          "the inventory itself advertises valid tags"
+        ],
+        "cons": [
+          "dimmed rows read as disabled controls to some users",
+          "notice + dimming is the heaviest treatment of the three",
+          "harder to keep accessible — dimmed text must stay legible"
+        ]
+      }
+    ],
+    "matrix": [
+      {
+        "dimension": "Answers “why is this empty?”",
+        "verdicts": {
+          "a": {
+            "mark": "partly",
+            "note": "states the miss, not the shape of the catalog"
+          },
+          "b": {
+            "mark": "yes",
+            "note": "names the tag set explicitly"
+          },
+          "c": {
+            "mark": "yes",
+            "note": "the visible inventory is the answer"
+          }
+        }
+      },
+      {
+        "dimension": "Keeps the user oriented",
+        "verdicts": {
+          "a": {
+            "mark": "no",
+            "note": "canvas goes blank"
+          },
+          "b": {
+            "mark": "partly",
+            "note": "map of tags, but list is gone"
+          },
+          "c": {
+            "mark": "yes",
+            "note": "list never leaves the screen"
+          }
+        }
+      },
+      {
+        "dimension": "Copy and maintenance weight",
+        "verdicts": {
+          "a": {
+            "mark": "yes",
+            "note": "one sentence"
+          },
+          "b": {
+            "mark": "partly",
+            "note": "chips must mirror real tags"
+          },
+          "c": {
+            "mark": "no",
+            "note": "notice + dim state + contrast audit"
+          }
+        }
+      },
+      {
+        "dimension": "No-JS parity",
+        "verdicts": {
+          "a": {
+            "mark": "yes",
+            "note": "static text"
+          },
+          "b": {
+            "mark": "yes",
+            "note": "chips are plain links"
+          },
+          "c": {
+            "mark": "yes",
+            "note": "server renders the same dimmed list"
+          }
+        }
+      },
+      {
+        "dimension": "Holds at 320px",
+        "verdicts": {
+          "a": {
+            "mark": "yes",
+            "note": "single column text"
+          },
+          "b": {
+            "mark": "yes",
+            "note": "chips wrap to two rows"
+          },
+          "c": {
+            "mark": "partly",
+            "note": "notice pushes the list below the fold"
+          }
+        }
+      }
+    ],
+    "recommendation": {
+      "option": "b",
+      "reason": "It is the only direction that converts the miss into forward motion: the tag chips are real filters, the copy is honest about why the result is empty, and the cost is bounded because the chip row derives from the same visibleSkills() data the catalog already renders."
+    },
+    "unresolved": [
+      "chip ordering (alphabetical vs frequency) once real usage exists",
+      "whether the clear-filter action reads better as a link than a button"
+    ],
+    "openStatusLabel": "Open — no direction selected yet"
+  },
+  "accepted": {
+    "status": "approved",
+    "stamp": "ACCEPTED",
+    "acceptedVia": "chat 2026-07-23 — candidate pasted and confirmed after comparing all three rendered directions",
+    "recordTitle": "Empty tag-filter result: Explain and suggest (direction B)",
+    "summary": "With all three directions rendered against the identical five-skill dataset, direction B was accepted: it explains why the result is empty and turns the miss into navigation via real tag chips, at a bounded maintenance cost.",
+    "canonicalPath": "decisions/tag-filter-empty-state.md",
+    "decisions": [
+      {
+        "id": "empty-state-direction",
+        "selection": "b",
+        "rationale": "B is the only direction that gives the user somewhere to go; chips derive from visibleSkills() so they cannot drift from the real tag set.",
+        "acceptedVia": "chat 2026-07-23 — explicit confirmation of the pasted candidate"
+      }
+    ],
+    "exampleWorking": {
+      "selected": "b",
+      "rationale": "B is the only direction that gives the user somewhere to go; chips derive from visibleSkills() so they cannot drift from the real tag set."
+    },
+    "canonicalBody": "# Empty tag-filter result — accepted direction\n\nDirection B (Explain and suggest) is accepted for the empty tag-filter state.\nThe empty state names the missing tag, states the catalog's real tag set as\nchips that are live filters, and offers a clear-filter exit. Directions A\n(Quiet text) and C (Catalog stays visible) are preserved with their change\nconditions in the decision record."
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "status": "approved",
+  "stamp": "[Approved — chosen path]",
+  "recordTitle": "[Code-path decision: initiative subject]",
+  "summary": "[One-paragraph accepted-state summary: what was chosen, what remains open, what was not modified.]",
+  "canonicalPath": ".agent-work/[initiative]/three-code-paths/code-paths.md",
+  "acceptedVia": "explicit chat confirmation after candidate export",
+  "decisions": [
+    {
+      "id": "D-01",
+      "selection": "a",
+      "rationale": "[rationale, if volunteered]",
+      "acceptedVia": "[the explicit confirmation, quoted]"
+    }
+  ],
+  "exampleWorking": { "selected": "a", "rationale": "[rationale, if volunteered]" },
+  "canonicalBody": "[Accepted canonical content generated only after explicit acceptance.]"
+}

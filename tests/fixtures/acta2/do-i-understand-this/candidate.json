@@ -1,0 +1,36 @@
+{
+  "acta_protocol": "0.2",
+  "payload": "candidate",
+  "artifact_kind": "understanding-check",
+  "producer_skill": "do-i-understand-this",
+  "initiative": "tag-filter",
+  "instrument": "quiz",
+  "status": "candidate-ready",
+  "source_revision": "a8b083705553550eda289ddf9cf1d028df907682",
+  "inputs": [
+    "src/catalog.mjs — filterByTag",
+    "src/url-tag.mjs — parseTagFromSearch",
+    "src/app.mjs — browser glue",
+    "build-with-notes session record — STOP-01 resolution"
+  ],
+  "unresolved": [],
+  "answers": {
+    "q1": "b",
+    "q2": "a",
+    "q3": "a",
+    "q4": "b",
+    "q5": "a",
+    "q6": "b"
+  },
+  "score": {
+    "correct": 5,
+    "total": 6
+  },
+  "gaps": [
+    {
+      "question": "q3",
+      "gap": "unknown-tag fallback"
+    }
+  ],
+  "reflection": "I had the no-JS story right but assumed unknown tags would just blank the list — the empty state decision had not landed in my head."
+}

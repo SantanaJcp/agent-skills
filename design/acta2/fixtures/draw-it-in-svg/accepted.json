@@ -1,0 +1,21 @@
+{
+ "status": "approved",
+ "stamp": "ACCEPTED",
+ "acceptedVia": "chat 2026-07-23 — per-figure verdicts pasted and confirmed",
+ "recordTitle": "Tag-filter figure sheet — two approved, one revised",
+ "summary": "The data-flow and decision figures are approved for the documentation; the module-seams figure returns for revision with lighter dependency annotation.",
+ "canonicalPath": "figures/tag-filter-sheet.md",
+ "decisions": [
+  {
+   "id": "figure-sheet",
+   "selection": "accept-figures",
+   "rationale": "Data-flow and decision read at a glance; the seams arrow annotation needs less weight.",
+   "acceptedVia": "chat 2026-07-23 — explicit confirmation"
+  }
+ ],
+ "exampleWorking": {
+  "marks": { "fig-dataflow": "approve", "fig-decision": "approve", "fig-seams": "revise" },
+  "conclusion": "Seams figure: thin the side arrow and mute its labels; the layers themselves are right."
+ },
+ "canonicalBody": "# Tag-filter figure sheet\n\nApproved: URL-to-DOM data flow; the one branch (unknown tags are a state,\nnot an error). Revision: module seams — dependency annotation reads heavier\nthan the layers it describes."
+}

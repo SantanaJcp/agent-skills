@@ -12,7 +12,7 @@ metadata:
 
 Find module changes that concentrate complexity behind simpler interfaces, then export one chosen direction for later blueprinting. This skill never refactors.
 
-Read [the Acta artifact protocol](references/acta-protocol.md) and use [the Compare scaffold](references/acta-scaffold.html).
+Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (current module map, seam directions each with its own dependency diagram, evidence, costs, and a change-blueprint seed) and run [the bundled generator](references/acta2/generate-instrument.mjs); after the direction is accepted in chat, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs) — analysis always, implementation never. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains only as rollback until the v2 migration is approved.
 
 ## Vocabulary
 

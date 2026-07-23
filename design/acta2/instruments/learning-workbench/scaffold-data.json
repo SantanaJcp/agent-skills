@@ -1,0 +1,79 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "quiz",
+ "decisionId": "session-close",
+ "acceptanceToken": "record-session",
+ "skill": "learning-workbench",
+ "artifactKind": "learning-session",
+ "initiative": "topic-slug",
+ "title": "Learning workbench",
+ "question": "Workbench: topic, session N",
+ "mission": "The durable mission this workspace serves across sessions.",
+ "practiceLede": "Each question is a call you would make while applying the topic.",
+ "sourceRevision": null,
+ "inputs": [
+  "the sources the lessons cite"
+ ],
+ "lessons": [
+  {
+   "id": "waypoint-one",
+   "title": "First waypoint",
+   "body": [
+    "Lesson prose grounded in the cited sources."
+   ],
+   "flow": {
+    "nodes": [
+     {
+      "id": "a",
+      "label": "concept",
+      "col": 0,
+      "row": 0
+     },
+     {
+      "id": "b",
+      "label": "consequence",
+      "col": 1,
+      "row": 0,
+      "tone": "accent"
+     }
+    ],
+    "edges": [
+     {
+      "from": "a",
+      "to": "b",
+      "label": "because"
+     }
+    ]
+   },
+   "flowCaption": "What the model shows.",
+   "facts": [
+    {
+     "source": "E1",
+     "text": "A sourced fact supporting the lesson."
+    }
+   ]
+  }
+ ],
+ "questions": [
+  {
+   "id": "q1",
+   "prompt": "A decision-relevant retrieval question",
+   "options": [
+    {
+     "id": "a",
+     "label": "The evidenced answer"
+    },
+    {
+     "id": "b",
+     "label": "A plausible wrong answer"
+    }
+   ],
+   "answer": "a",
+   "explanation": "Why a holds.",
+   "gap": "01 · First waypoint"
+  }
+ ],
+ "unresolved": [
+  "the next session's candidate topic"
+ ]
+}

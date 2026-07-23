@@ -1,0 +1,22 @@
+{
+ "status": "approved",
+ "stamp": "ACCEPTED",
+ "acceptedVia": "chat 2026-07-23 — session export pasted and confirmed after retrieval practice",
+ "recordTitle": "URL-as-state — session 2: 3/4, review history traversal",
+ "summary": "Second session on the URL-as-state pattern: lessons on single-source state, the purity gradient, and history entry routes; retrieval practice scored 3/4 with the bfcache entry route as the waypoint to review next session.",
+ "canonicalPath": "learning/url-as-state.md",
+ "decisions": [
+  {
+   "id": "session-close",
+   "selection": "record-session",
+   "rationale": "The miss was q3 — I still reach for a render race before remembering restore semantics.",
+   "acceptedVia": "chat 2026-07-23 — explicit confirmation"
+  }
+ ],
+ "exampleWorking": {
+  "answers": { "q1": "a", "q2": "b", "q3": "b", "q4": "b" },
+  "reflection": "The entry-routes framing finally made bfcache feel structural instead of trivia; the miss confirms it needs one more pass."
+ },
+ "derived": { "correct": 3, "total": 4 },
+ "canonicalBody": "# URL-as-state — session 2\n\nScore 3/4. Review next session: waypoint 03 (history traversal is not a\nload — bfcache restores fire pageshow, not popstate). Sessions remain\ndiagnostic learning state; nothing here gates anything."
+}

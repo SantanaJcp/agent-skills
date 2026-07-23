@@ -1,0 +1,74 @@
+/* do-i-understand-this topology: a diagnostic understanding check.
+   Reading order is the argument — mental model, evidence, then questions.
+   Answered questions reveal their explanation and take a verdict tint;
+   misses collect into named gaps. Never a merge gate. */
+.diu-question{font:400 32px/1.25 var(--acta-font-text);margin:var(--sp-6) 0 var(--sp-3);max-width:46ch}
+.diu-lede{font-size:15.5px;line-height:1.6;color:var(--acta-ink-muted);margin:0 0 var(--sp-5);max-width:70ch}
+
+/* ---- diff facts ---- */
+.diu-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-4);margin:0 0 var(--sp-6);max-width:760px}
+.diu-fact{background:var(--acta-card);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:16px 20px}
+.diu-fact b{display:block;font:400 26px/1.15 var(--acta-font-text);font-variant-numeric:tabular-nums}
+.diu-fact[data-tone="plus"] b{color:var(--acta-positive)}
+.diu-fact[data-tone="minus"] b{color:var(--acta-danger)}
+.diu-fact span{display:block;font:600 10.5px/1.5 var(--acta-font-data);letter-spacing:.08em;text-transform:uppercase;color:var(--acta-ink-muted);margin-top:7px}
+
+/* ---- section rhythm ---- */
+.diu-model h2,.diu-behaviors h2,.diu-quiz h2,.diu-close h2{font:600 22px/1.3 var(--acta-font-text);margin:56px 0 var(--sp-3);border-bottom:1px solid var(--acta-rule);padding-bottom:12px}
+.diu-sectionlede{font-size:14.5px;line-height:1.6;color:var(--acta-ink-muted);margin:0 0 var(--sp-4);max-width:72ch}
+
+/* ---- before/after mental model ---- */
+.diu-flows{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-5);align-items:start}
+.diu-flowcard{margin:0;background:var(--acta-card);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:18px 20px}
+.diu-flowcard[data-side="after"]{border-color:var(--acta-action)}
+.diu-flowcard figcaption{display:flex;gap:10px;align-items:baseline;font:13.5px/1.5 var(--acta-font-ui);color:var(--acta-ink-muted);margin:0 0 12px}
+.diu-flowcard .f-tag{flex:none;font:600 10.5px/1.4 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--acta-rule-strong);color:var(--acta-ink-muted);border-radius:var(--acta-radius-lg);padding:2px 10px}
+.diu-flowcard .f-tag.is-after{border-color:var(--acta-action);color:var(--acta-action)}
+.diu-flowcard .flowd{min-width:0!important}
+
+/* ---- evidence cards ---- */
+.diu-behavior{background:var(--acta-card);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);margin:0 0 var(--sp-4);overflow:hidden}
+.diu-behavior .b-title{display:flex;gap:12px;align-items:baseline;background:var(--acta-tint);border-bottom:1px solid var(--acta-rule-faint);padding:12px 20px;font:600 16.5px/1.4 var(--acta-font-text);margin:0}
+.diu-behavior .b-n{flex:none;font:700 12px/1.4 var(--acta-font-data);color:var(--acta-ink-muted)}
+.diu-behavior .b-rows{padding:6px 20px 14px}
+.diu-behavior .b-row{display:grid;grid-template-columns:64px minmax(0,1fr);gap:14px;padding:8px 0;border-bottom:1px solid var(--acta-rule-faint)}
+.diu-behavior .b-row:last-child{border-bottom:0}
+.diu-behavior .b-k{font:600 10.5px/1.9 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;color:var(--acta-ink-muted)}
+.diu-behavior .b-row p{margin:0;font-size:14.5px;line-height:1.6;max-width:80ch}
+.diu-loc{display:inline-block;border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius);background:var(--acta-tint);padding:1px 8px;font:12px/1.7 var(--acta-font-data);color:var(--acta-ink-muted);margin:0 6px 4px 0}
+
+/* ---- quiz ---- */
+.diu-scoreline{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:0 0 var(--sp-4)}
+.diu-score{font:600 13px/1.5 var(--acta-font-data);color:var(--acta-ink-muted);font-variant-numeric:tabular-nums}
+.diu-q{background:var(--acta-card);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:20px 24px;margin:0 0 var(--sp-4)}
+.diu-q .q-prompt{display:flex;gap:12px;align-items:baseline;font:600 16.5px/1.45 var(--acta-font-ui);margin:0 0 var(--sp-3)}
+.diu-q .q-n{flex:none;background:var(--acta-tint-strong);border-radius:var(--acta-radius);padding:4px 8px;font:700 11.5px/1 var(--acta-font-data);color:var(--acta-ink)}
+.diu-q .q-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--sp-3);margin:0 0 var(--sp-3)}
+.diu-q .q-opt{font-size:14.5px;line-height:1.5;align-items:center}
+.diu-q .q-opt input{margin-top:0}
+.diu-q[data-state="correct"]{border-color:var(--acta-positive)}
+.diu-q[data-state="incorrect"]{border-color:var(--acta-danger)}
+.diu-q[data-state="correct"] .q-n{background:var(--acta-positive-tint);color:var(--acta-positive)}
+.diu-q[data-state="incorrect"] .q-n{background:var(--acta-danger-tint);color:var(--acta-danger)}
+.diu-q .q-reveal{margin:0}
+.diu-q .q-answer{margin:0 0 6px}
+.diu-q .q-gapline{margin:8px 0 0;font-size:13.5px;color:var(--acta-ink-muted)}
+.diu-gaptag{display:inline-block;border:1px solid var(--acta-warning);color:var(--acta-warning);border-radius:var(--acta-radius-lg);background:var(--acta-warning-tint);padding:1px 10px;font:600 11.5px/1.7 var(--acta-font-data)}
+
+/* ---- gaps + reflection ---- */
+.diu-gapsline{font-size:14.5px;line-height:1.7;color:var(--acta-ink-muted);max-width:80ch;margin:0 0 var(--sp-3)}
+.diu-close .a2-field{max-width:78ch}
+
+@media (max-width:959px){
+  .diu-flows{grid-template-columns:1fr}
+}
+@media (max-width:719px){
+  .diu-facts{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-2)}
+  .diu-fact{padding:12px 14px}
+  .diu-q .q-options{grid-template-columns:1fr}
+  .diu-behavior .b-row{grid-template-columns:1fr;gap:2px}
+}
+@media print{
+  .diu-fact,.diu-flowcard,.diu-behavior,.diu-q{break-inside:avoid}
+  .diu-q .q-reveal{border:none}
+}

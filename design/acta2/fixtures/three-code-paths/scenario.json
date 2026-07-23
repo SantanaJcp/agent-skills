@@ -1,0 +1,190 @@
+{
+  "acta2": "0.2.0-pilot",
+  "kind": "decision",
+  "decisionId": "D-01",
+  "skill": "three-code-paths",
+  "artifactKind": "code-path-decision",
+  "initiative": "tag-filter",
+  "title": "Three code paths",
+  "question": "Where should tag filtering and URL-state logic live, and which way should the DOM depend on it?",
+  "sourceRevision": "a8b083705553550eda289ddf9cf1d028df907682",
+  "inputs": [
+    ".agent-work/tag-filter/make-me-realize/realization.md",
+    "src/catalog.mjs",
+    "index.html",
+    "test/catalog.test.mjs"
+  ],
+  "unresolved": [
+    "control style, density, and empty-state copy belong to interface-directions"
+  ],
+  "constraints": [
+    "Node-only test runner (no DOM in tests)",
+    "single ?tag= query param",
+    "no-JS shows the full catalog",
+    "3-skill static fixture today",
+    "matches existing pure-function idiom"
+  ],
+  "options": [
+    {
+      "id": "a",
+      "label": "Functional core, thin shell",
+      "claim": "Keep all logic as plain importable functions; DOM wiring is a few lines of glue.",
+      "code": {
+        "path": "src/catalog.mjs · src/url-tag.mjs · src/app.mjs",
+        "snippet": "export function filterByTag(skills, tag) {\n  if (!tag) return skills;\n  return skills.filter((s) => s.tags.includes(tag));\n}\n\nexport function parseTagFromSearch(search) {\n  return new URLSearchParams(search).get(\"tag\");\n}\n\n// app.mjs (browser-only glue, not imported by tests)\nrender(parseTagFromSearch(location.search));"
+      },
+      "flow": [
+        "location.search",
+        "parseTagFromSearch → tag | null",
+        "filterByTag(skills, tag)",
+        "replaceChildren(list items)"
+      ],
+      "pros": [
+        "zero new test dependencies",
+        "extends the existing visibleSkills() idiom",
+        "smallest review surface"
+      ],
+      "cons": [
+        "DOM glue has no direct test coverage",
+        "each future widget wires itself by hand"
+      ],
+      "seams": {
+        "test": "node --test imports both pure functions directly",
+        "migration": "purely additive; static no-JS list already complete"
+      },
+      "failureModes": [
+        "manual DOM-sync mistake in the untested glue layer"
+      ],
+      "changeConditions": [
+        "a second widget must react to the same tag state",
+        "back/forward live-update becomes a hard requirement"
+      ]
+    },
+    {
+      "id": "b",
+      "label": "Encapsulated custom element",
+      "claim": "The catalog becomes a self-contained <skill-catalog> element owning state and rendering.",
+      "code": {
+        "path": "src/skill-catalog-element.mjs",
+        "snippet": "export class SkillCatalogElement extends HTMLElement {\n  static get observedAttributes() { return [\"tag\"]; }\n  connectedCallback() {\n    const tag = new URLSearchParams(location.search).get(\"tag\");\n    if (tag) this.setAttribute(\"tag\", tag); else this.#render();\n  }\n  attributeChangedCallback() { this.#render(); }\n  #render() { /* filter + replaceChildren */ }\n}\ncustomElements.define(\"skill-catalog\", SkillCatalogElement);"
+      },
+      "flow": [
+        "location.search",
+        "connectedCallback → tag attribute",
+        "attributeChangedCallback",
+        "#render() replaces light-DOM children"
+      ],
+      "pros": [
+        "strong encapsulation",
+        "portable, reusable widget",
+        "back/forward handled inside the class"
+      ],
+      "cons": [
+        "HTMLElement does not exist in plain Node",
+        "needs a hand-maintained static fallback inside the tag",
+        "largest surface for a 3-item fixture"
+      ],
+      "seams": {
+        "test": "requires a DOM shim, or extracting Path A's functions anyway",
+        "migration": "replace the static <ul> with <skill-catalog> + fallback"
+      },
+      "failureModes": [
+        "attribute-change timing bugs invisible to the Node-only runner",
+        "tag-name registration collision"
+      ],
+      "changeConditions": [
+        "the catalog must ship as a widget to other pages or projects"
+      ]
+    },
+    {
+      "id": "c",
+      "label": "Pub/sub URL-state store",
+      "claim": "A small store owns the URL and notifies any number of subscribers on every change.",
+      "code": {
+        "path": "src/url-tag-store.mjs · src/render.mjs",
+        "snippet": "export function createTagStore(win = window) {\n  const listeners = new Set();\n  const readTag = () =>\n    new URLSearchParams(win.location.search).get(\"tag\");\n  win.addEventListener(\"popstate\", () =>\n    listeners.forEach((fn) => fn(readTag())));\n  return {\n    getTag: readTag,\n    setTag(tag) { /* pushState + notify */ },\n    subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },\n  };\n}"
+      },
+      "flow": [
+        "setTag() or popstate",
+        "store recomputes tag",
+        "notifies every subscriber",
+        "each subscriber calls filterByTag"
+      ],
+      "pros": [
+        "uniform back/forward handling",
+        "clean fan-out to future consumers",
+        "testable via injected window stub"
+      ],
+      "cons": [
+        "pub/sub machinery a single consumer does not need",
+        "subscriber-leak and ordering risks"
+      ],
+      "seams": {
+        "test": "node --test passes a plain object as win",
+        "migration": "additive; extra bootstrap wiring at startup"
+      },
+      "failureModes": [
+        "dynamic consumer added without unsubscribe",
+        "subscriber ordering dependency"
+      ],
+      "changeConditions": [
+        "back/forward correctness becomes an explicit requirement",
+        "a second independent UI piece must react to tag changes"
+      ]
+    }
+  ],
+  "matrix": [
+    {
+      "dimension": "New test dependency needed",
+      "verdicts": {
+        "a": { "mark": "yes", "note": "none" },
+        "b": { "mark": "no", "note": "DOM shim, or defeats encapsulation" },
+        "c": { "mark": "yes", "note": "none (plain object stub)" }
+      }
+    },
+    {
+      "dimension": "Respects Node-only test setup",
+      "verdicts": {
+        "a": { "mark": "yes", "note": "cleanly" },
+        "b": { "mark": "no", "note": "conflicts, or redundant wrapper" },
+        "c": { "mark": "yes", "note": "via injected win" }
+      }
+    },
+    {
+      "dimension": "Code volume for 3-skill fixture",
+      "verdicts": {
+        "a": { "mark": "yes", "note": "smallest" },
+        "b": { "mark": "no", "note": "largest" },
+        "c": { "mark": "part", "note": "medium" }
+      }
+    },
+    {
+      "dimension": "Matches existing repo idiom",
+      "verdicts": {
+        "a": { "mark": "yes", "note": "extends visibleSkills()" },
+        "b": { "mark": "no", "note": "introduces classes" },
+        "c": { "mark": "part", "note": "wraps pure filterByTag" }
+      }
+    },
+    {
+      "dimension": "Back/forward navigation",
+      "verdicts": {
+        "a": { "mark": "part", "note": "not by default, addable" },
+        "b": { "mark": "yes", "note": "built in" },
+        "c": { "mark": "yes", "note": "built in" }
+      }
+    },
+    {
+      "dimension": "Fit for stated scope",
+      "verdicts": {
+        "a": { "mark": "yes", "note": "best fit" },
+        "b": { "mark": "no", "note": "over-built" },
+        "c": { "mark": "no", "note": "over-built" }
+      }
+    }
+  ],
+  "recommendation": {
+    "option": "a",
+    "reason": "The only shape with no tension against the Node-only test constraint: logic stays in plain functions testable exactly like visibleSkills(), with no DOM shim and no new dependency. B collapses into a wrapper around A once logic is extracted for testing; C answers requirements nobody has stated."
+  }
+}

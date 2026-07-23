@@ -1,0 +1,79 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "decision",
+ "decisionId": "gate-a-spec",
+ "skill": "change-blueprint",
+ "artifactKind": "change-specification",
+ "initiative": "initiative-slug",
+ "title": "Change blueprint — specification",
+ "question": "Does this specification say what we will build — and what we will not?",
+ "lede": "Gate A reviews the shape of the change before any plan exists.",
+ "gatePhase": "spec",
+ "gateLabel": "Gate A — specification",
+ "gateQuestion": "Approve this specification as the contract for the change?",
+ "sourceRevision": null,
+ "inputs": [
+  "the clarified requirements this spec answers"
+ ],
+ "facts": [
+  {
+   "value": "3",
+   "label": "scope items"
+  },
+  {
+   "value": "2",
+   "label": "non-goals"
+  },
+  {
+   "value": "4",
+   "label": "acceptance criteria"
+  },
+  {
+   "value": "1",
+   "label": "assumptions"
+  }
+ ],
+ "scope": [
+  "first real capability in scope",
+  "second capability",
+  "third capability"
+ ],
+ "nonGoals": [
+  "what this change explicitly will not do",
+  "second exclusion"
+ ],
+ "acceptanceCriteria": [
+  "a mechanically checkable criterion",
+  "another checkable criterion",
+  "no-JS behavior criterion",
+  "no-new-dependency criterion"
+ ],
+ "assumptions": [
+  "an assumption to verify before Gate B"
+ ],
+ "options": [
+  {
+   "id": "approve-spec",
+   "label": "Approve the specification",
+   "consequence": "Scope locks; the implementation plan (Gate B) is drafted next."
+  },
+  {
+   "id": "request-changes",
+   "label": "Request changes",
+   "consequence": "The spec reopens with your notes."
+  },
+  {
+   "id": "reject-spec",
+   "label": "Reject the direction",
+   "consequence": "The change is shelved with its evidence preserved."
+  }
+ ],
+ "recommendation": {
+  "option": "approve-spec",
+  "reason": "State why, grounded in the evidence above."
+ },
+ "unresolved": [
+  "anything deliberately left open"
+ ],
+ "openStatusLabel": "Gate A open — no resolution proposed yet"
+}

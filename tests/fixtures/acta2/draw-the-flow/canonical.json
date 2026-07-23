@@ -1,0 +1,280 @@
+{
+  "scenario": {
+    "acta2": "0.2.0-pilot",
+    "kind": "decision",
+    "decisionId": "flow-verification",
+    "skill": "draw-the-flow",
+    "artifactKind": "process-flow",
+    "initiative": "tag-filter",
+    "title": "Draw the flow — tag-filter navigation",
+    "question": "How does a tag-filter navigation actually flow, end to end?",
+    "lede": "One drawing, four named paths. Emphasize a path to trace it; the same flow is written out in words below, so nothing lives only in the picture.",
+    "openStatusLabel": "Open — flow not yet verified",
+    "sourceRevision": "a8b083705553550eda289ddf9cf1d028df907682",
+    "inputs": [
+      "src/app.mjs — renderFromUrl and popstate wiring",
+      "src/catalog.mjs — filterByTag",
+      "src/url-tag.mjs — parseTagFromSearch",
+      "interface-directions record — accepted empty state"
+    ],
+    "flow": {
+      "ariaLabel": "Tag-filter navigation flow with normal, decision, failure, and recovery paths",
+      "caption": "Every navigation walks left to right; the branch at “tag known?” separates the normal render from the empty-state path, and “clear filter” is the recovery route back to the full catalog.",
+      "nodes": [
+        {
+          "id": "url",
+          "label": "navigation",
+          "sub": "?tag=… or popstate",
+          "col": 0,
+          "row": 0,
+          "paths": [
+            "normal",
+            "failure",
+            "recovery"
+          ]
+        },
+        {
+          "id": "parse",
+          "label": "parseTagFromSearch",
+          "sub": "src/url-tag.mjs",
+          "col": 1,
+          "row": 0,
+          "paths": [
+            "normal",
+            "failure",
+            "recovery"
+          ]
+        },
+        {
+          "id": "decide",
+          "label": "tag known?",
+          "sub": "any skill carries it",
+          "col": 2,
+          "row": 0,
+          "tone": "accent",
+          "paths": [
+            "normal",
+            "decision",
+            "failure"
+          ]
+        },
+        {
+          "id": "filter",
+          "label": "filterByTag",
+          "sub": "src/catalog.mjs",
+          "col": 3,
+          "row": 0,
+          "paths": [
+            "normal",
+            "decision"
+          ]
+        },
+        {
+          "id": "domlist",
+          "label": "matching rows",
+          "sub": "replaceChildren",
+          "col": 3,
+          "row": 1,
+          "tone": "dark",
+          "paths": [
+            "normal"
+          ]
+        },
+        {
+          "id": "empty",
+          "label": "empty state",
+          "sub": "explain + suggest chips",
+          "col": 2,
+          "row": 1,
+          "tone": "danger",
+          "paths": [
+            "decision",
+            "failure",
+            "recovery"
+          ]
+        },
+        {
+          "id": "clear",
+          "label": "clear filter",
+          "sub": "user action",
+          "col": 1,
+          "row": 1,
+          "paths": [
+            "recovery"
+          ]
+        },
+        {
+          "id": "full",
+          "label": "full catalog",
+          "sub": "all 5 skills",
+          "col": 0,
+          "row": 1,
+          "tone": "dark",
+          "paths": [
+            "recovery"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "from": "url",
+          "to": "parse",
+          "label": "tag | null",
+          "paths": [
+            "normal",
+            "failure",
+            "recovery"
+          ]
+        },
+        {
+          "from": "parse",
+          "to": "decide",
+          "label": "requested tag",
+          "paths": [
+            "normal",
+            "failure",
+            "recovery"
+          ]
+        },
+        {
+          "from": "decide",
+          "to": "filter",
+          "label": "known",
+          "paths": [
+            "normal",
+            "decision"
+          ]
+        },
+        {
+          "from": "filter",
+          "to": "domlist",
+          "label": "visible rows",
+          "paths": [
+            "normal"
+          ]
+        },
+        {
+          "from": "decide",
+          "to": "empty",
+          "label": "unknown",
+          "tone": "danger",
+          "paths": [
+            "decision",
+            "failure"
+          ]
+        },
+        {
+          "from": "empty",
+          "to": "clear",
+          "label": "user clicks",
+          "dashed": true,
+          "paths": [
+            "recovery"
+          ]
+        },
+        {
+          "from": "clear",
+          "to": "full",
+          "label": "renders all",
+          "tone": "accent",
+          "paths": [
+            "recovery"
+          ]
+        }
+      ]
+    },
+    "pathViews": [
+      {
+        "id": "all",
+        "label": "Whole flow",
+        "steps": []
+      },
+      {
+        "id": "normal",
+        "label": "Normal path",
+        "steps": [
+          "A navigation (or back/forward) carries ?tag= in the URL",
+          "parseTagFromSearch returns the tag, or null when absent",
+          "The tag matches at least one skill, so the branch takes “known”",
+          "filterByTag narrows visibleSkills() preserving order",
+          "replaceChildren swaps in exactly the matching rows"
+        ]
+      },
+      {
+        "id": "decision",
+        "label": "The decision",
+        "steps": [
+          "The single branch in the flow: does any skill carry the requested tag?",
+          "“Known” continues to the normal render; there is no partial match",
+          "“Unknown” is not an error — it routes to the accepted empty state",
+          "A null tag skips the branch entirely and renders the full catalog"
+        ]
+      },
+      {
+        "id": "failure",
+        "label": "Failure path",
+        "steps": [
+          "The requested tag matches no skill (a stale or mistyped link)",
+          "filterByTag would return [], so the flow never reaches it",
+          "The empty state renders: it names the miss and shows the real tag set",
+          "Nothing is silently swallowed — the URL still shows what was asked"
+        ]
+      },
+      {
+        "id": "recovery",
+        "label": "Recovery path",
+        "steps": [
+          "From the empty state, “clear filter” is the one-click exit",
+          "It navigates to the bare URL (no ?tag=)",
+          "The same render path runs with a null tag",
+          "The full five-skill catalog renders — orientation restored"
+        ]
+      }
+    ],
+    "options": [
+      {
+        "id": "confirm-accurate",
+        "label": "The flow is accurate",
+        "consequence": "This drawing and its textual equivalent become the recorded shared understanding of the navigation."
+      },
+      {
+        "id": "needs-correction",
+        "label": "Needs correction",
+        "consequence": "Name what is wrong or missing in the rationale; the flow is redrawn before anything is recorded."
+      },
+      {
+        "id": "wrong-scope",
+        "label": "Wrong question",
+        "consequence": "The flow answers a different question than the one that matters; scope is restated before redrawing."
+      }
+    ],
+    "recommendation": {
+      "option": "confirm-accurate",
+      "reason": "Every node and edge was walked against src/app.mjs at the recorded revision."
+    },
+    "unresolved": [
+      "whether chip-click interception (slice 5 open question) changes the recovery path"
+    ]
+  },
+  "accepted": {
+    "status": "approved",
+    "stamp": "ACCEPTED",
+    "acceptedVia": "chat 2026-07-23 — flow verified against src/app.mjs and confirmed via pasted candidate",
+    "recordTitle": "Tag-filter navigation flow — verified",
+    "summary": "The end-to-end navigation flow — normal render, the single known/unknown branch, the empty-state failure path, and the clear-filter recovery — verified as the shared understanding at a8b0837.",
+    "canonicalPath": "flows/tag-filter-navigation.md",
+    "decisions": [
+      {
+        "id": "flow-verification",
+        "selection": "confirm-accurate",
+        "rationale": "Walked each edge against the glue code; the branch and both exits match.",
+        "acceptedVia": "chat 2026-07-23 — explicit confirmation"
+      }
+    ],
+    "exampleWorking": {
+      "selected": "confirm-accurate",
+      "rationale": "Walked each edge against the glue code; the branch and both exits match."
+    },
+    "canonicalBody": "# Tag-filter navigation flow — verified\n\nnavigation → parse → (tag known?) → filter → rows, with unknown tags\nrouting to the accepted empty state and clear-filter recovering to the\nfull catalog. Textual equivalent recorded alongside the drawing."
+  }
+}

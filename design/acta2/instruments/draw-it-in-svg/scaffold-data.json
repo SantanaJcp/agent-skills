@@ -1,0 +1,179 @@
+{
+ "acta2": "0.2.0-pilot",
+ "kind": "checklist",
+ "decisionId": "figure-sheet",
+ "acceptanceToken": "accept-figures",
+ "skill": "draw-it-in-svg",
+ "artifactKind": "figure-sheet",
+ "initiative": "initiative-slug",
+ "title": "Draw it in SVG",
+ "question": "Which of these figures are approved for reuse?",
+ "lede": "Standalone figures authored as vector data, each with its own title, description, and copyable source.",
+ "sourceRevision": null,
+ "inputs": [
+  "the records or documents the figures illustrate"
+ ],
+ "conclusionRequired": false,
+ "verdicts": [
+  {
+   "id": "approve",
+   "label": "Approve",
+   "tone": "positive"
+  },
+  {
+   "id": "revise",
+   "label": "Needs revision",
+   "tone": "warning"
+  }
+ ],
+ "items": [
+  {
+   "id": "fig-example",
+   "label": "An authored figure",
+   "figure": {
+    "id": "fig-example",
+    "title": "Tag filtering: URL to DOM",
+    "desc": "Three boxes in a row — the URL parameter, the pure functions, and the catalog DOM — connected by two arrows; the pure middle box is emphasized.",
+    "viewW": 640,
+    "viewH": 180,
+    "caption": "The whole feature is one left-to-right sentence: URL in, pure functions, DOM out.",
+    "elements": [
+     {
+      "el": "rect",
+      "x": 24,
+      "y": 58,
+      "width": 168,
+      "height": 64,
+      "rx": 12,
+      "fill": "var(--acta-paper)",
+      "stroke": "var(--acta-rule-strong)",
+      "stroke-width": 1.5
+     },
+     {
+      "el": "text",
+      "x": 108,
+      "y": 85,
+      "font-size": 13,
+      "font-weight": 600,
+      "text-anchor": "middle",
+      "fill": "var(--acta-ink)",
+      "text": "?tag=git"
+     },
+     {
+      "el": "text",
+      "x": 108,
+      "y": 103,
+      "font-size": 11,
+      "text-anchor": "middle",
+      "fill": "var(--acta-ink-muted)",
+      "text": "the only state"
+     },
+     {
+      "el": "polyline",
+      "points": "192,90 232,90",
+      "fill": "none",
+      "stroke": "var(--acta-rule-strong)",
+      "stroke-width": 1.5
+     },
+     {
+      "el": "polygon",
+      "points": "239,90 229,85 229,95",
+      "fill": "var(--acta-rule-strong)"
+     },
+     {
+      "el": "rect",
+      "x": 240,
+      "y": 46,
+      "width": 176,
+      "height": 88,
+      "rx": 12,
+      "fill": "var(--acta-action-tint)",
+      "stroke": "var(--acta-action)",
+      "stroke-width": 1.5
+     },
+     {
+      "el": "text",
+      "x": 328,
+      "y": 78,
+      "font-size": 13,
+      "font-weight": 600,
+      "text-anchor": "middle",
+      "fill": "var(--acta-ink)",
+      "text": "parse → filter"
+     },
+     {
+      "el": "text",
+      "x": 328,
+      "y": 96,
+      "font-size": 11,
+      "text-anchor": "middle",
+      "fill": "var(--acta-ink-muted)",
+      "text": "pure functions"
+     },
+     {
+      "el": "text",
+      "x": 328,
+      "y": 114,
+      "font-size": 11,
+      "text-anchor": "middle",
+      "fill": "var(--acta-ink-muted)",
+      "text": "tested in Node"
+     },
+     {
+      "el": "polyline",
+      "points": "416,90 456,90",
+      "fill": "none",
+      "stroke": "var(--acta-rule-strong)",
+      "stroke-width": 1.5
+     },
+     {
+      "el": "polygon",
+      "points": "463,90 453,85 453,95",
+      "fill": "var(--acta-rule-strong)"
+     },
+     {
+      "el": "rect",
+      "x": 464,
+      "y": 58,
+      "width": 152,
+      "height": 64,
+      "rx": 12,
+      "fill": "#22252B",
+      "stroke": "#22252B",
+      "stroke-width": 1.5
+     },
+     {
+      "el": "text",
+      "x": 540,
+      "y": 85,
+      "font-size": 13,
+      "font-weight": 600,
+      "text-anchor": "middle",
+      "fill": "#E7E5DE",
+      "text": "catalog DOM"
+     },
+     {
+      "el": "text",
+      "x": 540,
+      "y": 103,
+      "font-size": 11,
+      "text-anchor": "middle",
+      "fill": "#9DA2AC",
+      "text": "replaceChildren"
+     },
+     {
+      "el": "text",
+      "x": 24,
+      "y": 30,
+      "font-size": 11,
+      "fill": "var(--acta-ink-muted)",
+      "text": "every navigation, including back/forward, replays this line"
+     }
+    ]
+   }
+  }
+ ],
+ "unresolved": [
+  "anything a figure deliberately simplifies"
+ ]
+}

@@ -1,0 +1,32 @@
+{
+  "acta_protocol": "0.2",
+  "payload": "candidate",
+  "artifact_kind": "concept-model",
+  "producer_skill": "concept-lab",
+  "initiative": "retry-backoff",
+  "instrument": "model",
+  "status": "candidate-ready",
+  "source_revision": null,
+  "inputs": [
+    "AWS Architecture Blog — Exponential Backoff and Jitter (Marc Brooker, 2015)",
+    "Google SRE Book ch. 22 — Addressing Cascading Failures"
+  ],
+  "unresolved": [
+    "mapping these parameters onto the project's actual HTTP client is a separate task"
+  ],
+  "parameters": {
+    "base": 200,
+    "factor": 2,
+    "retries": 6,
+    "cap": 2000
+  },
+  "toggles": {
+    "fullJitter": true
+  },
+  "conclusion": "Full jitter keeps the worst case at 7000 ms while the expected total drops to ≈3500 ms — half of the worst case, and one third below equal jitter's ≈5250 ms; the 2000 ms cap flattens growth from attempt 5 onward.",
+  "derived": {
+    "attempts": 6,
+    "worstCaseTotalMs": 7000,
+    "expectedTotalMs": 3500
+  }
+}

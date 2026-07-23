@@ -1,0 +1,37 @@
+{
+  "acta2": "0.2.0-pilot",
+  "kind": "stop-gate",
+  "skill": "build-with-notes",
+  "artifactKind": "implementation-session",
+  "initiative": "[confirmed-initiative-slug]",
+  "title": "Build with notes",
+  "question": "[The deviation or request that paused the build and now needs a decision]",
+  "sourceRevision": null,
+  "inputs": ["[repo-relative spec path]", "[repo-relative plan path]"],
+  "unresolved": ["[open item that survives this gate]"],
+  "gate": {
+    "id": "STOP-01",
+    "title": "[Why work stopped, in one line]",
+    "reason": "[What contradicts the approved scope, and why building here would widen it]",
+    "options": [
+      { "id": "reject-addition", "label": "[Reject the change, continue the approved plan]", "consequence": "[what happens if rejected]" },
+      { "id": "revise-blueprint", "label": "[Accept the change, reopen planning]", "consequence": "[what happens if the blueprint reopens]" },
+      { "id": "pause-session", "label": "[Park the session]", "consequence": "[what happens if everything pauses]" }
+    ]
+  },
+  "entries": [
+    { "id": "e1", "type": "plan-confirmed", "time": "[hh:mm]", "title": "[approved plan loaded]", "body": "[one-sentence note]" },
+    { "id": "e2", "type": "check", "time": "[hh:mm]", "title": "[baseline checks]", "body": "[one-sentence note]", "state": "pass" },
+    { "id": "e3", "type": "plan-confirmed", "time": "[hh:mm]", "title": "[slice done]", "body": "[one-sentence note]" },
+    { "id": "e4", "type": "discovery", "time": "[hh:mm]", "title": "[something learned mid-build]", "body": "[one-sentence note]" },
+    { "id": "e5", "type": "deviation", "time": "[hh:mm]", "title": "[a gap needing a human answer]", "body": "[one-sentence note]", "needsHuman": true },
+    { "id": "e6", "type": "stop", "time": "[hh:mm]", "title": "[the STOP that paused the build]", "body": "[one-sentence note]", "needsHuman": true }
+  ],
+  "slices": { "done": 0, "total": 0, "current": "[current slice label]" },
+  "checks": [
+    { "label": "node --test", "state": "pass", "detail": "[count]" },
+    { "label": "typecheck", "state": "pass", "detail": "[clean|errors]" }
+  ],
+  "nextAction": "[the single authorized next action while the gate is open]",
+  "files": ["[repo-relative file touched]"]
+}

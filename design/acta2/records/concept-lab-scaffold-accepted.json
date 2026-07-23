@@ -1,0 +1,35 @@
+{
+  "status": "completed",
+  "stamp": "[Completed — model accepted]",
+  "recordTitle": "[Concept model: subject]",
+  "summary": "[One-paragraph accepted-state summary: what was modelled, the accepted parameters, what stays a teaching device, and what was not modified.]",
+  "canonicalPath": ".agent-work/[initiative]/concept-lab/concept-lab.md",
+  "acceptedVia": "explicit chat confirmation after candidate export",
+  "decisions": [
+    {
+      "id": "D-01",
+      "selection": "model-accepted",
+      "rationale": "[what the model made legible, if volunteered]",
+      "acceptedVia": "[the explicit confirmation, quoted]"
+    }
+  ],
+  "exampleWorking": {
+    "params": {
+      "base": 100,
+      "factor": 2,
+      "retries": 5,
+      "cap": 10000
+    },
+    "toggles": {
+      "fullJitter": false
+    },
+    "conclusion": "[the observed conclusion recorded at acceptance]"
+  },
+  "canonicalBody": "[Accepted canonical content generated only after explicit acceptance.]",
+  "derived": {
+    "attempts": 5,
+    "worstCaseTotalMs": 3100,
+    "expectedTotalMs": 2325,
+    "firstCappedAttempt": null
+  }
+}

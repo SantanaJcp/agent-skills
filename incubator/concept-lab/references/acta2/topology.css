@@ -1,0 +1,74 @@
+/* concept-lab topology: a manipulable retry-backoff model bench.
+   Bench grid at desktop: the timeline model and its derived-consequence
+   table share the left column; the parameter rail sits beside them so
+   manipulation and consequence stay in one view. Single column on mobile,
+   where the plot scrolls locally instead of shrinking below legibility. */
+.clab-question{font:400 32px/1.25 var(--acta-font-text);margin:var(--sp-6) 0 var(--sp-3);max-width:46ch}
+.clab-lede{font-size:15.5px;line-height:1.6;color:var(--acta-ink-muted);margin:0 0 var(--sp-6);max-width:66ch}
+
+.clab-bench{display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-areas:"model controls" "readout readout";gap:var(--sp-5) 0;align-items:start;background:var(--acta-card);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:28px}
+.clab-model{grid-area:model;min-width:0}
+.clab-controls{grid-area:controls}
+.clab-readout{grid-area:readout;min-width:0;border-top:1px solid var(--acta-rule-faint);padding-top:var(--sp-4)}
+
+.plotwrap{background:var(--acta-card)}
+.clab-svg{display:block;width:100%;min-width:600px;height:auto}
+.clab-svg text{font-family:var(--acta-font-data)}
+
+.clab-legend{display:flex;gap:var(--sp-4);flex-wrap:wrap;list-style:none;margin:14px 0 0;padding:0;font:12.5px/1.5 var(--acta-font-data);color:var(--acta-ink-muted)}
+.clab-legend li{display:flex;align-items:center;gap:7px}
+.clab-legend .lg-band{display:inline-block;width:22px;height:12px;background:var(--acta-action-tint);border:1.5px solid var(--acta-action);flex:none}
+.clab-legend .lg-tick{display:inline-block;width:2px;height:14px;background:var(--acta-ink);flex:none}
+.clab-legend .lg-expected{display:inline-block;width:0;height:14px;border-left:2px dashed var(--acta-ink-muted);flex:none}
+.clab-legend .lg-capped{display:inline-block;width:22px;height:12px;background:var(--acta-action-tint);border:1.5px dashed var(--acta-warning);flex:none}
+
+.clab-controls{border-left:1px solid var(--acta-rule-faint);padding:0 0 0 28px;margin-left:28px}
+.clab-controls h2,.clab-readout h2{font:600 11.5px/1.4 var(--acta-font-data);letter-spacing:.12em;text-transform:uppercase;color:var(--acta-ink-muted);margin:0 0 var(--sp-4)}
+.clab-row{display:grid;grid-template-columns:1fr auto;grid-template-areas:"label value" "input input";gap:3px 12px;align-items:baseline;margin:0 0 15px}
+.clab-row label{grid-area:label;font:600 14.5px/1.4 var(--acta-font-ui)}
+.clab-row output{grid-area:value;font:600 14px/1.3 var(--acta-font-data);color:var(--acta-action);text-align:right;font-variant-numeric:tabular-nums}
+.clab-row input[type=range]{grid-area:input;width:100%;accent-color:var(--acta-action);margin:6px 0 0}
+.clab-toggle{margin:0 0 var(--sp-3);font-size:14px}
+.clab-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:var(--sp-1)}
+
+/* ---- consequence table: hairline rows, right-aligned numerics ---- */
+.clab-table{width:auto;min-width:min(100%,540px);border-collapse:collapse;font:13.5px/1.55 var(--acta-font-data);font-variant-numeric:tabular-nums}
+.clab-table th,.clab-table td{border:0;border-bottom:1px solid var(--acta-rule-faint);padding:10px 0 10px 44px;text-align:right;vertical-align:top;white-space:nowrap}
+.clab-table th:first-child,.clab-table td:first-child{padding-left:0}
+.clab-table thead th{font:600 11px/1.4 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;color:var(--acta-ink-muted);border-bottom:1px solid var(--acta-rule-strong)}
+.clab-cap{display:inline-block;border:1px solid var(--acta-warning);border-radius:var(--acta-radius);color:var(--acta-warning);background:var(--acta-warning-tint);font:600 9.5px/1.3 var(--acta-font-data);letter-spacing:.08em;text-transform:uppercase;padding:1px 5px;margin-left:6px}
+.clab-totals{font:600 14.5px/1.55 var(--acta-font-data);color:var(--acta-ink);margin:var(--sp-4) 0 0;font-variant-numeric:tabular-nums}
+
+.clab-conclude{margin:56px 0 0;max-width:78ch}
+.clab-conclude .a2-hint{font:13px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin:8px 0 0}
+
+/* ---- evidence: color-coded top rules instead of tinted boxes ---- */
+.clab-evidence{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin:56px 0 0}
+.clab-facts{border-top:2px solid var(--acta-positive);padding-top:var(--sp-3)}
+.clab-simpl{border-top:2px dashed var(--acta-warning);padding-top:var(--sp-3)}
+.clab-facts h2,.clab-simpl h2{font:600 11.5px/1.4 var(--acta-font-data);letter-spacing:.12em;text-transform:uppercase;margin:0 0 var(--sp-4)}
+.clab-facts h2{color:var(--acta-positive)}
+.clab-simpl h2{color:var(--acta-warning)}
+.clab-evidence ul{margin:0;padding:0;list-style:none;font-size:14.5px}
+.clab-evidence li{margin:0 0 12px;line-height:1.6}
+.clab-evidence li:last-child{margin-bottom:0}
+.clab-tag{display:inline-block;font:600 9.5px/1.3 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;border-radius:var(--acta-radius);padding:1px 5px;margin-right:6px}
+.clab-tag.is-src{border:1px solid var(--acta-positive);color:var(--acta-positive)}
+.clab-tag.is-simpl{border:1px solid var(--acta-warning);color:var(--acta-warning)}
+.clab-cite{font-style:italic;color:var(--acta-ink-muted);font-size:12.5px}
+
+@media (max-width:959px){
+  .clab-bench{grid-template-columns:1fr;grid-template-areas:"model" "controls" "readout";padding:18px;gap:var(--sp-4) 0}
+  .clab-controls{border-left:0;border-top:1px solid var(--acta-rule-faint);padding:var(--sp-4) 0 0;margin-left:0}
+}
+@media (max-width:719px){
+  .clab-evidence{grid-template-columns:1fr}
+  .clab-table th,.clab-table td{padding-left:12px}
+}
+@media print{
+  .plotwrap{overflow:visible}
+  .clab-svg{min-width:0}
+  .plotwrap,.clab-controls,.clab-readout,.clab-facts,.clab-simpl,.clab-table,.clab-conclude{break-inside:avoid}
+  .clab-bench{grid-template-columns:1fr 1fr;grid-template-areas:"model model" "controls readout";border:none;padding:0}
+  .clab-evidence{grid-template-columns:1fr 1fr}
+}

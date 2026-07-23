@@ -1,0 +1,89 @@
+/* three-code-paths topology: simultaneous three-column comparison.
+   Decision layer (cards → matrix → recommendation → gate) reads top-down;
+   corresponding card sections share row baselines via subgrid so the three
+   paths stay at equal visual fidelity. */
+.tcp-question{font:400 32px/1.25 var(--acta-font-text);margin:var(--sp-6) 0 var(--sp-3);max-width:46ch}
+.tcp-context{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 var(--sp-6)}
+.tcp-chip{border:1px solid var(--acta-rule);border-radius:var(--acta-radius-lg);padding:6px 14px;font:500 12.5px/1.5 var(--acta-font-data);color:var(--acta-ink-muted);background:var(--acta-tint)}
+
+/* ---- three equal columns; subgrid aligns corresponding sections ---- */
+.tcp-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;align-items:stretch}
+.tcp-card{border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);background:var(--acta-card);padding:24px;display:flex;flex-direction:column;gap:var(--sp-4);min-width:0}
+@supports (grid-template-rows:subgrid){
+  .tcp-card{display:grid;grid-template-rows:subgrid;grid-row:span 8;gap:0;row-gap:var(--sp-4);align-content:start}
+}
+.tcp-card>*{min-width:0}
+.tcp-card[data-selected="true"]{border-color:var(--acta-action);outline:1px solid var(--acta-action);outline-offset:-3px;background:var(--acta-action-tint)}
+.tcp-card .c-head{display:flex;gap:10px;align-items:baseline}
+.tcp-card .c-id{flex:none;background:var(--acta-tint-strong);border-radius:var(--acta-radius);padding:5px 10px;font:700 12.5px/1 var(--acta-font-data);letter-spacing:.08em;color:var(--acta-ink)}
+.tcp-card h2{font:600 22px/1.3 var(--acta-font-text);margin:0}
+.tcp-card .c-claim{font-size:15px;line-height:1.6;color:var(--acta-ink-muted);margin:0}
+/* One scroll container (the codewrap) and no vertical stretch: shorter code
+   islands end where their code ends instead of leaving dead dark space. */
+.tcp-card .c-code{align-self:start}
+.tcp-card .c-code .codewrap{max-height:300px;overflow:auto;scrollbar-color:var(--acta-code-rule) var(--acta-code-bg);scrollbar-width:thin}
+.tcp-card .c-code pre{max-height:none;overflow:visible}
+.tcp-card .c-flow{margin:0;padding-left:0;list-style:none;font:12.5px/1.8 var(--acta-font-data);color:var(--acta-ink)}
+.tcp-card .c-flow li{position:relative;padding-left:18px}
+.tcp-card .c-flow li+li::before{content:"↓";position:absolute;left:0;color:var(--acta-rule-strong)}
+.tcp-card .c-flow li:first-child::before{content:"·";position:absolute;left:0;color:var(--acta-rule-strong)}
+/* ---- pro/con: a real two-column table with dotted bullets ---- */
+.tcp-procon{width:100%;table-layout:fixed;border-collapse:collapse;font-size:13.5px;line-height:1.55}
+.tcp-procon th{font:600 11px/1.4 var(--acta-font-data);letter-spacing:.12em;text-transform:uppercase;color:var(--acta-ink-muted);text-align:left;background:var(--acta-tint);border:1px solid var(--acta-rule-faint);padding:9px 14px;width:50%}
+.tcp-procon td{border:1px solid var(--acta-rule-faint);padding:11px 14px 11px 30px;vertical-align:top;position:relative;width:50%;overflow-wrap:break-word}
+.tcp-procon td::before{content:"";position:absolute;left:14px;top:17.5px;width:6px;height:6px;border-radius:50%}
+.tcp-procon td.pc-pro::before{background:var(--acta-positive)}
+.tcp-procon td.pc-con::before{background:var(--acta-danger)}
+.tcp-procon td.pc-empty{border:1px solid var(--acta-rule-faint)}
+.tcp-procon td.pc-empty::before{content:none}
+.tcp-seams{border-top:1px solid var(--acta-rule-faint);padding-top:var(--sp-3);margin:0;display:flex;flex-direction:column;gap:8px}
+.tcp-seams .s-row{margin:0;display:flex;gap:10px;align-items:baseline}
+.tcp-seams .s-k{flex:none;background:var(--acta-tint);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:3px 10px;font:600 10.5px/1.4 var(--acta-font-data);letter-spacing:.08em;text-transform:uppercase;color:var(--acta-ink-muted)}
+.tcp-seams .s-v{font:12.5px/1.6 var(--acta-font-data);color:var(--acta-ink-muted)}
+.tcp-select{margin-top:auto;font:600 14.5px/1.4 var(--acta-font-ui);align-items:center}
+.tcp-select input{margin-top:0}
+
+/* ---- comparison matrix: hairline rows, no cell grid ---- */
+.tcp-matrix{margin:56px 0 0}
+.tcp-matrix h2,.tcp-reco h2,.tcp-decide h2{font:600 22px/1.3 var(--acta-font-text);margin:0 0 var(--sp-4)}
+.tcp-matrix h2{border-bottom:1px solid var(--acta-rule);padding-bottom:12px}
+.tcp-matrix .tablewrap{background:var(--acta-card);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:10px 24px}
+.tcp-matrix table{width:100%;border-collapse:collapse;font:14px/1.55 var(--acta-font-ui)}
+.tcp-matrix th,.tcp-matrix td{border:0;border-bottom:1px solid var(--acta-rule-faint);padding:12px 16px 12px 0;text-align:left;vertical-align:top}
+.tcp-matrix thead th{font:600 11px/1.4 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;color:var(--acta-ink-muted);border-bottom:1px solid var(--acta-rule-strong);padding-top:6px}
+.tcp-matrix tbody th{font:600 14px/1.55 var(--acta-font-ui);color:var(--acta-ink);width:18%}
+.tcp-matrix td{color:var(--acta-ink)}
+.tcp-matrix td .m-note{color:var(--acta-ink-muted)}
+.tcp-matrix .m-yes{color:var(--acta-positive);font-weight:700}
+.tcp-matrix .m-no{color:var(--acta-danger);font-weight:700}
+.tcp-matrix .m-part{color:var(--acta-warning);font-weight:700}
+
+/* ---- recommendation: an aside, not a verdict ---- */
+.tcp-reco{border-left:3px solid var(--acta-positive);background:var(--acta-positive-tint);padding:var(--sp-4) 20px;margin:var(--sp-6) 0;font-size:15px;line-height:1.6;max-width:88ch}
+.tcp-reco .r-k{font:600 10.5px/1.3 var(--acta-font-data);letter-spacing:.12em;text-transform:uppercase;color:var(--acta-positive);display:block;margin-bottom:6px}
+
+/* ---- decision gate: the one emphatic frame on the page ---- */
+.tcp-decide{border:2px solid var(--acta-ink);border-radius:var(--acta-radius-lg);background:var(--acta-card);padding:var(--sp-5) 28px 28px;margin:56px 0}
+.tcp-decide .d-selection{font:600 15.5px/1.5 var(--acta-font-ui);margin:0 0 var(--sp-3)}
+.tcp-decide .a2-field{max-width:78ch}
+.tcp-decide>p:last-child{font-size:13.5px;line-height:1.6;color:var(--acta-ink-muted);max-width:78ch;margin-bottom:0}
+
+@media (max-width:1099px){
+  .tcp-grid{gap:var(--sp-4)}
+  .tcp-card{padding:var(--sp-4)}
+  .tcp-card .c-code .codewrap{max-height:200px}
+  .tcp-card .c-code pre{font-size:11px}
+}
+@media (max-width:719px){
+  .tcp-grid{grid-template-columns:1fr;gap:var(--sp-4)}
+  .tcp-card{padding:var(--sp-4)}
+  .tcp-card .c-code .codewrap{max-height:220px}
+  .tcp-card .c-code pre{font-size:11.5px}
+  .tcp-matrix th,.tcp-matrix td{padding-right:10px}
+}
+@media print{
+  .tcp-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .tcp-card .c-code .codewrap{max-height:none;overflow:visible;scrollbar-color:auto}
+  .tcp-card .c-code pre{max-height:none;overflow:visible}
+  .tcp-card,.tcp-matrix table,.tcp-reco,.tcp-decide{break-inside:avoid}
+}

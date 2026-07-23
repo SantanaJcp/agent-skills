@@ -1,0 +1,251 @@
+<!-- acta2-materialized: v0.2.0-pilot record=interface-directions sha256=bb4d4e4ac7b6888af299fb01689ab2623e77778ee00bd3e840f9c4f042c0188c; do not edit by hand — regenerate from canonical JSON -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interface directions — record · Acta</title>
+<style>
+/* Acta v2 record foundation — durable, print-first documents generated only
+   from accepted canonical state. Records keep Acta's paper identity (white
+   page, notarial provenance) while sharing the v2 type scale; the warm
+   canvas belongs to ACTIVE instruments only. Per-skill record topology CSS
+   is appended after this file. */
+
+:root{
+  --acta-paper:#FDFDFB; --acta-tint:#F1EDE0; --acta-tint-strong:#E7E1D1;
+  --acta-ink:#1D1F24; --acta-ink-muted:#50545C;
+  --acta-rule:#D8D6CC; --acta-rule-strong:#8E8B7E; --acta-rule-faint:#E7E5DB;
+  --acta-action:#2B4C7E; --acta-action-tint:#E9EEF5;
+  --acta-positive:#276140; --acta-positive-tint:#E8F0E9;
+  --acta-warning:#7A5600; --acta-warning-tint:#F6EFDC;
+  --acta-danger:#8C2F23; --acta-danger-tint:#F6E9E6;
+  --acta-code-bg:#22252B; --acta-code-head:#1B1D22; --acta-code-rule:#383B44;
+  --acta-code-ink:#E7E5DE; --acta-code-muted:#9DA2AC;
+  --acta-font-text:Charter,"Iowan Old Style","Palatino Linotype",Georgia,"Times New Roman",serif;
+  --acta-font-data:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --acta-font-ui:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,sans-serif;
+  --acta-radius:2px; --acta-radius-lg:14px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px; --sp-6:32px; --sp-7:48px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--acta-paper);color:var(--acta-ink);font:16px/1.6 var(--acta-font-ui)}
+code,pre,kbd,samp{font-family:var(--acta-font-data)}
+pre{margin:0;white-space:pre-wrap;word-break:break-word}
+a{color:var(--acta-action)}
+h1,h2,h3{text-wrap:balance}
+p{text-wrap:pretty}
+:focus-visible{outline:2px solid var(--acta-action);outline-offset:2px}
+.skip{position:absolute;left:-9999px}
+.skip:focus{position:fixed;left:12px;top:12px;background:var(--acta-action);color:#fff;padding:8px 14px;z-index:99;font:600 13px/1 var(--acta-font-ui)}
+.codewrap,.tablewrap,.flowwrap{overflow-x:auto;position:relative}
+.plotwrap{overflow-x:auto;position:relative}
+.visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+.acta-shell{max-width:960px;margin:0 auto;padding:0 clamp(16px,4vw,44px) var(--sp-7)}
+
+/* ---- notarial provenance header ---- */
+.acta-prov{margin:0;padding:14px 0;border-bottom:1px solid var(--acta-rule);display:flex;gap:6px 22px;flex-wrap:wrap;font:12px/1.5 var(--acta-font-data);color:var(--acta-ink-muted)}
+.acta-prov>div{display:flex;gap:8px;min-width:0}
+.acta-prov dt{font-weight:600;text-transform:uppercase;letter-spacing:.1em;font-size:10px;align-self:center}
+.acta-prov dd{margin:0;overflow-wrap:anywhere}
+.acta-prov-note{font:12px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin:10px 0 0;max-width:90ch}
+
+/* ---- context block ---- */
+.acta-context{margin:var(--sp-6) 0 var(--sp-6)}
+.acta-eyebrow{font:600 11.5px/1.4 var(--acta-font-data);letter-spacing:.12em;text-transform:uppercase;color:var(--acta-ink-muted);margin:0 0 10px}
+.acta-stamp{display:inline-block;border:1.5px solid var(--acta-positive);color:var(--acta-positive);border-radius:var(--acta-radius);padding:2px 9px;font:600 10.5px/1.3 var(--acta-font-data);letter-spacing:.08em;text-transform:uppercase}
+.acta-title{font:400 32px/1.25 var(--acta-font-text);margin:0 0 var(--sp-3);max-width:46ch}
+.acta-lede{font-size:16.5px;line-height:1.6;color:var(--acta-ink-muted);margin:0;max-width:70ch}
+
+/* ---- sections ---- */
+.acta-section{margin:var(--sp-7) 0 0}
+.acta-h2{font:600 22px/1.3 var(--acta-font-text);margin:0 0 var(--sp-4);border-bottom:1px solid var(--acta-rule);padding-bottom:12px}
+.acta-h3{font:600 17px/1.35 var(--acta-font-text);margin:var(--sp-5) 0 var(--sp-3)}
+.acta-section p{max-width:76ch}
+
+/* ---- shared record primitives ---- */
+.r-k{display:block;font:600 10.5px/1.4 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;color:var(--acta-ink-muted)}
+.r-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--sp-4);margin:var(--sp-5) 0}
+.r-fact{border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:14px 18px;min-width:0}
+.r-fact b{display:block;font:400 26px/1.15 var(--acta-font-text);font-variant-numeric:tabular-nums}
+.r-fact span{display:block;font:600 10.5px/1.5 var(--acta-font-data);letter-spacing:.08em;text-transform:uppercase;color:var(--acta-ink-muted);margin-top:6px}
+.r-fact small{display:block;font:12px/1.5 var(--acta-font-ui);color:var(--acta-ink-muted);margin-top:3px}
+.r-table{width:100%;border-collapse:collapse;font:14px/1.55 var(--acta-font-ui)}
+.r-table th,.r-table td{border:0;border-bottom:1px solid var(--acta-rule-faint);padding:10px 16px 10px 0;text-align:left;vertical-align:top}
+.r-table thead th{font:600 11px/1.4 var(--acta-font-data);letter-spacing:.1em;text-transform:uppercase;color:var(--acta-ink-muted);border-bottom:1px solid var(--acta-rule-strong)}
+.r-table td.num,.r-table th.num{text-align:right;font-variant-numeric:tabular-nums}
+.r-chip{display:inline-block;border:1px solid var(--acta-rule);border-radius:var(--acta-radius-lg);background:var(--acta-tint);padding:2px 10px;font:500 11.5px/1.6 var(--acta-font-data);color:var(--acta-ink-muted)}
+.r-tagrow{display:flex;gap:10px;align-items:baseline;margin:6px 0}
+.r-tagrow .r-tag{flex:none;background:var(--acta-tint);border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius-lg);padding:3px 10px;font:600 10.5px/1.4 var(--acta-font-data);letter-spacing:.08em;text-transform:uppercase;color:var(--acta-ink-muted)}
+.r-tagrow .r-val{font:13px/1.6 var(--acta-font-data);color:var(--acta-ink-muted)}
+.r-loc{display:inline-block;border:1px solid var(--acta-rule-faint);border-radius:var(--acta-radius);background:var(--acta-tint);padding:1px 7px;font:11.5px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin:0 4px 4px 0}
+.r-aside{border-left:3px solid var(--acta-positive);background:var(--acta-positive-tint);padding:var(--sp-4) 20px;margin:var(--sp-5) 0;font-size:15px;line-height:1.6;max-width:88ch}
+.r-aside .r-k{color:var(--acta-positive);margin-bottom:6px}
+.r-warn{border-left:3px solid var(--acta-warning);background:var(--acta-warning-tint);padding:var(--sp-4) 20px;margin:var(--sp-5) 0;font-size:15px;line-height:1.6;max-width:88ch}
+.r-warn .r-k{color:var(--acta-warning);margin-bottom:6px}
+
+/* dark code islands (shared with instruments; records print them light) */
+.a2-code{background:var(--acta-code-bg);color:var(--acta-code-ink);border-radius:var(--acta-radius-lg);overflow:hidden}
+.a2-code .c-path{font:500 12px/1.5 var(--acta-font-data);letter-spacing:.02em;color:var(--acta-code-muted);background:var(--acta-code-head);border-bottom:1px solid var(--acta-code-rule);padding:8px 16px}
+.a2-code pre{white-space:pre;word-break:normal;overflow-x:auto;padding:14px 16px;font-size:12.5px;line-height:1.65;tab-size:2}
+.a2-code .tok-kw{color:#E8926F}
+.a2-code .tok-fn{color:#8FB6E3}
+.a2-code .tok-str{color:#A3C293}
+.a2-code .tok-num{color:#D9BC8C}
+.a2-code .tok-com{color:#8A9099;font-style:italic}
+
+/* ---- shared flow diagrams (lib/flow.mjs output) ---- */
+.flowd{display:block;width:100%;height:auto}
+.flowd text{font-family:var(--acta-font-data)}
+.flowd-caption{font:12.5px/1.6 var(--acta-font-data);color:var(--acta-ink-muted);margin:10px 0 0;max-width:90ch}
+
+/* ---- sources & colophon ---- */
+.acta-sources{margin:0;padding-left:1.4em;font:13.5px/1.7 var(--acta-font-ui)}
+.acta-sources li{margin:0 0 6px}
+.acta-colophon{border-top:3px double var(--acta-rule-strong);margin-top:var(--sp-7);padding-top:var(--sp-4)}
+.acta-colophon p{font:12px/1.7 var(--acta-font-data);color:var(--acta-ink-muted);max-width:96ch}
+
+@media (max-width:719px){
+  .acta-prov{flex-direction:column;gap:4px}
+  .r-facts{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:479px){
+  .r-facts{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+@media print{
+  body{background:#fff;font-size:11pt}
+  .skip{display:none!important}
+  .acta-shell{max-width:none;padding:0}
+  .r-fact,.r-table,.r-aside,.r-warn,.a2-code{break-inside:avoid}
+  .a2-code{background:#fff;color:#000;border:1px solid #888}
+  .a2-code .c-path{background:#fff;color:#333;border-bottom:1px solid #888}
+  .a2-code pre{white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere}
+  .a2-code pre span{color:inherit!important;font-style:normal}
+  a[href^="http"]::after{content:" (" attr(href) ")";font:9px/1 var(--acta-font-data);color:#555}
+}
+
+/* ---- interface-directions record topology ---- */
+
+/* ---- interface-directions shared surface ---- */
+/* interface-directions shared surface: the stage frame and the fictional
+   product's own mini design system. Appended to BOTH the instrument topology
+   and the record css so the accepted render never drifts between them. */
+/* ---- stage: identical frame for every direction ---- */
+.ifd-stage{margin:0 0 var(--sp-4);border:1px solid var(--acta-rule);border-radius:var(--acta-radius-lg);overflow:hidden}
+.ifd-stage .s-chrome{display:flex;gap:12px;align-items:center;background:var(--acta-tint);border-bottom:1px solid var(--acta-rule-faint);padding:9px 14px}
+.ifd-stage .s-dots{display:inline-flex;gap:5px}
+.ifd-stage .s-dots i{width:9px;height:9px;border-radius:50%;background:var(--acta-rule)}
+.ifd-stage .s-url{font:12px/1.4 var(--acta-font-data);color:var(--acta-ink-muted)}
+.ifd-stage .s-canvas{background:#FFFFFF;padding:40px clamp(20px,6vw,72px);min-height:230px;display:flex;align-items:center;justify-content:center}
+
+/* ---- the fictional product's own design system (neutral, non-Acta) ---- */
+.mk{--mk-radius:8px;--mk-pill:999px;width:100%;max-width:560px;font-family:var(--acta-font-ui)}
+.mk-quiet,.mk-suggest{text-align:center}
+.mk-headline{font:600 17px/1.4 var(--acta-font-ui);color:#26282E;margin:0}
+.mk-body{font:14px/1.6 var(--acta-font-ui);color:#6B6F78;margin:8px 0 0}
+.mk-action{display:inline-block;border:1px solid #C9CCD2;border-radius:var(--mk-radius);background:#fff;color:#26282E;font:600 13px/1.2 var(--acta-font-ui);padding:9px 16px;margin-top:18px}
+.mk-action.mk-inline{margin:0 0 0 10px;padding:4px 12px;font-size:12px}
+.mk-chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:16px 0 0}
+.mk-chip{border:1px solid #D7DAE0;border-radius:var(--mk-pill);background:#F4F5F7;color:#4A4E58;font:500 12.5px/1.6 var(--acta-font-data);padding:3px 12px}
+.mk-dimmed{max-width:none}
+.mk-notice{background:#FBF4E4;border:1px solid #E8D9AE;border-radius:var(--mk-radius);color:#6B5A1E;font:500 13.5px/1.5 var(--acta-font-ui);padding:10px 14px;margin:0 0 14px;text-align:left}
+.mk-catalog{opacity:.45}
+.mk-row{display:flex;justify-content:space-between;gap:16px;align-items:baseline;border-bottom:1px solid #ECEDEF;padding:10px 2px}
+.mk-row:last-child{border-bottom:0}
+.mk-name{font:500 14px/1.5 var(--acta-font-ui);color:#26282E}
+.mk-tags{display:inline-flex;gap:6px}
+.mk-tags i{font:11.5px/1.6 var(--acta-font-data);font-style:normal;color:#6B6F78;background:#F4F5F7;border-radius:var(--mk-pill);padding:1px 9px}
+
+</style>
+</head>
+<body>
+<a class="skip" href="#acta-content">Skip to content</a>
+<div class="acta-shell">
+<header>
+<dl class="acta-prov">
+<div><dt>Artifact</dt><dd>Interface directions — accepted record</dd></div>
+<div><dt>Skill</dt><dd>interface-directions</dd></div>
+<div><dt>Initiative</dt><dd>tag-filter</dd></div>
+<div><dt>Status</dt><dd>approved</dd></div>
+<div><dt>Source revision</dt><dd>a8b083705553550eda289ddf9cf1d028df907682</dd></div>
+</dl>
+<p class="acta-prov-note">Acta v0.2.0-pilot record · Generated from accepted canonical state (decisions/tag-filter-empty-state.md) after explicit acceptance (chat 2026-07-23 — candidate pasted and confirmed after comparing all three rendered directions) · Never generated from browser state.</p>
+<div class="acta-context">
+<p class="acta-eyebrow">decision record · <span class="acta-stamp is-approved">ACCEPTED</span></p>
+<h1 class="acta-title">Empty tag-filter result: Explain and suggest (direction B)</h1>
+<p class="acta-lede">With all three directions rendered against the identical five-skill dataset, direction B was accepted: it explains why the result is empty and turns the miss into navigation via real tag chips, at a bounded maintenance cost.</p>
+</div>
+</header>
+<main id="acta-content">
+
+<section class="acta-section" aria-labelledby="decision-title">
+<h2 id="decision-title" class="acta-h2">Accepted direction</h2>
+<div class="r-aside"><span class="r-k">Decision empty-state-direction</span>
+<p><strong>Explain and suggest</strong> — An empty result is a navigation moment — say why it is empty and show where the catalog actually is.</p>
+<p>Rationale: B is the only direction that gives the user somewhere to go; chips derive from visibleSkills() so they cannot drift from the real tag set.. Accepted via chat 2026-07-23 — explicit confirmation of the pasted candidate.</p>
+</div>
+<figure class="ifd-stage">
+<figcaption class="s-chrome"><span class="s-url">skills catalog — ?tag=deploy — accepted render</span></figcaption>
+<div class="s-canvas">
+<div class="mk mk-suggest">
+<p class="mk-headline">Nothing is tagged “deploy” yet</p>
+<p class="mk-body">The catalog covers 5 skills across these tags:</p>
+<div class="mk-chips"><span class="mk-chip">git</span><span class="mk-chip">review</span><span class="mk-chip">tests</span><span class="mk-chip">docs</span></div>
+<span class="mk-action">Clear filter</span>
+</div>
+</div>
+</figure>
+<p>Question decided: Which visual direction should the empty tag-filter result take?</p>
+</section>
+<section class="acta-section" aria-labelledby="matrix-title">
+<h2 id="matrix-title" class="acta-h2">Comparison evidence</h2>
+<div class="tablewrap"><table class="r-table">
+<caption class="visually-hidden">Same dimensions, all directions, as compared before acceptance</caption>
+<thead><tr><th scope="col">Dimension</th><th scope="col">Quiet text</th><th scope="col">Explain and suggest</th><th scope="col">Catalog stays visible</th></tr></thead>
+<tbody>
+<tr><th scope="row">Answers “why is this empty?”</th><td>Partly — states the miss, not the shape of the catalog</td><td>Yes — names the tag set explicitly</td><td>Yes — the visible inventory is the answer</td></tr>
+<tr><th scope="row">Keeps the user oriented</th><td>No — canvas goes blank</td><td>Partly — map of tags, but list is gone</td><td>Yes — list never leaves the screen</td></tr>
+<tr><th scope="row">Copy and maintenance weight</th><td>Yes — one sentence</td><td>Partly — chips must mirror real tags</td><td>No — notice + dim state + contrast audit</td></tr>
+<tr><th scope="row">No-JS parity</th><td>Yes — static text</td><td>Yes — chips are plain links</td><td>Yes — server renders the same dimmed list</td></tr>
+<tr><th scope="row">Holds at 320px</th><td>Yes — single column text</td><td>Yes — chips wrap to two rows</td><td>Partly — notice pushes the list below the fold</td></tr>
+</tbody>
+</table></div>
+</section>
+<section class="acta-section" aria-labelledby="rejected-title">
+<h2 id="rejected-title" class="acta-h2">Rejected directions — preserved</h2>
+
+<article>
+<h3 class="acta-h3">Quiet text</h3>
+<p>An empty result is a non-event — the calmest possible sentence and one exit, nothing else.</p>
+<p><strong>Would win when:</strong></p>
+<ul><li>smallest possible surface; nothing to maintain</li><li>reads instantly at 320px</li><li>no new visual vocabulary</li></ul>
+<p><strong>Cost that lost the comparison:</strong></p>
+<ul><li>gives no sense of what the catalog does contain</li><li>dead end unless the user notices the one action</li></ul>
+</article>
+
+<article>
+<h3 class="acta-h3">Catalog stays visible</h3>
+<p>Never blank the canvas — keep the full inventory in sight, dimmed, and mark the miss inline.</p>
+<p><strong>Would win when:</strong></p>
+<ul><li>user never loses orientation or scroll position</li><li>the inventory itself advertises valid tags</li></ul>
+<p><strong>Cost that lost the comparison:</strong></p>
+<ul><li>dimmed rows read as disabled controls to some users</li><li>notice + dimming is the heaviest treatment of the three</li><li>harder to keep accessible — dimmed text must stay legible</li></ul>
+</article>
+</section>
+<section class="acta-section" aria-labelledby="unresolved-title">
+<h2 id="unresolved-title" class="acta-h2">Unresolved at acceptance</h2>
+<ul><li>chip ordering (alphabetical vs frequency) once real usage exists</li><li>whether the clear-filter action reads better as a link than a button</li></ul>
+</section>
+</main>
+<section id="acta-sources" class="acta-section"><h2 class="acta-h2">Sources</h2><ol class="acta-sources">
+<li>[E1] index.html — current catalog markup</li>
+<li>[E2] spec.md — tag-filter scope and non-goals</li>
+<li>[E3] STOP-01 resolution — unknown tags stay empty, no remote suggestions</li>
+</ol></section>
+<footer class="acta-colophon"><p>Acta is a print-first engineering record. Fact = directly supported; Inference = reasoned from evidence; Simplification = deliberately reduced model. This record renders accepted canonical state only; open decisions live in the companion instrument.</p></footer>
+</div>
+</body>
+</html>

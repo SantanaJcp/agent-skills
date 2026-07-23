@@ -1,0 +1,24 @@
+{
+  "acta_protocol": "0.2",
+  "payload": "candidate",
+  "artifact_kind": "process-flow",
+  "producer_skill": "draw-the-flow",
+  "initiative": "tag-filter",
+  "instrument": "decision",
+  "status": "candidate-ready",
+  "source_revision": "a8b083705553550eda289ddf9cf1d028df907682",
+  "inputs": [
+    "src/app.mjs — renderFromUrl and popstate wiring",
+    "src/catalog.mjs — filterByTag",
+    "src/url-tag.mjs — parseTagFromSearch",
+    "interface-directions record — accepted empty state"
+  ],
+  "unresolved": [
+    "whether chip-click interception (slice 5 open question) changes the recovery path"
+  ],
+  "selection": {
+    "option": "confirm-accurate",
+    "label": "The flow is accurate",
+    "rationale": "Walked each edge against the glue code; the branch and both exits match."
+  }
+}
