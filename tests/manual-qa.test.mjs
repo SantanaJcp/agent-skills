@@ -124,11 +124,11 @@ test("evaluator can prepare isolated manual-QA harnesses for both clients", asyn
       expectedSkills.filter((name) => name !== "make-me-realize").sort().map((name) => `${name}.html`),
     );
 
-    const baseline = spawnSync("npm", ["test"], {
+    const baseline = spawnSync(process.execPath, ["--test", "test/*.test.mjs"], {
       cwd: harness,
       encoding: "utf8",
     });
-    assert.equal(baseline.status, 0, baseline.stderr);
+    assert.equal(baseline.status, 0, baseline.stderr || baseline.error?.message);
 
     for (const clientRoot of [".agents", ".claude"]) {
       const installed = path.join(harness, clientRoot, "skills");
