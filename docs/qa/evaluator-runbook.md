@@ -39,6 +39,22 @@ Open `with-sidecars/` as the project root in the assigned current stable client.
 
 Run the seven paired cases in `smoke-cases/collisions.yaml` the same way. For Codex sidecar independence, repeat at least one trigger and one adjacent non-trigger per skill from `without-sidecars/`; the portable behavior must not change. Claude Code must not require the sidecar to complete any case.
 
+### Automated CLI isolation
+
+When collecting activation evidence through a CLI, run every prompt in a
+**fresh disposable copy** of the selected harness. Remove prior `.agent-work`
+state by discarding the copy, not by reusing a conversation. Keep project
+skills enabled while excluding personal instructions, plugins, hooks, and
+memory that could select a skill or leak prior answers:
+
+- Codex: use `codex exec --ephemeral --ignore-user-config --skip-git-repo-check ...`.
+- Claude Code: use `claude -p --no-session-persistence --setting-sources project ...`.
+
+Give the client only the tool permissions required to read and write the
+synthetic harness. A permission denial is invalid test setup, not a skill
+failure. Record the complete command, client settings, activated skill, and
+protocol/reference reads in the evidence file.
+
 ## 4. Six-stage core cycle
 
 Open a fresh copy of the applicable harness and follow `SCENARIO.md` unchanged. Invoke the six core skills in order when the scenario calls for them. Record:

@@ -141,6 +141,10 @@ test("evaluator can prepare isolated manual-QA harnesses for both clients", asyn
       true,
     );
     assert.equal(await exists(path.join(harness, "EVALUATOR-RUNBOOK.md")), true);
+    const runbook = await readFile(path.join(harness, "EVALUATOR-RUNBOOK.md"), "utf8");
+    assert.match(runbook, /--ignore-user-config/);
+    assert.match(runbook, /--setting-sources project/);
+    assert.match(runbook, /fresh disposable copy/i);
     assert.equal(await exists(path.join(harness, "EVIDENCE-TEMPLATE.md")), true);
     assert.deepEqual(
       (await readdir(path.join(harness, "smoke-cases")))
