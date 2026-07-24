@@ -5,7 +5,9 @@ Status: promoted-with-deferred-browser-and-accessibility-evidence
 Active artifact system: Acta v2 `0.2.0`. Acta `0.1.0` remains bundled as a
 compatibility fallback; Acta v2 is authoritative.
 
-This report is the blocking manual record for the initial fifteen-skill promotion cohort. Deterministic checks do not replace the evidence below.
+This is the versioned promotion record for the initial fifteen-skill cohort.
+Deterministic checks do not replace the evidence below, and the deferred rows
+remain historical facts after publication.
 
 ## Evaluation preparation
 
@@ -15,7 +17,12 @@ Prepare isolated, revision-stamped projects with:
 npm run qa:prepare -- --destination ../agent-skills-manual-qa
 ```
 
-Follow [the evaluator runbook](evaluator-runbook.md). Each reviewer starts from [the evidence template](evidence/template.md) and submits one raw record under `docs/qa/evidence/`; the evidence integrator updates this report only after reviewing those records. A code fix invalidates affected evidence until it is rerun against the new full source revision.
+Follow [the evaluator runbook](evaluator-runbook.md). Each reviewer starts from
+[the evidence template](evidence/template.md) and submits one sanitized final
+summary under `docs/qa/evidence/`; raw logs and captures stay outside the
+repository. The evidence integrator updates this report only after reviewing
+those summaries. A code fix invalidates affected evidence until it is rerun
+against the new full source revision.
 
 ## Client activation matrix
 
@@ -80,12 +87,14 @@ Verify offline `file://`, no-JS reading, clipboard fallback, disclosures, quiz/e
 The owner explicitly deferred the browser and assistive-technology matrices for
 the initial promotion on 2026-07-23. This is a transparent waiver, not a claim
 that those surfaces passed. Windows authoring CI remains required and passed.
+[GitHub Issue #8](https://github.com/SantanaJcp/agent-skills/issues/8) is the
+public successor for this deferred work.
 
 ## Promotion verdict
 
 **Pass under explicit owner waiver.** Client activation and the full core cycle
 passed in Codex and Claude Code, deterministic checks passed on Linux and
 Windows, and the owner authorized the initial cohort promotion while deferring
-browser and accessibility evidence. All fifteen skills may move to `skills/`
-and Acta v2 `0.2.0` becomes the authoritative artifact system. The remote API
-expansion remains rejected.
+browser and accessibility evidence. All fifteen skills were subsequently moved
+to `skills/`, release `v1.0.0` was published, and Acta v2 `0.2.0` became the
+authoritative artifact system. The remote API expansion remains rejected.

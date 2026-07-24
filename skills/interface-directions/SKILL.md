@@ -12,7 +12,7 @@ metadata:
 
 Resolve a product-interface direction before implementation planning. Acta frames the report; it must not make the candidate interfaces look alike.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (shared dataset, three direction mockups, tradeoffs, matrix, recommendation) and run [the bundled generator](references/acta2/generate-instrument.mjs); after acceptance, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs). [instrument.html](references/instrument.html) and [record.html](references/record.html) are rendered examples. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains only as rollback until the v2 migration is approved.
+Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (shared dataset, three direction mockups, tradeoffs, matrix, recommendation) and run [the bundled generator](references/acta2/generate-instrument.mjs); after acceptance, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs). [instrument.html](references/instrument.html) and [record.html](references/record.html) are rendered examples. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains bundled as the published compatibility fallback; Acta v2 is authoritative.
 
 ## Process
 

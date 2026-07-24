@@ -91,19 +91,11 @@ Preserved failures remain valid observations against their recorded revisions, b
 | `do-i-understand-this` trigger 1 timed out during inspection. | `c24c366` supplement verified no implementation/diff existed and produced an evidence-backed STOP. | **PASS** |
 | `draw-the-flow` trigger 1 timed out after only a textual draft. | `c24c366` supplement produced `flow.md`, `scenario.json`, and `instrument.html`. | **PASS** |
 
-## Evidence index
+## Evidence retention
 
-- Initial 69-case routing record: `/tmp/acta-claude-full-activation.md`
-- Initial routing raw state/logs: `/tmp/acta-claude-full-logs/state.json`, `/tmp/acta-claude-full-logs/`
-- Seven ambiguous-case full rerun: `/tmp/acta-claude-issue-reruns.md`, `/tmp/acta-claude-issue-rerun-logs/`
-- `f22954b` routing-fix validation: `/tmp/acta-claude-routing-f22954b.md`, `/tmp/acta-claude-routing-f22954b-logs/`
-- `b10e7d8` final routing case: `/tmp/acta-claude-routing-b10e7d8.md`, `/tmp/acta-claude-routing-b10e7d8-logs/`
-- Consolidated 30-case behavior audit: `/tmp/acta-claude-trigger-behavior-consolidated.md`, `/tmp/acta-claude-trigger-behavior-consolidated.json`
-- `c24c366` supplements:
-  - `/tmp/acta-claude-c24c366-svg-logs/`
-  - `/tmp/acta-claude-concept-lab-long-c24c366-logs/`
-  - `/tmp/acta-claude-do-i-understand-this-long-c24c366-logs/`
-  - `/tmp/acta-claude-draw-the-flow-long-c24c366-logs/`
+This file is the sanitized public summary. Raw event streams, disposable
+copies, and command logs were intentionally kept outside the repository and are
+not part of the public product or release contract.
 
 ## Scope limitations
 
@@ -113,5 +105,7 @@ This record does **not** claim completion of:
 - browser/offline/interaction/print/PDF testing;
 - keyboard, 400% zoom, reduced-motion, monochrome, VoiceOver, or NVDA accessibility testing.
 
-Those remain separate promotion gates. The PASS verdict here is limited to Claude Code skill routing, collision handling, sidecar independence, and isolated trigger behavior.
-
+Those remain separate validation surfaces tracked in
+[GitHub Issue #8](https://github.com/SantanaJcp/agent-skills/issues/8). The PASS
+verdict here is limited to Claude Code skill routing, collision handling,
+sidecar independence, and isolated trigger behavior.

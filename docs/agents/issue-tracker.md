@@ -1,28 +1,33 @@
-# Issue tracker: Local Markdown
+# Issue tracker: GitHub Issues
 
-Issues and specs for this repository live as Markdown files in `.scratch/`.
-
-## Conventions
-
-- One feature per directory: `.scratch/<feature-slug>/`
-- The spec is `.scratch/<feature-slug>/spec.md`
-- Implementation issues are stored individually at `.scratch/<feature-slug>/issues/<NN>-<slug>.md`
-- Triage state is recorded as a `Status:` line near the top
-- Comments append under a `## Comments` heading
+GitHub Issues is the canonical public tracker for repository work, including
+deferred validation, defects, and proposed skills. Accepted architecture and
+policy decisions live in `docs/adr/`; an issue links those durable documents
+rather than replacing them.
 
 ## Publishing
 
-When a skill says “publish to the issue tracker,” create the appropriate file under `.scratch/<feature-slug>/`.
+- Search existing open and closed issues before creating one.
+- Use a specific title, observable acceptance criteria, and repository-relative
+  file references.
+- Apply one of the canonical triage labels from
+  [triage-labels.md](triage-labels.md); do not invent an equivalent label.
+- Link blocking or superseding issues explicitly.
+- Keep credentials, private repository details, raw model logs, captures, and
+  machine-local paths out of issue bodies and comments.
 
-## Fetching
+When a skill says “publish to the issue tracker,” create or update the relevant
+GitHub Issue and return its URL.
 
-Read the referenced local file directly. Users will normally provide its path or issue number.
+## Local drafts
 
-## Wayfinding
+`.scratch/` may be used for disposable private notes while preparing an issue.
+It is ignored and must never be committed, linked as durable evidence, or
+treated as the source of truth. Delete local drafts after publishing or move
+long-lived private notes to a user-owned location outside this repository.
 
-- Map: `.scratch/<effort>/map.md`
-- Child ticket: `.scratch/<effort>/issues/<NN>-<slug>.md`
-- Record `Type:` and `Status:` near the top
-- Record dependencies as `Blocked by: NN, NN`
-- Claim work by changing its status to `claimed`
-- Resolve work by adding an `## Answer`, changing its status to `resolved`, and updating the map
+## Resolution
+
+Close an issue only when its acceptance criteria are met or a maintainer records
+an explicit `wontfix` decision. Mergeable implementation details belong in the
+pull request; stable decisions and contracts belong in repository documentation.

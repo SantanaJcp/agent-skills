@@ -12,7 +12,7 @@ metadata:
 
 Produce vector figures that work both inside an Acta sheet and as independent SVG files.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: author every figure as constrained vector data in `scenario.json` (whitelisted elements only — real drawing, no markup sink; each figure carries its own title, description, and caption) and run [the bundled generator](references/acta2/generate-instrument.mjs); the sheet takes an explicit per-figure verdict, and after acceptance `canonical.json` + [the record generator](references/acta2/generate-record.mjs) emit the accepted figure sheet. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains only as rollback until the v2 migration is approved.
+Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: author every figure as constrained vector data in `scenario.json` (whitelisted elements only — real drawing, no markup sink; each figure carries its own title, description, and caption) and run [the bundled generator](references/acta2/generate-instrument.mjs); the sheet takes an explicit per-figure verdict, and after acceptance `canonical.json` + [the record generator](references/acta2/generate-record.mjs) emit the accepted figure sheet. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains bundled as the published compatibility fallback; Acta v2 is authoritative.
 
 ## Process
 

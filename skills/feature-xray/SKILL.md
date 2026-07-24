@@ -12,7 +12,7 @@ metadata:
 
 Produce a verifiable operational explanation of an existing feature without modifying it.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). The X-ray is a **record-only** artifact — nothing in it changes with human action, so it carries no controls. Write `scenario.json` (TL;DR, system-map nodes/edges, evidence-located steps, usage snippet, gotchas, FAQ) and, after the explanation is verified and accepted in chat, `canonical.json`; generate the record with [the bundled generator](references/acta2/generate-record.mjs). [record.html](references/record.html) is a rendered example. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains only as rollback until the v2 migration is approved.
+Read [the Acta v2 protocol](references/acta2-protocol.md). The X-ray is a **record-only** artifact — nothing in it changes with human action, so it carries no controls. Write `scenario.json` (TL;DR, system-map nodes/edges, evidence-located steps, usage snippet, gotchas, FAQ) and, after the explanation is verified and accepted in chat, `canonical.json`; generate the record with [the bundled generator](references/acta2/generate-record.mjs). [record.html](references/record.html) is a rendered example. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains bundled as the published compatibility fallback; Acta v2 is authoritative.
 
 ## Process
 

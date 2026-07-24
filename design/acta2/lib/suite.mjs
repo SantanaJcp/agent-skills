@@ -8,7 +8,7 @@
  *   instruments variant ids; "default" maps to unsuffixed filenames
  *               (scenario.json / instrument.html), any other id maps to
  *               scenario-<id>.json / instrument-<id>.html
- *   record      "v1" (Acta 0.1 record css — approved pilots), "v2"
+ *   record      "v1" (Acta 0.1 record css — original pilot cohort), "v2"
  *               (design/acta2/record.css + records/<name>.css), or null
  *   candidateVariant which variant's scenario feeds the candidate fixture
  *   workingFixture   fixtures/<name>/working.json feeds the candidate when
@@ -43,5 +43,5 @@ export function variantSuffix(variant) {
   return variant === "default" ? "" : `-${variant}`;
 }
 
-/** The approved three-skill pilot cohort (byte-stability guarantees). */
+/** Historical three-skill pilot cohort retained for byte-stability checks. */
 export const PILOTS = ["three-code-paths", "build-with-notes", "concept-lab"];

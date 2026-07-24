@@ -12,7 +12,7 @@ metadata:
 
 Create the smallest disposable prototype that lets the user feel a behavior and decide. The output is evidence, not production code.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). The prototype is **instrument-only and disposable by design** — no durable record exists. Write `scenario.json` (playground dataset, feel parameters, toggles) and run [the bundled generator](references/acta2/generate-instrument.mjs); only the parameters and the felt conclusion export, via the candidate the human confirms in chat. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains only as rollback until the v2 migration is approved.
+Read [the Acta v2 protocol](references/acta2-protocol.md). The prototype is **instrument-only and disposable by design** — no durable record exists. Write `scenario.json` (playground dataset, feel parameters, toggles) and run [the bundled generator](references/acta2/generate-instrument.mjs); only the parameters and the felt conclusion export, via the candidate the human confirms in chat. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains bundled as the published compatibility fallback; Acta v2 is authoritative.
 
 ## Process
 

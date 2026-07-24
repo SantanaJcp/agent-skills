@@ -12,7 +12,7 @@ metadata:
 
 Test whether the user understands why a real change works, where it stops working, and how to operate or reverse it. This is diagnostic learning, never approval or merge policy.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (diff facts, before/after mental-model flows, evidence cards, questions with answers/explanations/gap names) and run [the bundled generator](references/acta2/generate-instrument.mjs); after the gaps export is confirmed, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs). The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains only as rollback until the v2 migration is approved.
+Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (diff facts, before/after mental-model flows, evidence cards, questions with answers/explanations/gap names) and run [the bundled generator](references/acta2/generate-instrument.mjs); after the gaps export is confirmed, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs). The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains bundled as the published compatibility fallback; Acta v2 is authoritative.
 
 ## Process
 

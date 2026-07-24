@@ -1,4 +1,4 @@
-<!-- acta2-materialized: v0.2.0 instrument=change-blueprint sha256=c1113760edaf2f5b684a001b293d80a044434fc2a2ea1b49c548713968b44301; do not edit by hand — regenerate from scenario JSON -->
+<!-- acta2-materialized: v0.2.0 instrument=change-blueprint sha256=cd1f74b25faacfef429511b57c82603ce83813dc21c93dfe1eea2740967c7e00; do not edit by hand — regenerate from scenario JSON -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Change blueprint — implementation plan — instrument · Acta v2</title>
 <style>
-/* Acta v2 pilot — shared technical primitives.
+/* Acta v2 — shared technical primitives.
    Layout topology is deliberately absent: each instrument ships its own
    topology.css. This file carries only tokens, safety, accessibility,
    disclosure, trust strip, export panel, print, and reflow contracts.
@@ -166,7 +166,7 @@ body[data-acta2-ready="true"] .a2-jsnote{display:none}
    Gate A (spec): scope vs non-goals side by side, numbered acceptance
    criteria, assumptions. Gate B (plan): slice timeline, data-flow diagram,
    risky code island, risks table, tests/rollout. Both close with the same
-   deliberate resolution gate; visual grammar follows the approved pilots. */
+   deliberate resolution gate; visual grammar follows the original pilot cohort. */
 .cb-question{font:400 32px/1.25 var(--acta-font-text);margin:var(--sp-6) 0 var(--sp-3);max-width:46ch}
 .cb-lede{font-size:15.5px;line-height:1.6;color:var(--acta-ink-muted);margin:0 0 var(--sp-5);max-width:70ch}
 
@@ -622,7 +622,7 @@ body[data-acta2-ready="true"] .a2-jsnote{display:none}
 }</script>
 <script>
 /*
- * Acta v2 pilot — pure state/export core.
+ * Acta v2 — pure state/export core.
  *
  * One source of truth for: status derivation, per-kind derived consequences,
  * and candidate export building (Markdown + JSON). This file runs in two
@@ -795,7 +795,7 @@ function deriveStatus(data, working) {
     case "decision":
       if (working.selected) return INSTRUMENT_STATUSES["candidate-ready"];
       /* Scenario-provided open label keeps gate/direction/flow decisions
-         honest without changing the pilots' wording. */
+         honest without changing the original scenario wording. */
       return data.openStatusLabel
         ? { code: "open-unselected", label: data.openStatusLabel }
         : INSTRUMENT_STATUSES["open-unselected"];
@@ -1513,7 +1513,7 @@ function buildCandidate(data, working) {
 
 /* ESM exports stripped for inline use */
 
-/* Acta v2 pilot — shared instrument runtime.
+/* Acta v2 — shared instrument runtime.
    Inlined after export-core; expects the core functions in scope
    (initialWorking, deriveStatus, buildCandidate, deriveBackoff,
    deriveCounts, filterEntries).

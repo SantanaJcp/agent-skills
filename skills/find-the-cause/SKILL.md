@@ -12,7 +12,7 @@ metadata:
 
 Produce an evidence-backed diagnosis and fix direction, not a production fix. Temporary diagnostic mutations are allowed and must be cleaned.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (symptom facts, causal map, hypotheses each with predicts/probe/observed/evidence, verdict vocabulary) and run [the bundled generator](references/acta2/generate-instrument.mjs); the human judges every hypothesis — nothing auto-eliminates — and after the diagnosis is confirmed in chat, `canonical.json` + [the record generator](references/acta2/generate-record.mjs) emit the diagnosis record. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains only as rollback until the v2 migration is approved.
+Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (symptom facts, causal map, hypotheses each with predicts/probe/observed/evidence, verdict vocabulary) and run [the bundled generator](references/acta2/generate-instrument.mjs); the human judges every hypothesis — nothing auto-eliminates — and after the diagnosis is confirmed in chat, `canonical.json` + [the record generator](references/acta2/generate-record.mjs) emit the diagnosis record. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains bundled as the published compatibility fallback; Acta v2 is authoritative.
 
 ## Process
 

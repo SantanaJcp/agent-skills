@@ -12,7 +12,7 @@ metadata:
 
 Produce two separately approvable canonical artifacts: `spec.md` for product intent and `implementation-plan.md` for execution.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario-spec.json` (Gate A) or `scenario-plan.json` (Gate B) and run [the bundled generator](references/acta2/generate-instrument.mjs); after both gates are accepted, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs). [instrument-spec.html](references/instrument-spec.html), [instrument-plan.html](references/instrument-plan.html), and [record.html](references/record.html) are rendered examples. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains only as rollback until the v2 migration is approved.
+Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario-spec.json` (Gate A) or `scenario-plan.json` (Gate B) and run [the bundled generator](references/acta2/generate-instrument.mjs); after both gates are accepted, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs). [instrument-spec.html](references/instrument-spec.html), [instrument-plan.html](references/instrument-plan.html), and [record.html](references/record.html) are rendered examples. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains bundled as the published compatibility fallback; Acta v2 is authoritative.
 
 ## Readiness
 

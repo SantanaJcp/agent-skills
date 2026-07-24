@@ -31,6 +31,8 @@ This repository publishes one bundle-first development system of portable Agent 
 5. Markdown/JSON owns state; HTML never writes canonical files or hides persistent browser state.
 6. Human stage transitions, decisions, publication, and commit remain explicit.
 7. Installed bundles remain auditable: no symlinks, secrets, opaque executables, remote runtime assets, or unattributed media.
-8. `npm run check` is the deterministic acceptance seam; manual client/browser/accessibility evidence remains a promotion gate.
+8. `npm run check` is the deterministic acceptance seam; manual client,
+   browser, and accessibility evidence remains required promotion evidence
+   unless a versioned ADR records an explicit, visible waiver.
 
 The portable publisher decision is [ADR 0001](docs/adr/0001-portable-skill-publisher.md). The Acta suite decision is [ADR 0002](docs/adr/0002-acta-development-suite.md). The Acta v2 instrument/record pilot is preserved in [ADR 0003](docs/adr/0003-acta-v2-instrument-record-pilot.md); its complete-suite generalization is [ADR 0004](docs/adr/0004-acta-v2-suite-generalization.md), and its stable promotion is [ADR 0005](docs/adr/0005-promote-acta-v2-suite.md).
