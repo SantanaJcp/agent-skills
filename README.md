@@ -2,7 +2,7 @@
 
 A bundle-first, Apache-2.0 development system of fifteen portable [Agent Skills](https://agentskills.io/) for current stable Codex and Claude Code.
 
-> **Pre-release:** all fifteen skills are incubating. None carries the stable compatibility promise until the complete suite passes the joint client, browser, and accessibility gates.
+> **Stable:** all fifteen skills are promoted for current Codex and Claude Code. Acta v2 is the authoritative offline artifact system.
 
 ## Install the complete suite
 
@@ -56,7 +56,7 @@ Requirements: Node `>=22.20.0` and npm.
 npm ci
 npm run new:skill -- my-skill
 npm run acta
-npm run acta2   # Acta v2 suite candidate (see ADR 0004)
+npm run acta2   # authoritative Acta v2 suite
 npm run catalog
 npm run check
 # For assigned manual evaluation:
@@ -75,4 +75,4 @@ Skills execute with the invoking client's permissions. Review instructions, scri
 
 The repository is published from the personal `SantanaJcp` account with protected `main`, required Linux/Windows CI, squash merges, a maintainer emergency bypass, and private vulnerability reporting.
 
-The first public release will be `v1.0.0` only after the fifteen-skill cohort is promoted. This repository prepares but does not automatically dispatch that release.
+The initial cohort is promoted and published as `v1.0.0`.

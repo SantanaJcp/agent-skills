@@ -161,7 +161,7 @@ function validateHtmlSafety(source, location) {
 /** @param {string} source @param {string} location @param {string} name
  * @param {{ fixture: boolean }} options */
 function validateInstrument(source, location, name, options) {
-  if (!new RegExp(`^<!-- acta2-materialized: v0\\.2\\.0-pilot instrument=${name} sha256=[a-f0-9]{64}; do not edit by hand[^>]*-->`).test(source)) {
+  if (!new RegExp(`^<!-- acta2-materialized: v0\\.2\\.0 instrument=${name} sha256=[a-f0-9]{64}; do not edit by hand[^>]*-->`).test(source)) {
     errors.push(`${location}: invalid materialization marker.`);
   }
   const document = validateHtmlSafety(source, location);
@@ -282,7 +282,7 @@ function validateInstrument(source, location, name, options) {
 
 /** @param {string} source @param {string} location @param {string} name */
 function validateRecord(source, location, name) {
-  if (!new RegExp(`^<!-- acta2-materialized: v0\\.2\\.0-pilot record=${name} sha256=[a-f0-9]{64}; do not edit by hand[^>]*-->`).test(source)) {
+  if (!new RegExp(`^<!-- acta2-materialized: v0\\.2\\.0 record=${name} sha256=[a-f0-9]{64}; do not edit by hand[^>]*-->`).test(source)) {
     errors.push(`${location}: invalid materialization marker.`);
   }
   const document = validateHtmlSafety(source, location);
@@ -320,9 +320,9 @@ for (const skill of SUITE) {
     ...(hasInstrument ? INSTRUMENT_BUNDLE_FILES : []),
     ...(skill.record ? RECORD_BUNDLE_FILES : []),
   ];
-  const referencesRoot = `incubator/${name}/references`;
+  const referencesRoot = `skills/${name}/references`;
   const protocol = await readFile(path.join(root, referencesRoot, "acta2-protocol.md"), "utf8");
-  if (!/^<!-- acta2-materialized: v0\.2\.0-pilot protocol sha256=[a-f0-9]{64}; do not edit by hand -->/.test(protocol)) {
+  if (!/^<!-- acta2-materialized: v0\.2\.0 protocol sha256=[a-f0-9]{64}; do not edit by hand -->/.test(protocol)) {
     errors.push(`${referencesRoot}/acta2-protocol.md: invalid materialization marker.`);
   }
 

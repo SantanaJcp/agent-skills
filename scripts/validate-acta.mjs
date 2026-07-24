@@ -127,7 +127,7 @@ function validateVisualContracts(source, location) {
 }
 
 for (const name of htmlSkills) {
-  const location = `incubator/${name}/references/acta-scaffold.html`;
+  const location = `skills/${name}/references/acta-scaffold.html`;
   const source = await readFile(path.join(root, location), "utf8");
   const document = parse(source, { sourceCodeLocationInfo: true });
   validateVisualContracts(source, location);
@@ -174,7 +174,7 @@ for (const name of htmlSkills) {
 
 const protocolCopies = [];
 for (const name of skills) {
-  const location = `incubator/${name}/references/acta-protocol.md`;
+  const location = `skills/${name}/references/acta-protocol.md`;
   const source = await readFile(path.join(root, location), "utf8");
   protocolCopies.push(source);
   if (!/^<!-- acta-materialized: v0\.1\.0 protocol sha256=[a-f0-9]{64}; do not edit by hand -->/.test(source)) errors.push(`${location}: invalid materialization marker.`);

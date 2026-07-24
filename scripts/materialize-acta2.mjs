@@ -11,10 +11,10 @@
  * of static HTML.
  *
  * Per skill (role-dependent, see the manifest) it emits deterministically:
- *   incubator/<skill>/references/acta2-protocol.md
- *   incubator/<skill>/references/acta2/            (generator bundle)
- *   incubator/<skill>/references/instrument[-variant].html (scaffold)
- *   incubator/<skill>/references/record.html               (scaffold)
+ *   skills/<skill>/references/acta2-protocol.md
+ *   skills/<skill>/references/acta2/            (generator bundle)
+ *   skills/<skill>/references/instrument[-variant].html (scaffold)
+ *   skills/<skill>/references/record.html               (scaffold)
  *   tests/fixtures/acta2/<skill>/scenario[-variant].json
  *   tests/fixtures/acta2/<skill>/instrument[-variant].html
  *   tests/fixtures/acta2/<skill>/canonical.json|md · record.html
@@ -62,7 +62,7 @@ async function readOptional(relative) {
 }
 
 const version = (await read("VERSION")).trim();
-if (version !== "0.2.0-pilot") {
+if (version !== "0.2.0") {
   throw new Error(`Unsupported Acta v2 version ${version}.`);
 }
 const protocol = await read("protocol.md");
@@ -125,7 +125,7 @@ let recordCount = 0;
 for (const skill of SUITE) {
   const name = skill.name;
   const hasInstrument = skill.instruments.length > 0;
-  const referencesRoot = path.join(root, "incubator", name, "references");
+  const referencesRoot = path.join(root, "skills", name, "references");
   await syncFile(path.join(referencesRoot, "acta2-protocol.md"), protocolOutput);
 
   const recordCss =

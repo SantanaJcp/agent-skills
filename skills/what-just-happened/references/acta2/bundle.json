@@ -1,0 +1,7 @@
+{
+  "skill": "what-just-happened",
+  "kind": "dossier",
+  "role": "record-only",
+  "version": "0.2.0",
+  "materializer": "scripts/materialize-acta2.mjs"
+}

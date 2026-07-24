@@ -140,7 +140,7 @@ async function prepareVariant(
     await mkdir(skillRoot, { recursive: true });
     for (const skill of expectedSkills) {
       const target = path.join(skillRoot, skill);
-      await cp(path.join(sourceRoot, "incubator", skill), target, { recursive: true });
+      await cp(path.join(sourceRoot, "skills", skill), target, { recursive: true });
       if (variant === "without-sidecars") {
         await rm(path.join(target, "agents"), { recursive: true, force: true });
       }
@@ -187,7 +187,7 @@ for (const relative of [
   "tests/fixtures/core-cycle-project",
   "tests/smoke/collisions.yaml",
 ]) await requireEntry(relative);
-for (const skill of expectedSkills) await requireEntry(`incubator/${skill}/SKILL.md`);
+for (const skill of expectedSkills) await requireEntry(`skills/${skill}/SKILL.md`);
 
 const revision = resolveRevision();
 const actaVersion = (await readFile(path.join(sourceRoot, "design", "acta", "VERSION"), "utf8")).trim();

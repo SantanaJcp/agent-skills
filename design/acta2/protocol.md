@@ -3,7 +3,7 @@
 This protocol extends the Acta 0.1 artifact protocol for every HTML skill in
 the suite manifest (`design/acta2/lib/suite.mjs`) — piloted by
 `three-code-paths`, `build-with-notes`, and `concept-lab` (ADR 0003) and
-generalized to the full suite as a suite candidate (ADR 0004). Where this file
+generalized to the full suite (ADR 0004), and promoted (ADR 0005). Where this file
 is silent, the Acta 0.1 protocol (workspace, canonical frontmatter, decisions,
 publication) still applies. Markdown/JSON remain the only canonical state.
 Record-only skills (`feature-xray`, `what-just-happened`) skip the instrument

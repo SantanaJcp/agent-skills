@@ -1,10 +1,9 @@
 # Acta v2 suite 0.2.0 promotion evidence
 
-Status: collecting-promotion-evidence
+Status: promoted-with-deferred-browser-and-accessibility-evidence
 
-Active artifact system: Acta v2 `0.2.0-pilot`. Acta `0.1.0` remains bundled
-only as the rollback path until this report passes and the migration is
-explicitly promoted.
+Active artifact system: Acta v2 `0.2.0`. Acta `0.1.0` remains bundled as a
+compatibility fallback; Acta v2 is authoritative.
 
 This report is the blocking manual record for the initial fifteen-skill promotion cohort. Deterministic checks do not replace the evidence below.
 
@@ -64,22 +63,29 @@ gates explicitly rejected the remote-API expansion. No network behavior or new
 dependency entered either implementation. Human diagnostic answer fields remain
 blank, because `do-i-understand-this` is diagnostic rather than an approval gate.
 
-## Browser matrix
+## Browser matrix — explicitly deferred
 
-- Current Chrome: all 13 instruments and all 13 records — Pending
-- Current Safari: every interactive kind, one representative record, and critical interactions — Pending
-- Current Firefox: every interactive kind, one representative record, and critical interactions — Pending
+- Current Chrome: all 13 instruments and all 13 records — Deferred
+- Current Safari: every interactive kind, one representative record, and critical interactions — Deferred
+- Current Firefox: every interactive kind, one representative record, and critical interactions — Deferred
 
 Verify offline `file://`, no-JS reading, clipboard fallback, disclosures, quiz/editor controls, 320px reflow, actual 400% zoom, print/PDF, monochrome meaning, and reduced motion.
 
-## Accessibility
+## Accessibility — explicitly deferred
 
-- Keyboard-only traversal and focus order: Pending
-- VoiceOver representative family pass: Pending
-- NVDA representative family pass: Pending
+- Keyboard-only traversal and focus order: Deferred
+- VoiceOver representative family pass: Deferred
+- NVDA representative family pass: Deferred
 
-Failures block promotion. Windows authoring CI remains required; real-Windows serif rendering is a documented nonblocking risk.
+The owner explicitly deferred the browser and assistive-technology matrices for
+the initial promotion on 2026-07-23. This is a transparent waiver, not a claim
+that those surfaces passed. Windows authoring CI remains required and passed.
 
 ## Promotion verdict
 
-Pending. Do not move any cohort skill to `skills/` or prepare the v1.0.0 release candidate until every blocking row passes.
+**Pass under explicit owner waiver.** Client activation and the full core cycle
+passed in Codex and Claude Code, deterministic checks passed on Linux and
+Windows, and the owner authorized the initial cohort promotion while deferring
+browser and accessibility evidence. All fifteen skills may move to `skills/`
+and Acta v2 `0.2.0` becomes the authoritative artifact system. The remote API
+expansion remains rejected.

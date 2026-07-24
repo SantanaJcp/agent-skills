@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-There is no supported public release yet. After `v1.0.0`, security support covers the latest repository release and current stable Codex, Claude Code, and skills CLI versions documented for that release.
+Security support covers the latest repository release and current stable Codex, Claude Code, and skills CLI versions documented for that release.
 
 ## Report privately
 

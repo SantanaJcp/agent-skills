@@ -3,7 +3,7 @@
  * suite all iterate this list; nothing else may hardcode skill rosters.
  *
  * Fields:
- *   name        skill directory under incubator/
+ *   name        skill directory under skills/
  *   kind        export-core state-machine kind (null only for text-only)
  *   instruments variant ids; "default" maps to unsuffixed filenames
  *               (scenario.json / instrument.html), any other id maps to
