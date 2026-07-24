@@ -53,8 +53,16 @@ All seven committed collision cases passed in both clients. Codex repeated one t
 
 Run the scenario in `tests/fixtures/core-cycle-project/SCENARIO.md` unchanged in current Codex and Claude Code. Record every canonical artifact, gate, handoff, publication boundary, STOP behavior, final diff, and understanding export.
 
-- Codex version and result: Pending
-- Claude Code version and result: Pending
+- [Codex core-cycle evidence](evidence/core-cycle-codex-santana-2026-07-23.md):
+  `codex-cli 0.144.1`, Pass — 25/25 final fixture tests.
+- [Claude Code core-cycle evidence](evidence/core-cycle-claude-santana-2026-07-23.md):
+  Claude Code `2.1.206` / `claude-sonnet-5`, Pass — 11/11 final fixture tests.
+
+Both clients completed the full six-stage flow. The specification and plan gates
+were explicitly approved only inside disposable synthetic projects; both STOP
+gates explicitly rejected the remote-API expansion. No network behavior or new
+dependency entered either implementation. Human diagnostic answer fields remain
+blank, because `do-i-understand-this` is diagnostic rather than an approval gate.
 
 ## Browser matrix
 
