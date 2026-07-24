@@ -103,7 +103,13 @@ async function copyDirectoryContents(source, destination) {
   }
 }
 
-async function prepareVariant(stagingRoot, variant, revision, actaVersion) {
+async function prepareVariant(
+  stagingRoot,
+  variant,
+  revision,
+  actaVersion,
+  acta2Version,
+) {
   const harness = path.join(stagingRoot, variant);
   await mkdir(harness, { recursive: true });
   await copyDirectoryContents(
@@ -111,7 +117,7 @@ async function prepareVariant(stagingRoot, variant, revision, actaVersion) {
     harness,
   );
   await cp(
-    path.join(sourceRoot, "tests", "fixtures", "acta"),
+    path.join(sourceRoot, "tests", "fixtures", "acta2"),
     path.join(harness, "acta-fixtures"),
     { recursive: true },
   );
@@ -134,7 +140,7 @@ async function prepareVariant(stagingRoot, variant, revision, actaVersion) {
     await mkdir(skillRoot, { recursive: true });
     for (const skill of expectedSkills) {
       const target = path.join(skillRoot, skill);
-      await cp(path.join(sourceRoot, "incubator", skill), target, { recursive: true });
+      await cp(path.join(sourceRoot, "skills", skill), target, { recursive: true });
       if (variant === "without-sidecars") {
         await rm(path.join(target, "agents"), { recursive: true, force: true });
       }
@@ -144,9 +150,11 @@ async function prepareVariant(stagingRoot, variant, revision, actaVersion) {
   await writeFile(
     path.join(harness, "QA-MANIFEST.json"),
     `${JSON.stringify({
-      schema_version: 1,
+      schema_version: 2,
       suite: "acta-development-skill-suite",
       acta_version: actaVersion,
+      acta2_version: acta2Version,
+      active_artifact_system: "acta2",
       source_revision: revision,
       variant,
       skills: expectedSkills,
@@ -172,28 +180,39 @@ if (await exists(destination)) fail(`destination already exists: ${destination}.
 
 for (const relative of [
   "design/acta/VERSION",
+  "design/acta2/VERSION",
   "docs/qa/evaluator-runbook.md",
   "docs/qa/evidence/template.md",
-  "tests/fixtures/acta",
+  "tests/fixtures/acta2",
   "tests/fixtures/core-cycle-project",
   "tests/smoke/collisions.yaml",
 ]) await requireEntry(relative);
-for (const skill of expectedSkills) await requireEntry(`incubator/${skill}/SKILL.md`);
+for (const skill of expectedSkills) await requireEntry(`skills/${skill}/SKILL.md`);
 
 const revision = resolveRevision();
 const actaVersion = (await readFile(path.join(sourceRoot, "design", "acta", "VERSION"), "utf8")).trim();
 if (actaVersion !== "0.1.0") fail(`unsupported Acta version ${actaVersion}.`);
+const acta2Version = (await readFile(path.join(sourceRoot, "design", "acta2", "VERSION"), "utf8")).trim();
+if (!/^0\.2\.0(?:-pilot)?$/.test(acta2Version)) {
+  fail(`unsupported Acta v2 version ${acta2Version}.`);
+}
 
 const parent = path.dirname(destination);
 await mkdir(parent, { recursive: true });
 const stagingRoot = await mkdtemp(path.join(parent, `.${path.basename(destination)}-`));
 try {
   for (const variant of variants) {
-    await prepareVariant(stagingRoot, variant, revision, actaVersion);
+    await prepareVariant(
+      stagingRoot,
+      variant,
+      revision,
+      actaVersion,
+      acta2Version,
+    );
   }
   await writeFile(
     path.join(stagingRoot, "QA-START-HERE.md"),
-    `# Acta manual QA harnesses\n\nSource revision: \`${revision}\`\n\nOpen either \`with-sidecars/\` or \`without-sidecars/\` as the project root in Codex or Claude Code. Read \`EVALUATOR-RUNBOOK.md\` inside the selected variant before testing.\n`,
+    `# Acta v2 manual QA harnesses\n\nSource revision: \`${revision}\`\n\nActive artifact system: Acta v2 \`${acta2Version}\` (legacy rollback: Acta \`${actaVersion}\`).\n\nOpen either \`with-sidecars/\` or \`without-sidecars/\` as the project root in Codex or Claude Code. Read \`EVALUATOR-RUNBOOK.md\` inside the selected variant before testing.\n`,
   );
   await rename(stagingRoot, destination);
 } catch (error) {

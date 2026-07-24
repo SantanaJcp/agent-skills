@@ -13,7 +13,7 @@ if (rootIndex >= 0 && rootArgument === undefined) {
 }
 const root = path.resolve(rootArgument ?? process.cwd());
 const sourceRoot = path.join(root, "design", "acta");
-const collectionRoot = path.join(root, "incubator");
+const collectionRoot = path.join(root, "skills");
 const textOnlySkill = "make-me-realize";
 const expectedRecipes = [
   "three-code-paths",

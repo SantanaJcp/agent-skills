@@ -40,7 +40,7 @@ test("publisher materializes the complete Acta bundle deterministically", async 
   assert.equal((await readFile(path.join(root, "design/acta/VERSION"), "utf8")).trim(), "0.1.0");
   const protocols = [];
   for (const name of skills) {
-    const skillRoot = path.join(root, "incubator", name);
+    const skillRoot = path.join(root, "skills", name);
     const protocol = await readFile(path.join(skillRoot, "references", "acta-protocol.md"), "utf8");
     protocols.push(protocol);
     assert.match(protocol, /^<!-- acta-materialized: v0\.1\.0 protocol sha256=[a-f0-9]{64}; do not edit by hand -->/);
@@ -54,7 +54,7 @@ test("publisher materializes the complete Acta bundle deterministically", async 
   assert.equal(new Set(protocols).size, 1, "all installed protocol copies must be identical");
 
   for (const name of htmlSkills) {
-    const html = await readFile(path.join(root, "incubator", name, "references", "acta-scaffold.html"), "utf8");
+    const html = await readFile(path.join(root, "skills", name, "references", "acta-scaffold.html"), "utf8");
     assert.match(html, new RegExp(`^<!-- acta-materialized: v0\\.1\\.0 recipe=${name} sha256=[a-f0-9]{64}; do not edit by hand -->`));
     assert.match(html, /<!doctype html>/i);
     assert.match(html, /class="acta-shell"/);
@@ -73,7 +73,7 @@ test("publisher materializes the complete Acta bundle deterministically", async 
   }
 
   await assert.rejects(
-    readFile(path.join(root, "incubator", "make-me-realize", "references", "acta-scaffold.html"), "utf8"),
+    readFile(path.join(root, "skills", "make-me-realize", "references", "acta-scaffold.html"), "utf8"),
     { code: "ENOENT" },
   );
 });
@@ -145,12 +145,12 @@ test("realistic filled Acta artifacts exercise all HTML recipes outside skill bu
 
 test("Acta validation rejects broken visual and interaction contracts", async () => {
   const fixtureRoot = await mkdtemp(path.join(tmpdir(), "acta-contracts-"));
-  await cp(path.join(root, "incubator"), path.join(fixtureRoot, "incubator"), {
+  await cp(path.join(root, "skills"), path.join(fixtureRoot, "skills"), {
     recursive: true,
   });
   const target = path.join(
     fixtureRoot,
-    "incubator",
+    "skills",
     "three-code-paths",
     "references",
     "acta-scaffold.html",
@@ -176,7 +176,7 @@ test("Acta materialization is repeatable, LF-only, and rejects unknown recipes",
   await cp(path.join(root, "design"), path.join(fixtureRoot, "design"), {
     recursive: true,
   });
-  await cp(path.join(root, "incubator"), path.join(fixtureRoot, "incubator"), {
+  await cp(path.join(root, "skills"), path.join(fixtureRoot, "skills"), {
     recursive: true,
   });
   const firstRun = runScript("materialize-acta.mjs", ["--root", fixtureRoot]);
@@ -186,7 +186,7 @@ test("Acta materialization is repeatable, LF-only, and rejects unknown recipes",
   for (const name of skills) {
     const protocolPath = path.join(
       fixtureRoot,
-      "incubator",
+      "skills",
       name,
       "references",
       "acta-protocol.md",
@@ -195,7 +195,7 @@ test("Acta materialization is repeatable, LF-only, and rejects unknown recipes",
     if (name !== "make-me-realize") {
       const scaffoldPath = path.join(
         fixtureRoot,
-        "incubator",
+        "skills",
         name,
         "references",
         "acta-scaffold.html",

@@ -33,6 +33,7 @@ const requiredFiles = [
   "docs/adr/0002-acta-development-suite.md",
   "docs/design/acta/provenance/README.md",
   "docs/qa/acta-suite-0.1.0.md",
+  "docs/qa/acta-suite-0.2.0.md",
   "docs/qa/evaluator-runbook.md",
   "docs/qa/evidence/template.md",
   "docs/authoring.md",

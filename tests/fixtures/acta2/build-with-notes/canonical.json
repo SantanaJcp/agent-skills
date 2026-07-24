@@ -1,6 +1,6 @@
 {
   "scenario": {
-    "acta2": "0.2.0-pilot",
+    "acta2": "0.2.0",
     "kind": "stop-gate",
     "skill": "build-with-notes",
     "artifactKind": "implementation-session",

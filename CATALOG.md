@@ -3,4 +3,166 @@
 
 These skills have passed the portable Codex and Claude Code promotion gate.
 
-No stable skills have been published yet.
+| Skill | Description | Tags | Global install |
+| --- | --- | --- | --- |
+| [build-with-notes](skills/build-with-notes/SKILL.md) | Implement an explicitly requested code change test-first while maintaining live Acta notes, checks, deviations, and STOP gates. Use for direct mutation requests such as implement, build, fix, refactor this module now, or execute an approved spec, plan, ticket, or contract; do not activate for planning, diagnosis-only work, or read-only review. | `implementation`, `review`, `tdd` | `npx skills add SantanaJcp/agent-skills@build-with-notes -g -a codex -a claude-code` |
+| [change-blueprint](skills/change-blueprint/SKILL.md) | Turn clarified requirements into a compact specification and a separate implementation plan with two human gates. Use when a change is ready for decision-complete planning; redirect broad ambiguity to discovery and do not implement the plan. | `planning`, `specification`, `testing` | `npx skills add SantanaJcp/agent-skills@change-blueprint -g -a codex -a claude-code` |
+| [concept-lab](skills/concept-lab/SKILL.md) | Research and teach a concept through a manipulable model, trusted sources, declared simplifications, and optional retrieval practice. Use for focused conceptual understanding; do not use to document one repository feature or manage a long-term curriculum. | `learning`, `research`, `visualization` | `npx skills add SantanaJcp/agent-skills@concept-lab -g -a codex -a claude-code` |
+| [deepen-the-codebase](skills/deepen-the-codebase/SKILL.md) | Analyze a codebase for evidence-backed module-deepening opportunities and compare candidates without refactoring. Use when architecture, seams, locality, testability, or AI navigability need improvement; do not use for immediate implementation or generic code cleanup. | `analysis`, `architecture`, `refactoring` | `npx skills add SantanaJcp/agent-skills@deepen-the-codebase -g -a codex -a claude-code` |
+| [do-i-understand-this](skills/do-i-understand-this/SKILL.md) | Diagnose a user's understanding of an actual completed change with an evidence-grounded quiz, gap export, explanation, and retry. Use after implementation or review for requests such as quiz me on the pull request or change we just implemented; never use as a merge gate or generic code review. | `learning`, `quiz`, `review` | `npx skills add SantanaJcp/agent-skills@do-i-understand-this -g -a codex -a claude-code` |
+| [draw-it-in-svg](skills/draw-it-in-svg/SKILL.md) | Create accessible standalone SVG illustrations and an Acta figure sheet with copyable source. Use for requests such as turn this explanation into a labeled vector diagram that works outside the report, even when the source explanation still needs to be requested; activate first, then ask for missing content. Do not use for process-flow analysis or raster image generation. | `illustration`, `svg`, `visualization` | `npx skills add SantanaJcp/agent-skills@draw-it-in-svg -g -a codex -a claude-code` |
+| [draw-the-flow](skills/draw-the-flow/SKILL.md) | Explain a system or process as an overview-first flow with normal, decision, failure, and recovery paths plus a full textual equivalent. Use when relationships and sequence are the main question; do not use for general-purpose illustration or implementation planning. | `diagram`, `flow`, `visualization` | `npx skills add SantanaJcp/agent-skills@draw-the-flow -g -a codex -a claude-code` |
+| [feature-xray](skills/feature-xray/SKILL.md) | Explain how an existing feature is implemented in this repository through source-located evidence, operational flow, gotchas, and an Acta record. Use for codebase-grounded walkthroughs such as explain how caching, password reset, or retries work here; do not use for general concept teaching or proposed implementation design. | `codebase`, `documentation`, `explanation` | `npx skills add SantanaJcp/agent-skills@feature-xray -g -a codex -a claude-code` |
+| [feel-the-flow](skills/feel-the-flow/SKILL.md) | Build a disposable interaction prototype to answer a focused experience question and export its parameters and conclusions. Use when behavior must be felt before production design; do not use to implement production UI or compare static visual directions. | `design`, `interaction`, `prototype` | `npx skills add SantanaJcp/agent-skills@feel-the-flow -g -a codex -a claude-code` |
+| [find-the-cause](skills/find-the-cause/SKILL.md) | Diagnose why a bug, failing test, unexpected behavior, or performance regression occurs through a tight red-capable loop, minimization, falsifiable hypotheses, and one-variable probes without applying the production fix. Use for requests such as find why this test is failing when the cause is unknown, even if the reported failure is not yet reproducible; establish the real baseline and request missing failing evidence rather than skipping diagnosis. Do not use when the fix is already specified or implementation is requested. | `debugging`, `diagnosis`, `testing` | `npx skills add SantanaJcp/agent-skills@find-the-cause -g -a codex -a claude-code` |
+| [interface-directions](skills/interface-directions/SKILL.md) | Explore and compare genuinely distinct product interface directions in an Acta report. Use when a user-facing change needs a decision about layout, density, hierarchy, tone, or behavior; do not use for backend changes or code-architecture choices. | `comparison`, `design`, `interface` | `npx skills add SantanaJcp/agent-skills@interface-directions -g -a codex -a claude-code` |
+| [learning-workbench](skills/learning-workbench/SKILL.md) | Maintain a durable, source-grounded learning workspace with mission, lessons, retrieval practice, records, and spaced review for any topic. Use for multi-session learning; do not use for a one-off concept model or a post-change understanding quiz. | `learning`, `research`, `teaching` | `npx skills add SantanaJcp/agent-skills@learning-workbench -g -a codex -a claude-code` |
+| [make-me-realize](skills/make-me-realize/SKILL.md) | Reveal blind spots in a vague plan or change request by researching facts and interviewing the full decision frontier. Use when requirements, constraints, ownership, or unknowns must be clarified before solution design; do not use to synthesize an already-settled specification. | `discovery`, `planning`, `requirements` | `npx skills add SantanaJcp/agent-skills@make-me-realize -g -a codex -a claude-code` |
+| [three-code-paths](skills/three-code-paths/SKILL.md) | Compare exactly three structurally distinct code, API, data-model, database-schema, or architecture approaches at equal fidelity and record an explicit choice. Use for implementation-shape decisions such as compare three schemas or design a new retry architecture; do not use for cosmetic variants, interface styling, or direct implementation. | `architecture`, `comparison`, `planning` | `npx skills add SantanaJcp/agent-skills@three-code-paths -g -a codex -a claude-code` |
+| [what-just-happened](skills/what-just-happened/SKILL.md) | Create an evidence-backed incident record and postmortem timeline without directing active mitigation or inventing owners. Use during an incident to capture a draft or after stabilization to complete the report; do not use as the debugging or incident-command process. | `incident`, `operations`, `postmortem` | `npx skills add SantanaJcp/agent-skills@what-just-happened -g -a codex -a claude-code` |
+
+## Topics
+
+### analysis
+
+- [deepen-the-codebase](skills/deepen-the-codebase/SKILL.md)
+
+### architecture
+
+- [deepen-the-codebase](skills/deepen-the-codebase/SKILL.md)
+- [three-code-paths](skills/three-code-paths/SKILL.md)
+
+### codebase
+
+- [feature-xray](skills/feature-xray/SKILL.md)
+
+### comparison
+
+- [interface-directions](skills/interface-directions/SKILL.md)
+- [three-code-paths](skills/three-code-paths/SKILL.md)
+
+### debugging
+
+- [find-the-cause](skills/find-the-cause/SKILL.md)
+
+### design
+
+- [feel-the-flow](skills/feel-the-flow/SKILL.md)
+- [interface-directions](skills/interface-directions/SKILL.md)
+
+### diagnosis
+
+- [find-the-cause](skills/find-the-cause/SKILL.md)
+
+### diagram
+
+- [draw-the-flow](skills/draw-the-flow/SKILL.md)
+
+### discovery
+
+- [make-me-realize](skills/make-me-realize/SKILL.md)
+
+### documentation
+
+- [feature-xray](skills/feature-xray/SKILL.md)
+
+### explanation
+
+- [feature-xray](skills/feature-xray/SKILL.md)
+
+### flow
+
+- [draw-the-flow](skills/draw-the-flow/SKILL.md)
+
+### illustration
+
+- [draw-it-in-svg](skills/draw-it-in-svg/SKILL.md)
+
+### implementation
+
+- [build-with-notes](skills/build-with-notes/SKILL.md)
+
+### incident
+
+- [what-just-happened](skills/what-just-happened/SKILL.md)
+
+### interaction
+
+- [feel-the-flow](skills/feel-the-flow/SKILL.md)
+
+### interface
+
+- [interface-directions](skills/interface-directions/SKILL.md)
+
+### learning
+
+- [concept-lab](skills/concept-lab/SKILL.md)
+- [do-i-understand-this](skills/do-i-understand-this/SKILL.md)
+- [learning-workbench](skills/learning-workbench/SKILL.md)
+
+### operations
+
+- [what-just-happened](skills/what-just-happened/SKILL.md)
+
+### planning
+
+- [change-blueprint](skills/change-blueprint/SKILL.md)
+- [make-me-realize](skills/make-me-realize/SKILL.md)
+- [three-code-paths](skills/three-code-paths/SKILL.md)
+
+### postmortem
+
+- [what-just-happened](skills/what-just-happened/SKILL.md)
+
+### prototype
+
+- [feel-the-flow](skills/feel-the-flow/SKILL.md)
+
+### quiz
+
+- [do-i-understand-this](skills/do-i-understand-this/SKILL.md)
+
+### refactoring
+
+- [deepen-the-codebase](skills/deepen-the-codebase/SKILL.md)
+
+### requirements
+
+- [make-me-realize](skills/make-me-realize/SKILL.md)
+
+### research
+
+- [concept-lab](skills/concept-lab/SKILL.md)
+- [learning-workbench](skills/learning-workbench/SKILL.md)
+
+### review
+
+- [build-with-notes](skills/build-with-notes/SKILL.md)
+- [do-i-understand-this](skills/do-i-understand-this/SKILL.md)
+
+### specification
+
+- [change-blueprint](skills/change-blueprint/SKILL.md)
+
+### svg
+
+- [draw-it-in-svg](skills/draw-it-in-svg/SKILL.md)
+
+### tdd
+
+- [build-with-notes](skills/build-with-notes/SKILL.md)
+
+### teaching
+
+- [learning-workbench](skills/learning-workbench/SKILL.md)
+
+### testing
+
+- [change-blueprint](skills/change-blueprint/SKILL.md)
+- [find-the-cause](skills/find-the-cause/SKILL.md)
+
+### visualization
+
+- [concept-lab](skills/concept-lab/SKILL.md)
+- [draw-it-in-svg](skills/draw-it-in-svg/SKILL.md)
+- [draw-the-flow](skills/draw-the-flow/SKILL.md)

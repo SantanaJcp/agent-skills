@@ -1,0 +1,7 @@
+{
+  "skill": "learning-workbench",
+  "kind": "quiz",
+  "role": "instrument+record",
+  "version": "0.2.0",
+  "materializer": "scripts/materialize-acta2.mjs"
+}

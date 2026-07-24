@@ -1,6 +1,6 @@
 # ADR 0004 — Generalizing Acta v2 from the three-skill pilot to the complete suite
 
-Date: 2026-07-23 · Status: proposed (suite candidate — nothing committed, promoted, or released) · Extends: [ADR 0003](0003-acta-v2-instrument-record-pilot.md) (preserved unchanged as the historical pilot decision)
+Date: 2026-07-23 · Status: accepted and promoted by [ADR 0005](0005-promote-acta-v2-suite.md) · Extends: [ADR 0003](0003-acta-v2-instrument-record-pilot.md) (preserved unchanged as the historical pilot decision)
 
 ## Context
 
@@ -68,10 +68,12 @@ receives human approval.
 
 ## Status and evaluation honesty
 
-The suite is a **generated suite candidate**: 76/76 automated checks pass
+Before ADR 0005, the suite was a **merged promotion candidate**: 76/76 automated checks passed
 (state/export invariants, canonical→record boundaries, installed-bundle
 byte round-trips, no-JS honesty, 320 px reflow, in-page self-tests, static
 validation of all 14 bundles). The formal C2/C3 human-evaluation methodology
-in the evaluation pack applies to the three pilots only; none of the eleven
-new artifacts has passed human evaluation, and this ADR does not claim
-otherwise.
+in the original evaluation pack applies to the three pilots only. The owner
+has completed a visual acceptance pass over the generalized gallery, but the
+the versioned browser and accessibility matrices were still pending. ADR 0005
+records the later explicit owner waiver and stable promotion; this ADR does not
+retroactively claim those deferred gates passed.

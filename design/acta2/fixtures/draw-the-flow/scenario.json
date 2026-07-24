@@ -1,5 +1,5 @@
 {
- "acta2": "0.2.0-pilot",
+ "acta2": "0.2.0",
  "kind": "decision",
  "decisionId": "flow-verification",
  "skill": "draw-the-flow",

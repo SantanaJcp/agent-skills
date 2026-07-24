@@ -1,4 +1,4 @@
-# Acta suite evaluator runbook
+# Acta v2 suite evaluator runbook
 
 Use this runbook to collect comparable manual evidence for the initial fifteen-skill Acta cohort. Test the prepared harness; do not edit skill source while evaluating it.
 
@@ -19,7 +19,7 @@ The command refuses an existing destination and a dirty source worktree. It crea
 - `with-sidecars/` contains the complete bundles, including Codex presentation metadata.
 - `without-sidecars/` contains otherwise identical bundles with `agents/openai.yaml` removed.
 
-Confirm that `QA-MANIFEST.json` contains the expected full source revision before beginning. Never include credentials, private repositories, or production data in evidence.
+Confirm that `QA-MANIFEST.json` contains the expected full source revision, `active_artifact_system: "acta2"`, and the expected Acta v2 version before beginning. Never include credentials, private repositories, or production data in evidence.
 
 ## 2. Record the environment
 
@@ -39,6 +39,22 @@ Open `with-sidecars/` as the project root in the assigned current stable client.
 
 Run the seven paired cases in `smoke-cases/collisions.yaml` the same way. For Codex sidecar independence, repeat at least one trigger and one adjacent non-trigger per skill from `without-sidecars/`; the portable behavior must not change. Claude Code must not require the sidecar to complete any case.
 
+### Automated CLI isolation
+
+When collecting activation evidence through a CLI, run every prompt in a
+**fresh disposable copy** of the selected harness. Remove prior `.agent-work`
+state by discarding the copy, not by reusing a conversation. Keep project
+skills enabled while excluding personal instructions, plugins, hooks, and
+memory that could select a skill or leak prior answers:
+
+- Codex: use `codex exec --ephemeral --ignore-user-config --skip-git-repo-check ...`.
+- Claude Code: use `claude -p --no-session-persistence --setting-sources project ...`.
+
+Give the client only the tool permissions required to read and write the
+synthetic harness. A permission denial is invalid test setup, not a skill
+failure. Record the complete command, client settings, activated skill, and
+protocol/reference reads in the evidence file.
+
 ## 4. Six-stage core cycle
 
 Open a fresh copy of the applicable harness and follow `SCENARIO.md` unchanged. Invoke the six core skills in order when the scenario calls for them. Record:
@@ -57,8 +73,8 @@ Run `npm test` before and after the cycle. The initial baseline contains one pas
 
 Open the assigned files from `acta-fixtures/` directly through `file://`.
 
-- Chrome: all fourteen HTML recipes.
-- Safari and Firefox: at least one Document, Compare, Explore, and Edit recipe, plus every assigned critical interaction.
+- Chrome: all 13 Acta v2 instruments and all 13 Acta v2 records under `acta-fixtures/<skill>/`.
+- Safari and Firefox: at least one instrument of every interactive kind (decision, STOP gate, model, prototype, quiz, and checklist), at least one record, plus every assigned critical interaction.
 
 Record offline loading, source/summary order, DecisionGate readability, disclosures, quiz controls, copy success and manual-copy fallback, no-JavaScript reading, 320px reflow, actual 400% zoom, reduced motion, monochrome meaning, and print/PDF output. Essential information may not depend on JavaScript, hover, color, or horizontal page scrolling; code/table/flow wrappers may scroll locally.
 

@@ -4,20 +4,20 @@
 
 Every stable skill supports the current stable Codex and Claude Code versions tested during promotion and release. The repository does not promise long-term support for obsolete clients.
 
-The initial fifteen skills remain incubating until joint evidence is complete. Optional Codex sidecars improve presentation but are removed during part of manual testing to prove the portable core behaves identically in Claude Code and Codex.
+The initial fifteen skills are stable. Optional Codex sidecars improve presentation but were removed during part of manual testing to prove the portable core behaves identically in Claude Code and Codex.
 
-## Pre-release baseline
+## v1.0.0 baseline
 
 | Surface | Tested version |
 | --- | --- |
 | Node authoring runtime | `>=22.20.0` |
 | CI Node line | `24` |
-| skills CLI | `1.5.19` |
-| Acta authoring system | `0.1.0` |
-| Codex | Pending initial cohort evidence |
-| Claude Code | Pending initial cohort evidence |
+| skills CLI | 1.5.19 |
+| Acta authoring system | `0.2.0` (`0.1.0` compatibility fallback retained) |
+| Codex | 0.144.1 |
+| Claude Code | 2.1.206 |
 
-Before promotion and `v1.0.0` preparation, replace pending client rows with exact tested stable versions and link the versioned suite report.
+The tested promotion evidence is recorded in [the Acta v2 suite report](qa/acta-suite-0.2.0.md).
 
 ## Installation locations
 

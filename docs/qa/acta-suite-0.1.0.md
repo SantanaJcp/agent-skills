@@ -1,6 +1,6 @@
 # Acta suite 0.1.0 promotion evidence
 
-Status: pending-manual-evidence
+Status: superseded-before-promotion by [Acta v2 suite 0.2.0](acta-suite-0.2.0.md)
 
 This report is the blocking manual record for the initial fifteen-skill promotion cohort. Deterministic checks do not replace the evidence below.
 

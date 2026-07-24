@@ -12,7 +12,7 @@ Acta has an internal authoring version embedded in materialized files. Changing 
 
 ## First release
 
-The first public release is `v1.0.0`. The initial fifteen skills must first move from incubator to stable together after the versioned suite report passes every required client, end-to-end, browser, and accessibility row.
+The first public release is `v1.0.0`. The initial fifteen skills moved from incubator to stable together after the client and end-to-end rows passed. ADR 0005 records the owner's explicit one-time deferral of the browser and accessibility rows; the suite report labels them deferred rather than passed.
 
 Implementation may prepare compatibility records, changelog, and release checks, but tag creation and workflow dispatch remain separate human actions.
 

@@ -37,7 +37,7 @@ function frontmatterOf(markdown) {
 }
 
 const decisionData = {
-  acta2: "0.2.0-pilot",
+  acta2: "0.2.0",
   kind: "decision",
   decisionId: "D-01",
   skill: "three-code-paths",
@@ -57,7 +57,7 @@ const decisionData = {
 };
 
 const stopGateData = {
-  acta2: "0.2.0-pilot",
+  acta2: "0.2.0",
   kind: "stop-gate",
   skill: "build-with-notes",
   artifactKind: "implementation-session",
@@ -87,7 +87,7 @@ const stopGateData = {
 };
 
 const modelData = {
-  acta2: "0.2.0-pilot",
+  acta2: "0.2.0",
   kind: "model",
   decisionId: "D-01",
   acceptanceToken: "model-accepted",
@@ -333,10 +333,10 @@ test("acta2 materializer output is current, marked, and self-contained", async (
   for (const skill of SUITE) {
     const name = skill.name;
     const protocol = await readFile(
-      path.join(root, "incubator", name, "references", "acta2-protocol.md"),
+      path.join(root, "skills", name, "references", "acta2-protocol.md"),
       "utf8",
     );
-    assert.match(protocol, /^<!-- acta2-materialized: v0\.2\.0-pilot protocol sha256=[a-f0-9]{64}; do not edit by hand -->/);
+    assert.match(protocol, /^<!-- acta2-materialized: v0\.2\.0 protocol sha256=[a-f0-9]{64}; do not edit by hand -->/);
 
     const artifacts = /** @type {Array<[string, string]>} */ ([
       ...skill.instruments.map((variant) => [
@@ -347,13 +347,13 @@ test("acta2 materializer output is current, marked, and self-contained", async (
     ]);
     for (const [file, marker] of artifacts) {
       for (const location of [
-        path.join(root, "incubator", name, "references", file),
+        path.join(root, "skills", name, "references", file),
         path.join(root, "tests", "fixtures", "acta2", name, file),
       ]) {
         const html = await readFile(location, "utf8");
         assert.match(
           html,
-          new RegExp(`^<!-- acta2-materialized: v0\\.2\\.0-pilot ${marker} sha256=[a-f0-9]{64}; do not edit by hand[^>]*-->`),
+          new RegExp(`^<!-- acta2-materialized: v0\\.2\\.0 ${marker} sha256=[a-f0-9]{64}; do not edit by hand[^>]*-->`),
           location,
         );
         assert.doesNotMatch(html, /(?:src|href)=["']https?:/i, location);
@@ -366,15 +366,15 @@ test("acta2 materializer output is current, marked, and self-contained", async (
       }
     }
     // Rollback safety: Acta 0.1 references stay in place for every pilot.
-    await access(path.join(root, "incubator", name, "references", "acta-scaffold.html"));
-    await access(path.join(root, "incubator", name, "references", "acta-protocol.md"));
+    await access(path.join(root, "skills", name, "references", "acta-scaffold.html"));
+    await access(path.join(root, "skills", name, "references", "acta-protocol.md"));
   }
 });
 
 test("acta2 instruments never ship resolved gates or static payloads", async () => {
   for (const { name, file } of instrumentTargets) {
     for (const location of [
-      path.join(root, "incubator", name, "references", file),
+      path.join(root, "skills", name, "references", file),
       path.join(root, "tests", "fixtures", "acta2", name, file),
     ]) {
       const html = await readFile(location, "utf8");
@@ -449,7 +449,7 @@ test("acta2 static validation accepts the tree and rejects violated invariants",
   assert.equal(accepted.status, 0, `${accepted.stdout}\n${accepted.stderr}`);
 
   const fixtureRoot = await mkdtemp(path.join(tmpdir(), "acta2-validate-"));
-  await cp(path.join(root, "incubator"), path.join(fixtureRoot, "incubator"), { recursive: true });
+  await cp(path.join(root, "skills"), path.join(fixtureRoot, "skills"), { recursive: true });
   await cp(path.join(root, "tests", "fixtures", "acta2"), path.join(fixtureRoot, "tests", "fixtures", "acta2"), {
     recursive: true,
   });
@@ -471,7 +471,7 @@ test("acta2 static validation accepts the tree and rejects violated invariants",
 test("acta2 materialization is deterministic, repeatable, and version-locked", async () => {
   const fixtureRoot = await mkdtemp(path.join(tmpdir(), "acta2-materializer-"));
   await cp(path.join(root, "design"), path.join(fixtureRoot, "design"), { recursive: true });
-  await cp(path.join(root, "incubator"), path.join(fixtureRoot, "incubator"), { recursive: true });
+  await cp(path.join(root, "skills"), path.join(fixtureRoot, "skills"), { recursive: true });
 
   const firstRun = runScript("materialize-acta2.mjs", ["--root", fixtureRoot]);
   assert.equal(firstRun.status, 0, `${firstRun.stdout}\n${firstRun.stderr}`);
@@ -480,22 +480,22 @@ test("acta2 materialization is deterministic, repeatable, and version-locked", a
   for (const skill of SUITE) {
     const name = skill.name;
     const files = [
-      path.join("incubator", name, "references", "acta2-protocol.md"),
-      path.join("incubator", name, "references", "acta2", "bundle.json"),
-      path.join("incubator", name, "references", "acta2", "assemble.mjs"),
-      path.join("incubator", name, "references", "acta2", "export-core.mjs"),
+      path.join("skills", name, "references", "acta2-protocol.md"),
+      path.join("skills", name, "references", "acta2", "bundle.json"),
+      path.join("skills", name, "references", "acta2", "assemble.mjs"),
+      path.join("skills", name, "references", "acta2", "export-core.mjs"),
     ];
     for (const variant of skill.instruments) {
       const suffix = variantSuffix(variant);
       files.push(
-        path.join("incubator", name, "references", `instrument${suffix}.html`),
+        path.join("skills", name, "references", `instrument${suffix}.html`),
         path.join("tests", "fixtures", "acta2", name, `instrument${suffix}.html`),
         path.join("tests", "fixtures", "acta2", name, `scenario${suffix}.json`),
       );
     }
     if (skill.instruments.length > 0) {
-      files.push(path.join("incubator", name, "references", "acta2", "body.mjs"));
-      files.push(path.join("incubator", name, "references", "acta2", "generate-instrument.mjs"));
+      files.push(path.join("skills", name, "references", "acta2", "body.mjs"));
+      files.push(path.join("skills", name, "references", "acta2", "generate-instrument.mjs"));
     }
     if (skill.instruments.length > 0 && (skill.record || skill.workingFixture)) {
       files.push(
@@ -505,7 +505,7 @@ test("acta2 materialization is deterministic, repeatable, and version-locked", a
     }
     if (skill.record) {
       files.push(
-        path.join("incubator", name, "references", "record.html"),
+        path.join("skills", name, "references", "record.html"),
         path.join("tests", "fixtures", "acta2", name, "record.html"),
         path.join("tests", "fixtures", "acta2", name, "canonical.md"),
         path.join("tests", "fixtures", "acta2", name, "canonical.json"),
@@ -597,7 +597,7 @@ test("acta2 instruments pass their in-page state/export self-test", async (t) =>
 /* ------------------------------------------------------------------ */
 
 const freshScenario = {
-  acta2: "0.2.0-pilot",
+  acta2: "0.2.0",
   kind: "decision",
   decisionId: "D-01",
   skill: "three-code-paths",
@@ -663,7 +663,7 @@ const freshScenario = {
 test("acta2 bundled generator creates a brand-new instrument from scenario JSON, standalone", async () => {
   const install = await mkdtemp(path.join(tmpdir(), "acta2-install-"));
   await cp(
-    path.join(root, "incubator", "three-code-paths", "references", "acta2"),
+    path.join(root, "skills", "three-code-paths", "references", "acta2"),
     path.join(install, "acta2"),
     { recursive: true },
   );
@@ -726,7 +726,7 @@ test("acta2 canonical/scenario JSON reproduce the fixtures byte-for-byte via ins
     const name = skill.name;
     const install = await mkdtemp(path.join(tmpdir(), `acta2-roundtrip-${name}-`));
     await cp(
-      path.join(root, "incubator", name, "references", "acta2"),
+      path.join(root, "skills", name, "references", "acta2"),
       path.join(install, "acta2"),
       { recursive: true },
     );
@@ -867,10 +867,10 @@ test("acta2 protocol and skill workflows carry no manual-HTML path", async () =>
     const generator =
       skill.instruments.length > 0 ? /generate-instrument\.mjs/ : /generate-record\.mjs/;
     workflowDocs.push({
-      doc: path.join(root, "incubator", skill.name, "references", "acta2-protocol.md"),
+      doc: path.join(root, "skills", skill.name, "references", "acta2-protocol.md"),
       generator: /generate-instrument\.mjs/,
     });
-    workflowDocs.push({ doc: path.join(root, "incubator", skill.name, "SKILL.md"), generator });
+    workflowDocs.push({ doc: path.join(root, "skills", skill.name, "SKILL.md"), generator });
   }
   for (const { doc, generator } of workflowDocs) {
     const content = await readFile(doc, "utf8");
@@ -886,7 +886,7 @@ test("acta2 protocol and skill workflows carry no manual-HTML path", async () =>
 test("acta2 record boundary rejects unaccepted canonical state (installed bundle)", async () => {
   const install = await mkdtemp(path.join(tmpdir(), "acta2-record-boundary-"));
   await cp(
-    path.join(root, "incubator", "three-code-paths", "references", "acta2"),
+    path.join(root, "skills", "three-code-paths", "references", "acta2"),
     path.join(install, "acta2"),
     { recursive: true },
   );
@@ -929,7 +929,7 @@ test("acta2 record boundary rejects unaccepted canonical state (installed bundle
   );
   const clabInstall = await mkdtemp(path.join(tmpdir(), "acta2-record-boundary-clab-"));
   await cp(
-    path.join(root, "incubator", "concept-lab", "references", "acta2"),
+    path.join(root, "skills", "concept-lab", "references", "acta2"),
     path.join(clabInstall, "acta2"),
     { recursive: true },
   );
@@ -1014,7 +1014,7 @@ test("acta2 record boundary rejects contradictory accepted decisions (installed 
   for (const { pilot, mutations } of cases) {
     const install = await mkdtemp(path.join(tmpdir(), `acta2-record-consistency-${pilot}-`));
     await cp(
-      path.join(root, "incubator", pilot, "references", "acta2"),
+      path.join(root, "skills", pilot, "references", "acta2"),
       path.join(install, "acta2"),
       { recursive: true },
     );
@@ -1049,7 +1049,7 @@ test("acta2 record boundary rejects contradictory accepted decisions (installed 
 test("acta2 change-blueprint record requires the accepted Gate A prerequisite (installed bundle)", async () => {
   const install = await mkdtemp(path.join(tmpdir(), "acta2-change-blueprint-prerequisite-"));
   await cp(
-    path.join(root, "incubator", "change-blueprint", "references", "acta2"),
+    path.join(root, "skills", "change-blueprint", "references", "acta2"),
     path.join(install, "acta2"),
     { recursive: true },
   );
@@ -1209,7 +1209,7 @@ test("acta2 concept-lab static SVG matches the full plot spec item-by-item", asy
 import { validateCanonicalForRecord, deriveQuizScore } from "../design/acta2/lib/export-core.mjs";
 
 const quizData = {
-  acta2: "0.2.0-pilot",
+  acta2: "0.2.0",
   kind: "quiz",
   decisionId: "understanding-check",
   acceptanceToken: "record-gaps",
@@ -1248,7 +1248,7 @@ const quizData = {
 };
 
 const checklistData = {
-  acta2: "0.2.0-pilot",
+  acta2: "0.2.0",
   kind: "checklist",
   decisionId: "figure-review",
   acceptanceToken: "accept-figures",
@@ -1272,7 +1272,7 @@ const checklistData = {
 };
 
 const prototypeData = {
-  acta2: "0.2.0-pilot",
+  acta2: "0.2.0",
   kind: "prototype",
   decisionId: "feel-check",
   acceptanceToken: "record-feel",
@@ -1368,7 +1368,7 @@ test("acta2 new kinds reject hostile identifiers", () => {
 
 test("acta2 dossier kind: record-only canonical validates, instruments are refused", () => {
   const scenario = {
-    acta2: "0.2.0-pilot",
+    acta2: "0.2.0",
     kind: "dossier",
     decisionId: "publish-xray",
     acceptanceToken: "publish-record",
