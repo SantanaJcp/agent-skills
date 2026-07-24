@@ -8,13 +8,18 @@ Contributions are welcome through curated pull requests. The maintainer retains 
 2. Discuss substantial policy or architecture changes before implementation.
 3. Create new skills with `npm run new:skill -- <name>`.
 4. Never import a personal skill directory or include private operational data.
-5. For Acta changes, edit canonical sources and run `npm run acta`; for the Acta v2 pilot, edit `design/acta2/` and run `npm run acta2`. Never hand-edit materialized copies.
+5. For Acta 0.1 compatibility changes, edit its canonical sources and run `npm run acta`; for the authoritative Acta v2 system, edit `design/acta2/` and run `npm run acta2`. Never hand-edit materialized copies.
 
 ## Skill lifecycle
 
 Every new skill begins in the incubator. An incubator change provides portable metadata, auditable content, trigger/non-trigger cases, and passing deterministic checks.
 
-The initial fifteen Acta skills are one promotion cohort. None can be promoted until the versioned suite report records complete Codex/Claude, core-cycle, browser, and accessibility evidence. Later skills use the normal separate reviewed promotion process unless another ADR establishes a cohort.
+The initial fifteen Acta skills were promoted together in `v1.0.0` after the
+client and core-cycle rows passed. ADR 0005 records the owner's one-time waiver
+for the browser and accessibility rows; [GitHub Issue #8](https://github.com/SantanaJcp/agent-skills/issues/8)
+tracks that deferred work without treating it as passed. Later skills use the
+normal separate reviewed promotion process unless another ADR establishes a
+cohort.
 
 A stable promotion records current client versions, observed activation results, optional-sidecar independence, isolated installation, network review, provenance, and security review. Fundamentally client-specific skills remain incubating.
 

@@ -12,7 +12,7 @@ metadata:
 
 Create an accessible process or system flow that orients the reader before showing stage detail.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (flow nodes/edges tagged with the named paths they belong to, four textual path views, verification gate options) and run [the bundled generator](references/acta2/generate-instrument.mjs); after the flow is verified and accepted in chat, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs). Path emphasis in the instrument is view-only and never exported. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains only as rollback until the v2 migration is approved.
+Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (flow nodes/edges tagged with the named paths they belong to, four textual path views, verification gate options) and run [the bundled generator](references/acta2/generate-instrument.mjs); after the flow is verified and accepted in chat, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs). Path emphasis in the instrument is view-only and never exported. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains bundled as the published compatibility fallback; Acta v2 is authoritative.
 
 ## Process
 

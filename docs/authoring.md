@@ -49,4 +49,9 @@ No symlinks, opaque executables, generated secrets, hidden install-time actions,
 
 ## Promote
 
-Promotion is a separate reviewed change. For the initial Acta cohort, all fifteen skills move together only after the versioned suite report contains complete client, end-to-end, browser, and accessibility evidence. Run `npm run check` and isolated installation before promotion.
+Promotion is a separate reviewed change. The initial Acta cohort was promoted
+under the explicit browser/accessibility waiver recorded in ADR 0005; that
+historical exception does not silently relax later promotion requirements. Run
+`npm run check`, isolated installation, and the applicable versioned manual
+matrix before promotion, or record any waiver in a reviewed ADR and public
+tracking issue.

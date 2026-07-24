@@ -2,7 +2,10 @@
 
 Status: superseded-before-promotion by [Acta v2 suite 0.2.0](acta-suite-0.2.0.md)
 
-This report is the blocking manual record for the initial fifteen-skill promotion cohort. Deterministic checks do not replace the evidence below.
+This report preserves the superseded Acta 0.1 evaluation plan. It is not the
+current suite status and was never used to claim promotion; the published
+promotion record is Acta v2 0.2.0. Deterministic checks do not replace manual
+evidence.
 
 ## Evaluation preparation
 
@@ -12,7 +15,11 @@ Prepare isolated, revision-stamped projects with:
 npm run qa:prepare -- --destination ../agent-skills-manual-qa
 ```
 
-Follow [the evaluator runbook](evaluator-runbook.md). Each reviewer starts from [the evidence template](evidence/template.md) and submits one raw record under `docs/qa/evidence/`; the evidence integrator updates this report only after reviewing those records. A code fix invalidates affected evidence until it is rerun against the new full source revision.
+Follow [the evaluator runbook](evaluator-runbook.md). Each reviewer starts from
+the [evidence template](evidence/template.md) and submits one sanitized summary
+under `docs/qa/evidence/`; raw logs and captures remain outside the repository.
+A code fix invalidates affected evidence until it is rerun against the new full
+source revision.
 
 ## Client activation matrix
 
@@ -61,4 +68,5 @@ Failures block promotion. Windows authoring CI remains required; real-Windows se
 
 ## Promotion verdict
 
-Pending. Do not move any cohort skill to `skills/` or prepare the v1.0.0 release candidate until every blocking row passes.
+Superseded before promotion. These pending rows are historical and are not the
+published suite verdict; see [Acta v2 suite 0.2.0](acta-suite-0.2.0.md).

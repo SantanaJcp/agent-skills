@@ -18,7 +18,9 @@
 
 ### Issue tracker
 
-Issues and specs are stored as local Markdown under `.scratch/`. See `docs/agents/issue-tracker.md`.
+Public work is tracked in GitHub Issues. `.scratch/` is an optional ignored
+local drafting area and is never repository state. See
+`docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

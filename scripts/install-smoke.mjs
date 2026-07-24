@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
-import { access, mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+
+import { SUITE, TEXT_ONLY, variantSuffix } from "../design/acta2/lib/suite.mjs";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "..");
 const cli = path.join(repositoryRoot, "node_modules", "skills", "bin", "cli.mjs");
@@ -12,8 +14,10 @@ const sandbox = await mkdtemp(path.join(tmpdir(), "agent-skills-install-"));
 const source = path.join(sandbox, "publisher");
 const project = path.join(sandbox, "consumer-project");
 const wholeProject = path.join(sandbox, "whole-collection-project");
+const publishedProject = path.join(sandbox, "published-collection-project");
 const projectHome = path.join(sandbox, "project-home");
 const wholeHome = path.join(sandbox, "whole-home");
+const publishedHome = path.join(sandbox, "published-home");
 const globalHome = path.join(sandbox, "global-home");
 
 function isolatedEnvironment(home) {
@@ -44,6 +48,21 @@ function runCli(args, cwd, home) {
   return result;
 }
 
+function runNode(args, cwd, home) {
+  const result = spawnSync(process.execPath, args, {
+    cwd,
+    encoding: "utf8",
+    env: isolatedEnvironment(home),
+    timeout: 30_000,
+  });
+  if (result.status !== 0) {
+    throw new Error(
+      `node ${args.join(" ")} failed\n${result.stdout}\n${result.stderr}`,
+    );
+  }
+  return result;
+}
+
 async function mustExist(filePath) {
   await access(filePath);
 }
@@ -56,8 +75,10 @@ await mkdir(path.join(source, "skills", "second-example"), {
 });
 await mkdir(project, { recursive: true });
 await mkdir(wholeProject, { recursive: true });
+await mkdir(publishedProject, { recursive: true });
 await mkdir(projectHome, { recursive: true });
 await mkdir(wholeHome, { recursive: true });
+await mkdir(publishedHome, { recursive: true });
 await mkdir(globalHome, { recursive: true });
 await writeFile(
   path.join(source, "skills", "portable-example", "SKILL.md"),
@@ -131,6 +152,133 @@ for (const agentDirectory of [".agents", ".claude"]) {
   }
 }
 
+const publishedNames = [...SUITE.map(({ name }) => name), ...TEXT_ONLY].sort();
+runCli(
+  [
+    "add",
+    repositoryRoot,
+    "--skill",
+    "*",
+    "--agent",
+    "codex",
+    "claude-code",
+    "--yes",
+    "--copy",
+  ],
+  publishedProject,
+  publishedHome,
+);
+
+for (const name of publishedNames) {
+  const codexSkill = path.join(
+    publishedProject,
+    ".agents",
+    "skills",
+    name,
+  );
+  const claudeSkill = path.join(
+    publishedProject,
+    ".claude",
+    "skills",
+    name,
+  );
+  await mustExist(path.join(codexSkill, "SKILL.md"));
+  await mustExist(path.join(claudeSkill, "SKILL.md"));
+  assert.equal(
+    await readFile(path.join(codexSkill, "SKILL.md"), "utf8"),
+    await readFile(path.join(claudeSkill, "SKILL.md"), "utf8"),
+    `${name}: portable instruction must match across client destinations`,
+  );
+
+  const isolatedProject = path.join(sandbox, `isolated-${name}`);
+  const isolatedHome = path.join(sandbox, `isolated-home-${name}`);
+  await mkdir(isolatedProject, { recursive: true });
+  await mkdir(isolatedHome, { recursive: true });
+  runCli(
+    [
+      "add",
+      repositoryRoot,
+      "--skill",
+      name,
+      "--agent",
+      "codex",
+      "claude-code",
+      "--yes",
+      "--copy",
+    ],
+    isolatedProject,
+    isolatedHome,
+  );
+  await mustExist(
+    path.join(isolatedProject, ".agents", "skills", name, "SKILL.md"),
+  );
+  await mustExist(
+    path.join(isolatedProject, ".claude", "skills", name, "SKILL.md"),
+  );
+}
+
+for (const entry of SUITE) {
+  const bundle = path.join(
+    publishedProject,
+    ".agents",
+    "skills",
+    entry.name,
+    "references",
+    "acta2",
+  );
+  const generated = path.join(publishedProject, "generated", entry.name);
+  await mkdir(generated, { recursive: true });
+  await mustExist(path.join(bundle, "bundle.json"));
+
+  for (const variant of entry.instruments) {
+    const suffix = variantSuffix(variant);
+    const input = path.join(
+      repositoryRoot,
+      "tests",
+      "fixtures",
+      "acta2",
+      entry.name,
+      `scenario${suffix}.json`,
+    );
+    const output = path.join(generated, `instrument${suffix}.html`);
+    runNode(
+      [
+        path.join(bundle, "generate-instrument.mjs"),
+        "--scenario",
+        input,
+        "--out",
+        output,
+      ],
+      publishedProject,
+      publishedHome,
+    );
+    await mustExist(output);
+  }
+
+  if (entry.record !== null) {
+    const output = path.join(generated, "record.html");
+    runNode(
+      [
+        path.join(bundle, "generate-record.mjs"),
+        "--canonical",
+        path.join(
+          repositoryRoot,
+          "tests",
+          "fixtures",
+          "acta2",
+          entry.name,
+          "canonical.json",
+        ),
+        "--out",
+        output,
+      ],
+      publishedProject,
+      publishedHome,
+    );
+    await mustExist(output);
+  }
+}
+
 runCli(["add", source, "--global", ...selection], globalHome, globalHome);
 await mustExist(
   path.join(globalHome, ".agents", "skills", "portable-example", "SKILL.md"),
@@ -152,5 +300,5 @@ try {
 assert.equal(publisherLockExists, false, "publisher must not receive consumer lock state");
 
 console.log(
-  "Discovery, direct install, whole collection install, and global install passed.",
+  "Synthetic discovery, direct/global install, real full-suite install, all isolated skill installs, and installed Acta v2 generators passed.",
 );

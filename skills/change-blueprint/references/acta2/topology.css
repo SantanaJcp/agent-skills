@@ -2,7 +2,7 @@
    Gate A (spec): scope vs non-goals side by side, numbered acceptance
    criteria, assumptions. Gate B (plan): slice timeline, data-flow diagram,
    risky code island, risks table, tests/rollout. Both close with the same
-   deliberate resolution gate; visual grammar follows the approved pilots. */
+   deliberate resolution gate; visual grammar follows the original pilot cohort. */
 .cb-question{font:400 32px/1.25 var(--acta-font-text);margin:var(--sp-6) 0 var(--sp-3);max-width:46ch}
 .cb-lede{font-size:15.5px;line-height:1.6;color:var(--acta-ink-muted);margin:0 0 var(--sp-5);max-width:70ch}
 

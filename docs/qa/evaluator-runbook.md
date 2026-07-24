@@ -1,6 +1,10 @@
 # Acta v2 suite evaluator runbook
 
-Use this runbook to collect comparable manual evidence for the initial fifteen-skill Acta cohort. Test the prepared harness; do not edit skill source while evaluating it.
+Use this runbook to collect comparable manual evidence for the published
+fifteen-skill Acta collection. Test the prepared harness; do not edit skill
+source while evaluating it. The initial `v1.0.0` browser/accessibility rows were
+explicitly deferred; [GitHub Issue #8](https://github.com/SantanaJcp/agent-skills/issues/8)
+tracks their prospective completion.
 
 ## 1. Prepare from an exact source revision
 
@@ -23,7 +27,12 @@ Confirm that `QA-MANIFEST.json` contains the expected full source revision, `act
 
 ## 2. Record the environment
 
-Copy `EVIDENCE-TEMPLATE.md` into a new evidence file. Record reviewer, operating system, hardware relevant to rendering, exact client/browser/assistive-technology versions, source revision, harness variant, and test date. Use `docs/qa/evidence/<surface>-<reviewer>-YYYY-MM-DD.md` when contributing the result.
+Copy `docs/qa/evidence/template.md` into a new evidence file. Record reviewer,
+operating system, hardware relevant to rendering, exact
+client/browser/assistive-technology versions, source revision, harness variant,
+and test date. Use `docs/qa/evidence/<surface>-<reviewer>-YYYY-MM-DD.md` when
+contributing the result. Follow the [evidence policy](evidence/README.md): commit
+only the sanitized final summary and keep raw logs/captures outside the repo.
 
 A pass requires an observed result, not only the absence of an error. Screenshots may supplement the Markdown record but do not replace it.
 
@@ -89,7 +98,11 @@ A failure in keyboard, 400% zoom, VoiceOver, or NVDA blocks promotion. Windows s
 
 ## 7. Submit and invalidate evidence correctly
 
-Commit only your evidence file and explicitly requested supporting captures on a `qa/<surface>-<reviewer>` branch. Do not edit the central verdict table unless you are the evidence integrator.
+Commit only your sanitized evidence summary on a `qa/<surface>-<reviewer>`
+branch. Keep captures and raw command/model logs in a reviewer-controlled
+location outside the repository unless a maintainer explicitly approves a
+small, scrubbed artifact. Do not edit the central verdict table unless you are
+the evidence integrator.
 
 When a test finds a defect:
 
@@ -99,4 +112,5 @@ When a test finds a defect:
 4. rerun the affected cases and any dependent end-to-end path;
 5. retain both records and mark the older verdict superseded.
 
-No individual skill may move to `skills/` until the complete cohort has passing required evidence.
+For future promotions, all required evidence must pass unless a reviewed ADR
+records a visible waiver and a public issue tracks the remaining work.

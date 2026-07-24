@@ -1,6 +1,6 @@
 /* Acta v2 shared assembly — the ONLY implementation that turns scenario /
  * canonical JSON into instrument and record HTML. The publisher materializer
- * imports it from design/acta2/lib/; every installed pilot skill ships a
+ * imports it from design/acta2/lib/; every installed Acta v2 skill ships a
  * verbatim copy in references/acta2/ next to export-core.mjs, so installed
  * skills generate artifacts from data with the exact same code (no
  * hand-editing of static HTML, no publisher dependency).

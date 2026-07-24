@@ -1,6 +1,10 @@
-# Acta v2 pilot — architecture and implementation contract
+# Acta v2 pilot — historical architecture and implementation contract
 
-Status: pilot (three skills only). Acta 0.1 remains authoritative for all other skills.
+Status: superseded for current operations by
+[ADR 0004](../adr/0004-acta-v2-suite-generalization.md) and
+[ADR 0005](../adr/0005-promote-acta-v2-suite.md). This document preserves the
+three-skill pilot contract and is not the published suite's current status;
+Acta v2 is now authoritative and Acta 0.1 is retained for compatibility.
 Basis: the durable [HTML-effectiveness audit basis](acta2-html-effectiveness-basis.md)
 and [effectiveness criteria v2](acta2-effectiveness-criteria-v2.md). This
 document translates that audit into an implementable contract; it does not
@@ -52,8 +56,8 @@ Rejection or revision loops back to the instrument (regenerate with new data if 
 
 ```
 design/acta2/                      # publisher-side v2 sources (never a runtime dependency)
-  VERSION                          # 0.2.0-pilot
-  protocol.md                      # v2 protocol installed into pilot skills
+  VERSION                          # historical 0.2.0-pilot
+  protocol.md                      # v2 protocol installed into pilot skills at the time
   base.css                         # shared technical primitives only (tokens, focus, print, reduced motion, reflow, disclosure, trust strip)
   runtime.js                       # shared store/render/export/verify/copy/self-test runtime
   lib/export-core.mjs              # pure logic; Node-importable; inlined into instruments at materialization
@@ -85,15 +89,19 @@ incubator/<pilot>/references/
   record.html                      # rendered record example (regenerate from canonical JSON)
 ```
 
-Materialization is deterministic (byte-stable, LF-only, sha-256 markers identifying Acta version, recipe, and source digest). Installed pilot bundles are self-contained: no runtime reference to `design/acta2/`, sibling skills, npm packages, or the network.
+Materialization was required to be deterministic (byte-stable, LF-only,
+sha-256 markers identifying Acta version, recipe, and source digest). The pilot
+bundles were self-contained: no runtime reference to `design/acta2/`, sibling
+skills, npm packages, or the network. Those properties remain current suite
+requirements through the later ADRs.
 
-## 6. Backward compatibility and rollback
+## 6. Historical backward compatibility and rollback plan
 
 - Acta 0.1 materialization, validation, tests, recipes, and the 11 non-pilot skills are untouched. Pilot skills **keep** their v1 `references/acta-scaffold.html` (still materialized and validated) so `npm run check` stays green and rollback is trivial.
 - Rollback = revert the three SKILL.md files (they are the only pointers to v2 references) and delete `design/acta2/`, the two scripts, the test file, and materialized v2 references. No other artifact depends on v2.
 - `scripts/check.mjs` gains two commands (`materialize-acta2 --check`, `validate-acta2`); removing them restores the previous pipeline byte-for-byte.
 
-## 7. Pilot scope
+## 7. Historical pilot scope
 
 Only `three-code-paths` (Compare/decide), `build-with-notes` (Monitor/intervene), `concept-lab` (Explore/simulate). Their topologies are intentionally not a shared template; only technical primitives (`base.css`, `runtime.js`, `export-core.mjs`) are shared. Migration of the other eleven HTML skills, routing changes, and record-identity redesign are out of scope.
 

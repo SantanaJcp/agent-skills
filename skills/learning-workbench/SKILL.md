@@ -12,7 +12,7 @@ metadata:
 
 Support durable learning across sessions for any topic through trusted knowledge, relevant practice, retrieval, spacing, and explicit learning records.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (mission, waypoint lessons with sourced facts and model flows, retrieval-practice questions) and run [the bundled generator](references/acta2/generate-instrument.mjs); after the session export is confirmed in chat, `canonical.json` + [the record generator](references/acta2/generate-record.mjs) emit the session's durable learning record. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains only as rollback until the v2 migration is approved. This skill uses a user-selected durable workspace rather than `.agent-work`.
+Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (mission, waypoint lessons with sourced facts and model flows, retrieval-practice questions) and run [the bundled generator](references/acta2/generate-instrument.mjs); after the session export is confirmed in chat, `canonical.json` + [the record generator](references/acta2/generate-record.mjs) emit the session's durable learning record. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains bundled as the published compatibility fallback; Acta v2 is authoritative. This skill uses a user-selected durable workspace rather than `.agent-work`.
 
 ## Workspace
 
