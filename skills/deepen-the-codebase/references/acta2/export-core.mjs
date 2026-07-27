@@ -1,5 +1,5 @@
 /*
- * Acta v2 pilot — pure state/export core.
+ * Acta v2 — pure state/export core.
  *
  * One source of truth for: status derivation, per-kind derived consequences,
  * and candidate export building (Markdown + JSON). This file runs in two
@@ -172,7 +172,7 @@ function deriveStatus(data, working) {
     case "decision":
       if (working.selected) return INSTRUMENT_STATUSES["candidate-ready"];
       /* Scenario-provided open label keeps gate/direction/flow decisions
-         honest without changing the pilots' wording. */
+         honest without changing the original scenario wording. */
       return data.openStatusLabel
         ? { code: "open-unselected", label: data.openStatusLabel }
         : INSTRUMENT_STATUSES["open-unselected"];

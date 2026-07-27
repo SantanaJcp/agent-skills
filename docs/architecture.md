@@ -14,7 +14,12 @@ The initial fifteen skills were promoted together to `skills/` after their indiv
 
 ## Acta
 
-Acta 0.1.0 is the publisher-owned design and artifact system. Its canonical authoring source includes the protocol, tokens, component contracts, shared progressive-enhancement behavior, and fourteen recipe instruments. The copied design-phase deliverables are immutable provenance and a visual baseline, not runtime sources.
+Acta 0.1.0 is the retained compatibility layer and original publisher-owned
+design foundation. Its canonical source includes the protocol, tokens,
+component contracts, shared progressive-enhancement behavior, and fourteen
+recipe instruments. The copied design-phase deliverables are immutable
+provenance and a visual baseline, not runtime sources. Acta v2 is the
+authoritative artifact system for the published collection.
 
 Publisher tooling deterministically materializes:
 
@@ -29,7 +34,9 @@ All fourteen HTML skills use the authoritative Acta v2 instrument/record split â
 
 ## Artifact authority
 
-Technical working state lives under `.agent-work/<initiative>/<skill>/`, locally excluded through `.git/info/exclude`. Learning workspaces use a durable user-selected directory.
+Technical working state lives under `.agent-work/<initiative>/<skill>/`, which
+is ignored by the repository. Learning workspaces use a durable user-selected
+directory.
 
 Markdown is canonical. JSON is canonical only for genuinely structured state. HTML is a regenerable, self-contained, offline interface. Browser state is ephemeral; HTML cannot write project files. Decisions and publication require explicit human actions.
 

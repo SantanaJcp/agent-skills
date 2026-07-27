@@ -19,7 +19,7 @@ The final verdict uses the newest applicable observation for each affected case.
 - Operating system: macOS 26.5.2.
 - Codex: `codex-cli 0.144.1`.
 - Model: client default; the JSONL event stream did not expose a model identifier.
-- Authentication: existing ChatGPT/Codex authentication from `CODEX_HOME=/Users/santana/.codex`; no credential or API key was copied into evidence.
+- Authentication: existing local ChatGPT/Codex authentication; no credential or API key was copied into evidence.
 - Every prompt was sent exactly as committed, without adding a skill name or evaluator instruction.
 - Every case used a fresh disposable harness copy and `--ephemeral --ignore-user-config --skip-git-repo-check`.
 - Each process received a fresh empty `HOME`; `CODEX_HOME` was retained only for authentication and client runtime.
@@ -29,11 +29,11 @@ The final verdict uses the newest applicable observation for each affected case.
 Commands:
 
 ```text
-HOME=<fresh-empty-home> CODEX_HOME=/Users/santana/.codex codex exec \
+HOME=<fresh-empty-home> CODEX_HOME=<existing-auth-home> codex exec \
   --ephemeral --ignore-user-config --skip-git-repo-check \
   -s read-only --json --color never -C <fresh-copy> <exact-prompt>
 
-HOME=<fresh-empty-home> CODEX_HOME=/Users/santana/.codex codex exec \
+HOME=<fresh-empty-home> CODEX_HOME=<existing-auth-home> codex exec \
   --ephemeral --ignore-user-config --skip-git-repo-check \
   -s workspace-write --json --color never -C <fresh-copy> <exact-prompt>
 ```
@@ -110,7 +110,8 @@ All seven losing skills remained inactive in their collision case.
 - A preliminary invocation used the real `HOME` and exposed a personal skill despite `--ignore-user-config`. It was invalidated; every counted run used a fresh empty `HOME`.
 - An early parser treated paths printed by `find`/`rg` as skill reads. It was replaced with event-level parsing of concrete `command_execution.item.command` values; affected partial observations were discarded and rerun.
 - Permission-denied or unauthenticated dry-run observations were treated as invalid setup, never as skill failures.
-- Raw evidence preserves these corrections separately; none contributes to the verdict.
+- Discarded runs were excluded from the consolidated verdict; none contributes
+  to the published totals.
 
 ## Defects and supersession
 
@@ -133,11 +134,8 @@ These are separate evaluator-runbook phases; this activation PASS does not asser
 
 The evidence is suitable for integration with the separate core-cycle, browser, accessibility, and human-evaluation records.
 
-## Evidence locations
+## Evidence retention
 
-- Consolidated structured evidence: `/tmp/acta-codex-consolidated-results.json`
-- Full raw-oriented evidence: `/tmp/acta-codex-full-activation.md`
-- Long-behavior supplement: `/tmp/acta-codex-f22954b-long-behavior.md`
-- Final SVG supplement: `/tmp/acta-codex-c24c366-svg.md`
-- Raw JSONL and disposable copies: `/tmp/acta-codex-full-logs/`
-
+This file is the sanitized public summary. Raw JSONL, disposable copies, and
+command logs were intentionally kept outside the repository and are not part of
+the public product or release contract.

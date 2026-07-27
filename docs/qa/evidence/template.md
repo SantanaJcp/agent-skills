@@ -58,3 +58,7 @@ Final `npm test` result:
 Verdict: pending
 
 Summarize tested scope, failures, known gaps, and whether this evidence is suitable for aggregation. A partial assignment may pass its own scope without declaring the suite promotable.
+
+Before committing, remove raw transcript excerpts, credentials, private data,
+monetary usage details, machine-local absolute paths, and links to ephemeral
+local files. Keep raw logs and captures outside the repository.

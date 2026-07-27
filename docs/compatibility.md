@@ -27,7 +27,13 @@ A whole-collection install still creates separate skill directories. Materialize
 
 ## HTML surfaces
 
-Acta artifacts target current stable Chrome, Safari, and Firefox through offline standards-based HTML, native controls, progressive enhancement, and system font stacks. Promotion evidence is time-bound to recorded browser versions. Real-Windows serif rendering is not part of the initial blocking promise.
+Acta artifacts target current stable Chrome, Safari, and Firefox through offline
+standards-based HTML, native controls, progressive enhancement, and system font
+stacks. The `v1.0.0` release did not claim manual browser or assistive-technology
+validation: ADR 0005 records the explicit deferral, and
+[GitHub Issue #8](https://github.com/SantanaJcp/agent-skills/issues/8) tracks the
+versioned matrix. Static HTML checks are not a substitute for that evidence.
+Real-Windows serif rendering is not part of the initial blocking promise.
 
 ## Tooling drift
 

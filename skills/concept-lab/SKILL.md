@@ -1,6 +1,6 @@
 ---
 name: concept-lab
-description: "Research and teach a concept through a manipulable model, trusted sources, declared simplifications, and optional retrieval practice. Use for focused conceptual understanding; do not use to document one repository feature or manage a long-term curriculum."
+description: "Make a difficult concept click through trusted research, an interactive model, declared simplifications, and optional retrieval practice. Use for focused conceptual learning; do not use to document one repository feature or manage a long-term curriculum."
 license: Apache-2.0
 metadata:
   tags: "research, learning, visualization"
@@ -12,7 +12,7 @@ metadata:
 
 Turn a focused concept into a manipulable model the learner drives, keeping pedagogy distinct from production truth.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` and run [the bundled generator](references/acta2/generate-instrument.mjs); after acceptance, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs). [instrument.html](references/instrument.html) and [record.html](references/record.html) are rendered examples of the outputs.
+Read [the interactive artifact protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` and run [the bundled generator](references/acta2/generate-instrument.mjs); after acceptance, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs). [instrument.html](references/instrument.html) and [record.html](references/record.html) are rendered examples of the outputs.
 
 HTML earns its place here when the concept has parameters whose consequences must be **felt**: the learner moves a control and watches a derived consequence change, which no paragraph can substitute. If the concept has no meaningful parameter or derived behavior, teach it in Markdown with a figure — a dead slider is worse than no slider.
 

@@ -1,4 +1,4 @@
-<!-- acta2-materialized: v0.2.0 instrument=draw-the-flow sha256=a913993cc02527192aad0ef5fb97707d2577de1ab2108cf498e32474efcaa8c3; do not edit by hand — regenerate from scenario JSON -->
+<!-- acta2-materialized: v0.2.0 instrument=draw-the-flow sha256=b79dc66b71938aedd31defb0ee4e5c4077046811d17279321173134f2ed0aa66; do not edit by hand — regenerate from scenario JSON -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Draw the flow — tag-filter navigation — instrument · Acta v2</title>
 <style>
-/* Acta v2 pilot — shared technical primitives.
+/* Acta v2 — shared technical primitives.
    Layout topology is deliberately absent: each instrument ships its own
    topology.css. This file carries only tokens, safety, accessibility,
    disclosure, trust strip, export panel, print, and reflow contracts.
@@ -644,7 +644,7 @@ body[data-acta2-ready="true"] .a2-jsnote{display:none}
 }</script>
 <script>
 /*
- * Acta v2 pilot — pure state/export core.
+ * Acta v2 — pure state/export core.
  *
  * One source of truth for: status derivation, per-kind derived consequences,
  * and candidate export building (Markdown + JSON). This file runs in two
@@ -817,7 +817,7 @@ function deriveStatus(data, working) {
     case "decision":
       if (working.selected) return INSTRUMENT_STATUSES["candidate-ready"];
       /* Scenario-provided open label keeps gate/direction/flow decisions
-         honest without changing the pilots' wording. */
+         honest without changing the original scenario wording. */
       return data.openStatusLabel
         ? { code: "open-unselected", label: data.openStatusLabel }
         : INSTRUMENT_STATUSES["open-unselected"];
@@ -1535,7 +1535,7 @@ function buildCandidate(data, working) {
 
 /* ESM exports stripped for inline use */
 
-/* Acta v2 pilot — shared instrument runtime.
+/* Acta v2 — shared instrument runtime.
    Inlined after export-core; expects the core functions in scope
    (initialWorking, deriveStatus, buildCandidate, deriveBackoff,
    deriveCounts, filterEntries).

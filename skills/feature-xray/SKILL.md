@@ -1,6 +1,6 @@
 ---
 name: feature-xray
-description: "Explain how an existing feature is implemented in this repository through source-located evidence, operational flow, gotchas, and an Acta record. Use for codebase-grounded walkthroughs such as explain how caching, password reset, or retries work here; do not use for general concept teaching or proposed implementation design."
+description: "Produce a source-backed walkthrough of how an existing feature works, including entry points, data flow, dependencies, usage, and gotchas. Use for repository-grounded explanations; do not use for general concept teaching or proposed implementation design."
 license: Apache-2.0
 metadata:
   tags: "codebase, explanation, documentation"
@@ -12,7 +12,7 @@ metadata:
 
 Produce a verifiable operational explanation of an existing feature without modifying it.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). The X-ray is a **record-only** artifact — nothing in it changes with human action, so it carries no controls. Write `scenario.json` (TL;DR, system-map nodes/edges, evidence-located steps, usage snippet, gotchas, FAQ) and, after the explanation is verified and accepted in chat, `canonical.json`; generate the record with [the bundled generator](references/acta2/generate-record.mjs). [record.html](references/record.html) is a rendered example. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains only as rollback until the v2 migration is approved.
+Read [the interactive artifact protocol](references/acta2-protocol.md). The X-ray is a **record-only** artifact — nothing in it changes with human action, so it carries no controls. Write `scenario.json` (TL;DR, system-map nodes/edges, evidence-located steps, usage snippet, gotchas, FAQ) and, after the explanation is verified and accepted in chat, `canonical.json`; generate the record with [the bundled generator](references/acta2/generate-record.mjs). [record.html](references/record.html) is a rendered example.
 
 ## Process
 

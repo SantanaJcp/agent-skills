@@ -1,6 +1,6 @@
 ---
 name: build-with-notes
-description: "Implement an explicitly requested code change test-first while maintaining live Acta notes, checks, deviations, and STOP gates. Use for direct mutation requests such as implement, build, fix, refactor this module now, or execute an approved spec, plan, ticket, or contract; do not activate for planning, diagnosis-only work, or read-only review."
+description: "Ship a requested code change safely with test-first implementation, live progress visibility, explicit decision checkpoints, and final verification. Use when the user asks to implement, build, fix, or refactor now; do not use for planning, diagnosis-only work, or read-only review."
 license: Apache-2.0
 metadata:
   tags: "implementation, tdd, review"
@@ -12,7 +12,7 @@ metadata:
 
 Implement the user's requested scope while keeping `implementation-notes.md` and `status.json` as an honest session record, and a session-board instrument as the human's monitoring and intervention surface. An explicit implementation request authorizes edits in scope; commit still requires separate authorization.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: maintain `scenario.json` and regenerate the board with [the bundled generator](references/acta2/generate-instrument.mjs); after the session closes, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs). [instrument.html](references/instrument.html) and [record.html](references/record.html) are rendered examples of the outputs.
+Read [the interactive artifact protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: maintain `scenario.json` and regenerate the board with [the bundled generator](references/acta2/generate-instrument.mjs); after the session closes, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs). [instrument.html](references/instrument.html) and [record.html](references/record.html) are rendered examples of the outputs.
 
 HTML earns its place here as a **board, not a log**: the human monitoring a build needs "what is happening now, may work continue, what needs me" answered in one glance, and an open STOP gate needs response controls. When a session is short, linear, and gate-free, the Markdown notes alone are enough — skip the board rather than maintain an empty one.
 

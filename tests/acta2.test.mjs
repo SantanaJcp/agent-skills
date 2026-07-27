@@ -30,6 +30,16 @@ const instrumentTargets = SUITE.flatMap((skill) =>
 );
 const recordSkills = SUITE.filter((skill) => skill.record);
 
+function skipBrowserProbes(t) {
+  if (process.env.ACTA2_SKIP_BROWSER_PROBES === "1") {
+    t.skip(
+      "browser probes explicitly skipped; manual browser/AT evidence remains tracked in GitHub Issue #8",
+    );
+    return true;
+  }
+  return false;
+}
+
 function frontmatterOf(markdown) {
   const match = markdown.match(/^---\n([\s\S]*?)\n---\n/);
   assert.ok(match, "candidate markdown must start with YAML frontmatter");
@@ -365,7 +375,7 @@ test("acta2 materializer output is current, marked, and self-contained", async (
         assert.doesNotMatch(html, /\r/, `${location} must be LF-only`);
       }
     }
-    // Rollback safety: Acta 0.1 references stay in place for every pilot.
+    // Compatibility safety: Acta 0.1 references stay in place for every v2 skill.
     await access(path.join(root, "skills", name, "references", "acta-scaffold.html"));
     await access(path.join(root, "skills", name, "references", "acta-protocol.md"));
   }
@@ -530,6 +540,7 @@ test("acta2 materialization is deterministic, repeatable, and version-locked", a
 });
 
 test("acta2 instruments reflow without document-level horizontal scroll at 320px", async (t) => {
+  if (skipBrowserProbes(t)) return;
   for (const { name, file } of instrumentTargets) {
     const fixture = path.join(root, "tests", "fixtures", "acta2", name, file);
     const result = runScript("acta2-render-probe.mjs", [
@@ -550,6 +561,7 @@ test("acta2 instruments reflow without document-level horizontal scroll at 320px
 });
 
 test("acta2 instruments pass their in-page state/export self-test", async (t) => {
+  if (skipBrowserProbes(t)) return;
   const chromeCandidates = /** @type {string[]} */ ([
     process.env.CHROME_BIN,
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
@@ -819,6 +831,7 @@ test("acta2 instruments stay honestly inert without JavaScript", async (t) => {
 
   /* Browser half: load a script-stripped copy (exactly the DOM a no-JS
      browser renders) and confirm the live document stays inert. */
+  if (skipBrowserProbes(t)) return;
   const stripDir = await mkdtemp(path.join(tmpdir(), "acta2-nojs-"));
   for (const { name, file } of instrumentTargets) {
     const fixture = path.join(root, "tests", "fixtures", "acta2", name, file);
@@ -1124,6 +1137,7 @@ test("acta2 change-blueprint record requires the accepted Gate A prerequisite (i
 });
 
 test("acta2 disabled controls are visually disabled (computed styles)", async (t) => {
+  if (skipBrowserProbes(t)) return;
   const stripDir = await mkdtemp(path.join(tmpdir(), "acta2-disabled-styles-"));
   const fixture = path.join(root, "tests", "fixtures", "acta2", "concept-lab", "instrument.html");
   const html = await readFile(fixture, "utf8");

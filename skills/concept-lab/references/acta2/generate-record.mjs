@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-/* Bundled Acta v2 record generator (installed with each pilot skill).
+/* Bundled Acta v2 record generator (installed with each applicable skill).
  *
  * Usage, only AFTER explicit acceptance in chat:
  *   node <skill>/references/acta2/generate-record.mjs \

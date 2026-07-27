@@ -1,4 +1,4 @@
-/* Acta v2 pilot — shared instrument runtime.
+/* Acta v2 — shared instrument runtime.
    Inlined after export-core; expects the core functions in scope
    (initialWorking, deriveStatus, buildCandidate, deriveBackoff,
    deriveCounts, filterEntries).

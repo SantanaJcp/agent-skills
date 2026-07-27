@@ -23,8 +23,10 @@ Deprecate a stable skill for at least one minor release with migration guidance 
 ## Prepare
 
 1. Confirm every stable skill passed current Codex and Claude trials.
-2. For the initial cohort, confirm the complete suite QA verdict is passing.
-3. Record concrete client, browser, Acta, and skills CLI versions.
+2. Confirm the applicable suite QA verdict, including any explicitly approved
+   waiver, is recorded without converting deferred rows into passes.
+3. Record concrete client, Acta, and skills CLI versions plus browser/AT
+   versions for the manual rows actually executed.
 4. Set the private package metadata version to the release version.
 5. Move changelog entries into a dated release section.
 6. Regenerate Acta and catalogs; run `npm run check`.

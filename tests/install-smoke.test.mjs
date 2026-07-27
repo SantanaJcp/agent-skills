@@ -20,6 +20,6 @@ test("consumer can discover and install a portable skill for both clients", () =
   assert.equal(result.status, 0, result.stderr);
   assert.match(
     result.stdout,
-    /Discovery, direct install, whole collection install, and global install passed/,
+    /real full-suite install, all isolated skill installs, and installed Acta v2 generators passed/,
   );
 });

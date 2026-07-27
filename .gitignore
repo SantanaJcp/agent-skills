@@ -5,3 +5,14 @@ coverage/
 
 # Consumer project state does not belong in this publisher repository.
 /skills-lock.json
+
+# Local agent planning and generated QA work never enter the public tree.
+/.scratch/
+/.agent-work/
+/agent-skills-manual-qa/
+/qa-output/
+/test-results/
+/docs/qa/evidence/raw/
+*.har
+*.jsonl
+*.trace.zip

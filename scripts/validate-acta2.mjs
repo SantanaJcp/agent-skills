@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-/* Acta v2 pilot static validator.
+/* Acta v2 suite static validator.
  *
  * Technical-integrity gates (criteria-v2 Part I, automatable subset) plus the
  * v2-specific state/export invariants that the a8b0837 audit found violated:

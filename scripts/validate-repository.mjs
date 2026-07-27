@@ -2,6 +2,7 @@
 
 import { access, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { parse } from "yaml";
 
 const root = process.cwd();
@@ -35,6 +36,7 @@ const requiredFiles = [
   "docs/qa/acta-suite-0.1.0.md",
   "docs/qa/acta-suite-0.2.0.md",
   "docs/qa/evaluator-runbook.md",
+  "docs/qa/evidence/README.md",
   "docs/qa/evidence/template.md",
   "docs/authoring.md",
   "docs/compatibility.md",
@@ -157,6 +159,44 @@ try {
 }
 
 try {
+  const ignore = await readFile(path.join(root, ".gitignore"), "utf8");
+  for (const requiredPattern of ["/.scratch/", "/.agent-work/", "*.har", "*.jsonl"]) {
+    if (!ignore.split(/\r?\n/).includes(requiredPattern)) {
+      errors.push(`.gitignore must exclude local-only path ${requiredPattern}.`);
+    }
+  }
+} catch (error) {
+  if (error.code !== "ENOENT") {
+    errors.push(`Cannot validate .gitignore (${error.message}).`);
+  }
+}
+
+const trackedFiles = spawnSync("git", ["ls-files"], {
+  cwd: root,
+  encoding: "utf8",
+});
+if (trackedFiles.status === 0) {
+  const forbiddenTracked = trackedFiles.stdout
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .filter(
+      (file) =>
+        file.startsWith(".scratch/") ||
+        file.startsWith(".agent-work/") ||
+        file.startsWith("docs/qa/evidence/raw/") ||
+        file.endsWith(".har") ||
+        file.endsWith(".jsonl") ||
+        file.endsWith(".trace.zip") ||
+        ["skills/.gitkeep", "tests/smoke/.gitkeep"].includes(file),
+    );
+  for (const file of forbiddenTracked) {
+    if (await exists(file)) {
+      errors.push(`${file} is local-only or a redundant structural placeholder.`);
+    }
+  }
+}
+
+try {
   const releaseWorkflow = await readFile(
     path.join(root, ".github", "workflows", "release.yml"),
     "utf8",
@@ -175,10 +215,21 @@ try {
 async function markdownFiles(directory) {
   const files = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if ([".git", "node_modules"].includes(entry.name)) {
+    const target = path.join(directory, entry.name);
+    if (
+      [
+        ".agent-work",
+        ".git",
+        ".scratch",
+        "agent-skills-manual-qa",
+        "node_modules",
+        "qa-output",
+        "test-results",
+      ].includes(entry.name) ||
+      path.relative(root, target) === "docs/qa/evidence/raw"
+    ) {
       continue;
     }
-    const target = path.join(directory, entry.name);
     if (entry.isSymbolicLink()) {
       errors.push(`${path.relative(root, target)}: symlinks are forbidden.`);
     } else if (entry.isDirectory()) {

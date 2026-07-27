@@ -1,4 +1,4 @@
-/* Acta v2 pilot — shared technical primitives.
+/* Acta v2 — shared technical primitives.
    Layout topology is deliberately absent: each instrument ships its own
    topology.css. This file carries only tokens, safety, accessibility,
    disclosure, trust strip, export panel, print, and reflow contracts.

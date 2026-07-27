@@ -12,7 +12,9 @@ Every new skill begins in the incubator with a matching smoke definition. Replac
 
 Required fields are `name`, a trigger-rich `description`, `license: Apache-2.0`, and comma-separated `metadata.tags`. Optional `compatibility` describes concrete environment requirements. Stable behavior cannot depend on client-only frontmatter.
 
-Descriptions must lead with the action, cover each genuine trigger branch once, and distinguish adjacent non-triggers. Installing the whole suite makes description collision quality load-bearing.
+Descriptions serve two jobs at once: marketplace copy and routing contracts. Lead with the outcome a user receives, include recognizable request language, cover each genuine trigger branch once, and distinguish the nearest non-trigger. Installing the whole suite makes description collision quality load-bearing.
+
+Keep publisher implementation details out of stable public skill copy. Product names, scaffold generations, materialization versions, migration history, and compatibility recipes belong in supporting references or maintainer tooling, not in the frontmatter description or `SKILL.md` narrative.
 
 ## Information hierarchy
 
@@ -49,4 +51,9 @@ No symlinks, opaque executables, generated secrets, hidden install-time actions,
 
 ## Promote
 
-Promotion is a separate reviewed change. For the initial Acta cohort, all fifteen skills move together only after the versioned suite report contains complete client, end-to-end, browser, and accessibility evidence. Run `npm run check` and isolated installation before promotion.
+Promotion is a separate reviewed change. The initial Acta cohort was promoted
+under the explicit browser/accessibility waiver recorded in ADR 0005; that
+historical exception does not silently relax later promotion requirements. Run
+`npm run check`, isolated installation, and the applicable versioned manual
+matrix before promotion, or record any waiver in a reviewed ADR and public
+tracking issue.

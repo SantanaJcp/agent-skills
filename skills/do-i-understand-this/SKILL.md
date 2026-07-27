@@ -1,6 +1,6 @@
 ---
 name: do-i-understand-this
-description: "Diagnose a user's understanding of an actual completed change with an evidence-grounded quiz, gap export, explanation, and retry. Use after implementation or review for requests such as quiz me on the pull request or change we just implemented; never use as a merge gate or generic code review."
+description: "Verify understanding of a completed change through an evidence-backed quiz, explanations, and a targeted review plan. Use after an implementation or pull request, including requests to quiz me on this change; never use as a merge gate or generic code review."
 license: Apache-2.0
 metadata:
   tags: "learning, review, quiz"
@@ -12,7 +12,7 @@ metadata:
 
 Test whether the user understands why a real change works, where it stops working, and how to operate or reverse it. This is diagnostic learning, never approval or merge policy.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (diff facts, before/after mental-model flows, evidence cards, questions with answers/explanations/gap names) and run [the bundled generator](references/acta2/generate-instrument.mjs); after the gaps export is confirmed, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs). The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains only as rollback until the v2 migration is approved.
+Read [the interactive artifact protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (diff facts, before/after mental-model flows, evidence cards, questions with answers/explanations/gap names) and run [the bundled generator](references/acta2/generate-instrument.mjs); after the gaps export is confirmed, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs).
 
 ## Process
 
