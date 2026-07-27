@@ -58,6 +58,44 @@ cases:
   assert.match(result.stdout, /Validated 1 skill/);
 });
 
+test("stable public skill copy cannot expose internal product terminology", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
+  await writeSkill(
+    root,
+    "skills",
+    "research-notes",
+    `---
+name: research-notes
+description: Organize research notes in an Acta v2 report.
+license: Apache-2.0
+metadata:
+  tags: "research,documentation"
+---
+
+# Research Notes
+
+Use the internal Acta protocol to organize the research notes.
+`,
+    `skill: research-notes
+cases:
+  - kind: trigger
+    prompt: Organize these five sources into research notes.
+    expected: The skill activates and organizes the supplied sources.
+  - kind: non-trigger
+    prompt: What time is it?
+    expected: The skill remains inactive.
+`,
+  );
+
+  const result = runValidator(root);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /stable public skill copy must not expose internal Acta terminology/,
+  );
+});
+
 test("maintainer sees every portable contract violation", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
   await writeSkill(

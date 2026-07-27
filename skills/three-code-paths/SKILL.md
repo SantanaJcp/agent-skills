@@ -1,6 +1,6 @@
 ---
 name: three-code-paths
-description: "Compare exactly three structurally distinct code, API, data-model, database-schema, or architecture approaches at equal fidelity and record an explicit choice. Use for implementation-shape decisions such as compare three schemas or design a new retry architecture; do not use for cosmetic variants, interface styling, or direct implementation."
+description: "Compare exactly three implementation strategies at equal depth across code, APIs, data models, schemas, or architecture, then record a clear decision. Use for structural implementation choices; do not use for cosmetic variants, interface styling, or direct implementation."
 license: Apache-2.0
 metadata:
   tags: "architecture, comparison, planning"
@@ -12,7 +12,7 @@ metadata:
 
 Answer an implementation-shape question with three genuinely different code paths, decided by the human inside a comparison instrument.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` and run [the bundled generator](references/acta2/generate-instrument.mjs); after acceptance, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs). [instrument.html](references/instrument.html) and [record.html](references/record.html) are rendered examples of the outputs.
+Read [the interactive artifact protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` and run [the bundled generator](references/acta2/generate-instrument.mjs); after acceptance, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs). [instrument.html](references/instrument.html) and [record.html](references/record.html) are rendered examples of the outputs.
 
 HTML earns its place here because the decision is perceptual: three alternatives must be visible **simultaneously** so the human can scan one criterion across all of them and point at one. If the question collapses to one feasible shape, skip the instrument and record the reasoning in Markdown — a fake comparison wastes attention.
 

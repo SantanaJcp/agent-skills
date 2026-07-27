@@ -1,6 +1,6 @@
 ---
 name: deepen-the-codebase
-description: "Analyze a codebase for evidence-backed module-deepening opportunities and compare candidates without refactoring. Use when architecture, seams, locality, testability, or AI navigability need improvement; do not use for immediate implementation or generic code cleanup."
+description: "Find high-leverage architecture improvements grounded in the codebase and compare the strongest module boundaries before refactoring. Use when seams, locality, testability, or AI navigability need improvement; do not use for immediate implementation or generic cleanup."
 license: Apache-2.0
 metadata:
   tags: "architecture, analysis, refactoring"
@@ -12,7 +12,7 @@ metadata:
 
 Find module changes that concentrate complexity behind simpler interfaces, then export one chosen direction for later blueprinting. This skill never refactors.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (current module map, seam directions each with its own dependency diagram, evidence, costs, and a change-blueprint seed) and run [the bundled generator](references/acta2/generate-instrument.mjs); after the direction is accepted in chat, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs) — analysis always, implementation never. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains bundled as the published compatibility fallback; Acta v2 is authoritative.
+Read [the interactive artifact protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (current module map, seam directions each with its own dependency diagram, evidence, costs, and a change-blueprint seed) and run [the bundled generator](references/acta2/generate-instrument.mjs); after the direction is accepted in chat, write `canonical.json` and run [the record generator](references/acta2/generate-record.mjs) — analysis always, implementation never.
 
 ## Vocabulary
 

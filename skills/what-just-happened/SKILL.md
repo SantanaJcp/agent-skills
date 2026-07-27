@@ -1,6 +1,6 @@
 ---
 name: what-just-happened
-description: "Create an evidence-backed incident record and postmortem timeline without directing active mitigation or inventing owners. Use during an incident to capture a draft or after stabilization to complete the report; do not use as the debugging or incident-command process."
+description: "Turn incident evidence into a trustworthy postmortem with impact, timeline, root cause, contributing factors, and follow-ups. Use during an incident to preserve facts or after stabilization to complete the record; do not use to direct active mitigation or debug the system."
 license: Apache-2.0
 metadata:
   tags: "incident, postmortem, operations"
@@ -12,7 +12,7 @@ metadata:
 
 Preserve what happened, its evidence, impact, cause state, and real follow-up ownership. During an active incident this skill documents only; it does not direct response.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). The postmortem is a **record-only** artifact — no fake active-incident controls, no invented owners. Write `scenario.json` (impact facts, an epistemically typed timeline of fact/hypothesis/mitigation/recovery entries, root cause, contributing conditions, follow-ups) and, after the report is reviewed and accepted in chat, `canonical.json`; generate the record with [the bundled generator](references/acta2/generate-record.mjs). [record.html](references/record.html) is a rendered example. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains bundled as the published compatibility fallback; Acta v2 is authoritative.
+Read [the interactive artifact protocol](references/acta2-protocol.md). The postmortem is a **record-only** artifact — no fake active-incident controls, no invented owners. Write `scenario.json` (impact facts, an epistemically typed timeline of fact/hypothesis/mitigation/recovery entries, root cause, contributing conditions, follow-ups) and, after the report is reviewed and accepted in chat, `canonical.json`; generate the record with [the bundled generator](references/acta2/generate-record.mjs). [record.html](references/record.html) is a rendered example.
 
 ## Process
 

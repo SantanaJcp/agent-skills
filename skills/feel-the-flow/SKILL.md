@@ -1,6 +1,6 @@
 ---
 name: feel-the-flow
-description: "Build a disposable interaction prototype to answer a focused experience question and export its parameters and conclusions. Use when behavior must be felt before production design; do not use to implement production UI or compare static visual directions."
+description: "Prototype a key interaction quickly so stakeholders can feel timing, feedback, and behavior before production work. Use when experience must be tested through interaction; do not use to implement production UI or compare static visual directions."
 license: Apache-2.0
 metadata:
   tags: "prototype, interaction, design"
@@ -12,7 +12,7 @@ metadata:
 
 Create the smallest disposable prototype that lets the user feel a behavior and decide. The output is evidence, not production code.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). The prototype is **instrument-only and disposable by design** — no durable record exists. Write `scenario.json` (playground dataset, feel parameters, toggles) and run [the bundled generator](references/acta2/generate-instrument.mjs); only the parameters and the felt conclusion export, via the candidate the human confirms in chat. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains bundled as the published compatibility fallback; Acta v2 is authoritative.
+Read [the interactive artifact protocol](references/acta2-protocol.md). The prototype is **instrument-only and disposable by design** — no durable record exists. Write `scenario.json` (playground dataset, feel parameters, toggles) and run [the bundled generator](references/acta2/generate-instrument.mjs); only the parameters and the felt conclusion export, via the candidate the human confirms in chat.
 
 ## Process
 

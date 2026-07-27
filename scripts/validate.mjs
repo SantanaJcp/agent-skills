@@ -684,6 +684,11 @@ for (const collection of collections) {
     if (source.split(/\r?\n/).length > 500) {
       errors.push(`${relative}: SKILL.md must not exceed 500 lines.`);
     }
+    if (collection === "skills" && /\bActa\b/.test(source)) {
+      errors.push(
+        `${relative}: stable public skill copy must not expose internal Acta terminology.`,
+      );
+    }
     validateFrontmatter(frontmatter, collection, entry.name, relative);
     await validateBundle(
       path.join(collectionDirectory, entry.name),

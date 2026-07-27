@@ -1,6 +1,6 @@
 ---
 name: find-the-cause
-description: "Diagnose why a bug, failing test, unexpected behavior, or performance regression occurs through a tight red-capable loop, minimization, falsifiable hypotheses, and one-variable probes without applying the production fix. Use for requests such as find why this test is failing when the cause is unknown, even if the reported failure is not yet reproducible; establish the real baseline and request missing failing evidence rather than skipping diagnosis. Do not use when the fix is already specified or implementation is requested."
+description: "Find the root cause of a bug, failing test, unexpected behavior, or slowdown using reproducible evidence and falsifiable experiments. Use when the cause is unknown, even if the reported failure is not yet reproducible; do not use when the fix is already specified or implementation is requested."
 license: Apache-2.0
 metadata:
   tags: "debugging, diagnosis, testing"
@@ -12,7 +12,7 @@ metadata:
 
 Produce an evidence-backed diagnosis and fix direction, not a production fix. Temporary diagnostic mutations are allowed and must be cleaned.
 
-Read [the Acta v2 protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (symptom facts, causal map, hypotheses each with predicts/probe/observed/evidence, verdict vocabulary) and run [the bundled generator](references/acta2/generate-instrument.mjs); the human judges every hypothesis — nothing auto-eliminates — and after the diagnosis is confirmed in chat, `canonical.json` + [the record generator](references/acta2/generate-record.mjs) emit the diagnosis record. The Acta 0.1 recipe ([acta-protocol.md](references/acta-protocol.md), [acta-scaffold.html](references/acta-scaffold.html)) remains bundled as the published compatibility fallback; Acta v2 is authoritative.
+Read [the interactive artifact protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (symptom facts, causal map, hypotheses each with predicts/probe/observed/evidence, verdict vocabulary) and run [the bundled generator](references/acta2/generate-instrument.mjs); the human judges every hypothesis — nothing auto-eliminates — and after the diagnosis is confirmed in chat, `canonical.json` + [the record generator](references/acta2/generate-record.mjs) emit the diagnosis record.
 
 ## Process
 

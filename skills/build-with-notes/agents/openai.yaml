@@ -1,4 +1,4 @@
 interface:
   display_name: "Build With Notes"
-  short_description: "Implement test-first with live decision notes"
-  default_prompt: "Use $build-with-notes to implement this change while recording progress and STOP gates."
+  short_description: "Ship code safely with test-first progress"
+  default_prompt: "Use $build-with-notes to implement this change safely with tests and clear decision checkpoints."

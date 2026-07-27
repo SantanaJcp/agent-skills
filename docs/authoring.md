@@ -12,7 +12,9 @@ Every new skill begins in the incubator with a matching smoke definition. Replac
 
 Required fields are `name`, a trigger-rich `description`, `license: Apache-2.0`, and comma-separated `metadata.tags`. Optional `compatibility` describes concrete environment requirements. Stable behavior cannot depend on client-only frontmatter.
 
-Descriptions must lead with the action, cover each genuine trigger branch once, and distinguish adjacent non-triggers. Installing the whole suite makes description collision quality load-bearing.
+Descriptions serve two jobs at once: marketplace copy and routing contracts. Lead with the outcome a user receives, include recognizable request language, cover each genuine trigger branch once, and distinguish the nearest non-trigger. Installing the whole suite makes description collision quality load-bearing.
+
+Keep publisher implementation details out of stable public skill copy. Product names, scaffold generations, materialization versions, migration history, and compatibility recipes belong in supporting references or maintainer tooling, not in the frontmatter description or `SKILL.md` narrative.
 
 ## Information hierarchy
 
