@@ -1,6 +1,7 @@
 ---
 name: deepen-the-codebase
 description: "Find high-leverage architecture improvements grounded in the codebase and compare the strongest module boundaries before refactoring. Use when seams, locality, testability, or AI navigability need improvement; do not use for immediate implementation or generic cleanup."
+disable-model-invocation: true
 license: Apache-2.0
 metadata:
   tags: "architecture, analysis, refactoring"

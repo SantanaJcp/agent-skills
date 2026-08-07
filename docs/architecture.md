@@ -2,13 +2,17 @@
 
 ## One portable source
 
-Each skill is one self-contained Agent Skills directory with a canonical `SKILL.md`. The fifteen-skill product is **bundle-first, standalone-capable**: documentation recommends installing the complete suite, while each directory remains independently discoverable and executable. Codex sidecars improve presentation but never control required behavior.
+Each skill is one self-contained Agent Skills directory with a canonical `SKILL.md`. The fifteen-skill product is **bundle-first, standalone-capable**: documentation recommends installing the complete suite, while each directory remains independently executable. Task behavior lives in `SKILL.md`; the Codex sidecar carries interface metadata and the required manual-invocation policy adapter.
 
-Codex and Claude Code expose different extensions. Stable behavior sits above those client surfaces and must be manually exercised in current versions of both clients.
+Codex and Claude Code expose different invocation controls. Every skill pairs
+Claude Code's `disable-model-invocation: true` frontmatter with Codex's
+`policy.allow_implicit_invocation: false` sidecar setting. Stable task behavior
+sits above those client surfaces and must be manually exercised in current
+versions of both clients.
 
 ## Suite topology
 
-Six core skills form an advisory development cycle. Nine autonomous tools can be used anywhere. There is no router skill and no automatic stage transition. A skill may export a seed and recommend another named skill; the human explicitly chooses the next stage.
+Six core skills form an advisory development cycle. Nine autonomous tools can be used anywhere. There is no router skill, implicit skill activation, or automatic stage transition. A skill may export a seed and recommend another named skill; the human explicitly invokes every skill and chooses every next stage.
 
 The initial fifteen skills were promoted together to `skills/` after their individual activation trials and complete core-cycle trials passed in both clients. The owner explicitly deferred the browser and accessibility matrices for this first promotion; the waiver is recorded in the suite report and ADR 0005. Later additions still begin in the incubator under the normal reviewed promotion process.
 
@@ -50,4 +54,4 @@ Approved Markdown/JSON revisions are archived before supersession. HTML is regen
 
 Installed skill scripts, when present, use `.mjs`, Node built-ins, and bundled relative modules only. They do not launch external processes or require runtime packages. Repository authoring tooling may use exact lockfile-pinned dependencies.
 
-Skills execute with the invoking agent's permissions. Deterministic checks enforce auditable files, containment, metadata, materialization freshness, HTML safety contracts, sidecar presentation-only behavior, and catalogs. Human review remains responsible for semantics, client activation, real browser rendering, assistive technology, provenance, and network data flow.
+Skills execute with the invoking agent's permissions. Deterministic checks enforce auditable files, containment, dual-client manual-invocation metadata, materialization freshness, HTML safety contracts, and catalogs. Human review remains responsible for semantics, explicit client activation, real browser rendering, assistive technology, provenance, and network data flow.

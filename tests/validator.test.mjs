@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, symlink, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -12,7 +18,24 @@ async function writeSkill(root, collection, name, skill, smoke) {
   const directory = path.join(root, collection, name);
   await mkdir(directory, { recursive: true });
   await mkdir(path.join(root, "tests", "smoke"), { recursive: true });
-  await writeFile(path.join(directory, "SKILL.md"), skill);
+  const manualOnlySkill = skill.includes("disable-model-invocation:")
+    ? skill
+    : skill.replace(
+        /^license:/m,
+        "disable-model-invocation: true\nlicense:",
+      );
+  await writeFile(path.join(directory, "SKILL.md"), manualOnlySkill);
+  await mkdir(path.join(directory, "agents"), { recursive: true });
+  await writeFile(
+    path.join(directory, "agents", "openai.yaml"),
+    `interface:
+  display_name: "Research Notes"
+  short_description: "Organize research notes safely"
+  default_prompt: "Use $${name} to organize these notes."
+policy:
+  allow_implicit_invocation: false
+`,
+  );
   await writeFile(path.join(root, "tests", "smoke", `${name}.yaml`), smoke);
 }
 
@@ -23,7 +46,7 @@ function runValidator(root) {
   });
 }
 
-test("maintainer can validate a portable stable skill", async () => {
+test("maintainer can validate a manual-only stable skill", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
   await writeSkill(
     root,
@@ -56,6 +79,96 @@ cases:
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Validated 1 skill/);
+});
+
+test("maintainer must disable model invocation in both clients", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
+  await writeSkill(
+    root,
+    "skills",
+    "research-notes",
+    `---
+name: research-notes
+description: Organize research notes when an agent must synthesize multiple sources.
+disable-model-invocation: false
+license: Apache-2.0
+metadata:
+  tags: "research,documentation"
+---
+
+# Research Notes
+`,
+    `skill: research-notes
+cases:
+  - kind: trigger
+    prompt: Organize these notes.
+    expected: The explicitly invoked skill organizes the notes.
+  - kind: non-trigger
+    prompt: What time is it?
+    expected: The skill declines the unrelated request.
+`,
+  );
+  await writeFile(
+    path.join(root, "skills", "research-notes", "agents", "openai.yaml"),
+    `interface:
+  display_name: "Research Notes"
+  short_description: "Organize research notes safely"
+  default_prompt: "Use $research-notes to organize these notes."
+policy:
+  allow_implicit_invocation: true
+`,
+  );
+
+  const result = runValidator(root);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /disable-model-invocation must be true for manual-only skills/,
+  );
+  assert.match(
+    result.stderr,
+    /policy\.allow_implicit_invocation must be false/,
+  );
+});
+
+test("maintainer must include the Codex manual-only policy sidecar", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
+  await writeSkill(
+    root,
+    "incubator",
+    "research-notes",
+    `---
+name: research-notes
+description: Organize research notes when an agent must synthesize multiple sources.
+license: Apache-2.0
+metadata:
+  tags: "research"
+---
+
+# Research Notes
+`,
+    `skill: research-notes
+cases:
+  - kind: trigger
+    prompt: Organize these notes.
+    expected: The explicitly invoked skill organizes the notes.
+  - kind: non-trigger
+    prompt: What time is it?
+    expected: The skill declines the unrelated request.
+`,
+  );
+  await rm(
+    path.join(root, "incubator", "research-notes", "agents", "openai.yaml"),
+  );
+
+  const result = runValidator(root);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /agents\/openai\.yaml: required for Codex manual-only invocation policy/,
+  );
 });
 
 test("stable public skill copy cannot expose internal product terminology", async () => {
@@ -710,7 +823,7 @@ cases:
   assert.match(result.stderr, /reference escapes the skill bundle: \.\.\/\.\.\/outside\.md/);
 });
 
-test("Codex sidecars remain complete presentation-only metadata", async () => {
+test("Codex sidecars allow complete interface and manual-only policy metadata", async () => {
   const root = await mkdtemp(path.join(tmpdir(), "agent-skills-validator-"));
   await writeSkill(
     root,
@@ -746,6 +859,8 @@ cases:
   default_prompt: "Organize these notes."
 dependencies:
   tools: []
+policy:
+  allow_implicit_invocation: false
 `,
   );
 

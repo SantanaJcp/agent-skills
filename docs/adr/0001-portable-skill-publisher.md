@@ -2,6 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-07-21
+- **Superseded in part:** ADR 0006 makes the Codex sidecar's invocation-policy
+  field required; the portable task-workflow decision remains accepted.
 
 ## Context
 

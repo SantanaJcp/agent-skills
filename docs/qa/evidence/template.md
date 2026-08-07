@@ -6,7 +6,7 @@ Status: draft
 
 - Reviewer:
 - Source revision (full SHA):
-- Harness variant: with-sidecars | without-sidecars
+- Harness: manual-only
 - Test date:
 - Operating system and version:
 - Hardware/rendering notes:
@@ -20,13 +20,13 @@ Status: draft
 
 ## Client activation results
 
-| Case file and index | Client | Fresh conversation | Expected skill/behavior | Observed activation and behavior | Pass/fail | Evidence/notes |
-| --- | --- | --- | --- | --- | --- | --- |
+| Case file and index | Client | Mode (bare/explicit) | Fresh conversation | Expected skill/behavior | Observed activation and behavior | Pass/fail | Evidence/notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
 
 ## Collision results
 
-| Collision pair | Client | Expected owner | Observed owner | Pass/fail | Evidence/notes |
-| --- | --- | --- | --- | --- | --- |
+| Collision pair | Client | Mode (bare/explicit) | Expected owner | Observed owner | Pass/fail | Evidence/notes |
+| --- | --- | --- | --- | --- | --- | --- |
 
 ## Core-cycle results
 

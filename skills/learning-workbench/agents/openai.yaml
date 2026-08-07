@@ -2,3 +2,5 @@ interface:
   display_name: "Learning Workbench"
   short_description: "Build a durable evidence-based learning program"
   default_prompt: "Use $learning-workbench to create or continue my learning workspace for this topic."
+policy:
+  allow_implicit_invocation: false

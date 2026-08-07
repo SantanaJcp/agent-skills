@@ -1,6 +1,7 @@
 ---
 name: find-the-cause
 description: "Find the root cause of a bug, failing test, unexpected behavior, or slowdown using reproducible evidence and falsifiable experiments. Use when the cause is unknown, even if the reported failure is not yet reproducible; do not use when the fix is already specified or implementation is requested."
+disable-model-invocation: true
 license: Apache-2.0
 metadata:
   tags: "debugging, diagnosis, testing"

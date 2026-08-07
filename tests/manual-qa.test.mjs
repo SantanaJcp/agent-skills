@@ -119,13 +119,13 @@ test("evaluator can prepare isolated manual-QA harnesses for both clients", asyn
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Prepared manual QA harnesses/);
 
-  for (const variant of ["with-sidecars", "without-sidecars"]) {
+  for (const variant of ["manual-only"]) {
     const harness = path.join(destination, variant);
     const manifest = JSON.parse(
       await readFile(path.join(harness, "QA-MANIFEST.json"), "utf8"),
     );
     assert.deepEqual(manifest, {
-      schema_version: 2,
+      schema_version: 3,
       suite: "acta-development-skill-suite",
       acta_version: "0.1.0",
       acta2_version: "0.2.0",
@@ -145,6 +145,9 @@ test("evaluator can prepare isolated manual-QA harnesses for both clients", asyn
     assert.match(runbook, /--ignore-user-config/);
     assert.match(runbook, /--setting-sources project/);
     assert.match(runbook, /fresh disposable copy/i);
+    assert.match(runbook, /bare prompt/i);
+    assert.match(runbook, /\$<skill-name>/);
+    assert.match(runbook, /\/<skill-name>/);
     assert.equal(await exists(path.join(harness, "EVIDENCE-TEMPLATE.md")), true);
     assert.deepEqual(
       (await readdir(path.join(harness, "smoke-cases")))
@@ -175,7 +178,7 @@ test("evaluator can prepare isolated manual-QA harnesses for both clients", asyn
         assert.equal(await exists(path.join(bundle, "SKILL.md")), true);
         assert.equal(
           await exists(path.join(bundle, "agents", "openai.yaml")),
-          variant === "with-sidecars",
+          true,
         );
       }
     }

@@ -41,6 +41,8 @@ test("publisher materializes the complete Acta bundle deterministically", async 
   const protocols = [];
   for (const name of skills) {
     const skillRoot = path.join(root, "skills", name);
+    const skill = await readFile(path.join(skillRoot, "SKILL.md"), "utf8");
+    assert.match(skill, /^disable-model-invocation: true$/m);
     const protocol = await readFile(path.join(skillRoot, "references", "acta-protocol.md"), "utf8");
     protocols.push(protocol);
     assert.match(protocol, /^<!-- acta-materialized: v0\.1\.0 protocol sha256=[a-f0-9]{64}; do not edit by hand -->/);
@@ -49,7 +51,8 @@ test("publisher materializes the complete Acta bundle deterministically", async 
     assert.equal(typeof sidecar.interface?.display_name, "string");
     assert.match(sidecar.interface.short_description, /^.{25,64}$/s);
     assert.match(sidecar.interface.default_prompt, new RegExp(`\\$${name}(?:\\s|[.,;:!?]|$)`));
-    assert.deepEqual(Object.keys(sidecar).sort(), ["interface"]);
+    assert.equal(sidecar.policy?.allow_implicit_invocation, false);
+    assert.deepEqual(Object.keys(sidecar).sort(), ["interface", "policy"]);
   }
   assert.equal(new Set(protocols).size, 1, "all installed protocol copies must be identical");
 

@@ -1,6 +1,7 @@
 ---
 name: interface-directions
 description: "Explore three genuinely different product interface directions using the same scenario, then compare tradeoffs and make a clear choice. Use when layout, density, hierarchy, tone, or behavior needs a decision; do not use for backend or code-architecture choices."
+disable-model-invocation: true
 license: Apache-2.0
 metadata:
   tags: "design, interface, comparison"

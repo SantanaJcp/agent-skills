@@ -1,6 +1,7 @@
 ---
 name: feel-the-flow
 description: "Prototype a key interaction quickly so stakeholders can feel timing, feedback, and behavior before production work. Use when experience must be tested through interaction; do not use to implement production UI or compare static visual directions."
+disable-model-invocation: true
 license: Apache-2.0
 metadata:
   tags: "prototype, interaction, design"

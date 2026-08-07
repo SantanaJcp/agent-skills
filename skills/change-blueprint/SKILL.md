@@ -1,6 +1,7 @@
 ---
 name: change-blueprint
 description: "Turn a validated idea into an implementation-ready specification and phased technical plan, with explicit approval before coding. Use when requirements are clear enough to plan; redirect broad ambiguity to discovery and do not implement the plan."
+disable-model-invocation: true
 license: Apache-2.0
 metadata:
   tags: "specification, planning, testing"

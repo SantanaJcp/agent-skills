@@ -1,6 +1,7 @@
 ---
 name: three-code-paths
 description: "Compare exactly three implementation strategies at equal depth across code, APIs, data models, schemas, or architecture, then record a clear decision. Use for structural implementation choices; do not use for cosmetic variants, interface styling, or direct implementation."
+disable-model-invocation: true
 license: Apache-2.0
 metadata:
   tags: "architecture, comparison, planning"

@@ -27,13 +27,30 @@ Realistic recipe artifacts live in test fixtures, never installed bundles. Visua
 
 ## Smoke and collision definitions
 
-Every skill has committed trigger and adjacent non-trigger cases. The initial suite also records cross-skill collision cases for discovery versus blueprinting, code versus interface alternatives, prototyping versus implementation, codebase explanation versus concept teaching, incidents versus diagnosis, architecture analysis versus implementation, and flow versus general SVG illustration.
+Every skill has committed trigger and adjacent non-trigger boundary cases. In
+current manual QA, a trigger is run twice: first as a bare prompt that must not
+activate any suite skill, then with explicit `$skill-name` (Codex) or
+`/skill-name` (Claude Code) activation and the expected material behavior. A
+non-trigger is explicitly routed to the named skill to prove that the workflow
+declines or redirects an adjacent request.
+
+The suite also records paired boundaries for discovery versus blueprinting,
+code versus interface alternatives, prototyping versus implementation,
+codebase explanation versus concept teaching, incidents versus diagnosis,
+architecture analysis versus implementation, and flow versus general SVG
+illustration. Bare collision prompts must not activate a suite skill; the
+explicitly selected owner must preserve the documented boundary.
 
 Public CI validates definitions but does not call paid models. Promotion records manual results in current Codex and Claude Code.
 
 ## Reproducible manual harnesses
 
-`npm run qa:prepare -- --destination <outside-repository-directory>` copies the public synthetic project, smoke/collision cases, fourteen browser fixtures, and all fifteen stable bundles into isolated `with-sidecars` and `without-sidecars` project roots. The command refuses dirty default sources and existing destinations, then stamps each harness with the full source revision. It does not modify global client installations.
+`npm run qa:prepare -- --destination <outside-repository-directory>` copies the
+public synthetic project, smoke/collision cases, fourteen browser fixtures, and
+all fifteen stable bundles into one isolated `manual-only` project root. The
+command refuses dirty default sources and existing destinations, then stamps
+the harness with the full source revision. It does not modify global client
+installations.
 
 Reviewers follow `docs/qa/evaluator-runbook.md` and submit separate sanitized
 summary files from `docs/qa/evidence/template.md`; raw logs and captures remain
@@ -50,8 +67,9 @@ The `v1.0.0` promotion plan assigned the following manual matrix:
 - exercise every interactive Acta v2 kind, a representative record, and critical interactions in current Safari and Firefox;
 - verify keyboard, 320px, actual 400% zoom, print/PDF, no-JS, reduced motion, VoiceOver, and NVDA.
 
-The client and core-cycle portions passed. Browser and assistive-technology rows
-were explicitly deferred, not passed; ADR 0005 records the one-time waiver and
+The client and core-cycle portions passed under the historical `v1.0.0`
+implicit-routing policy. Browser and assistive-technology rows were explicitly
+deferred, not passed; ADR 0005 records the one-time waiver and
 [GitHub Issue #8](https://github.com/SantanaJcp/agent-skills/issues/8) tracks the
 remaining matrix. Windows CI was blocking and passed; real-Windows serif
 rendering remains documented but nonblocking.

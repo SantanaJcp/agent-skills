@@ -1,6 +1,7 @@
 ---
 name: what-just-happened
 description: "Turn incident evidence into a trustworthy postmortem with impact, timeline, root cause, contributing factors, and follow-ups. Use during an incident to preserve facts or after stabilization to complete the record; do not use to direct active mitigation or debug the system."
+disable-model-invocation: true
 license: Apache-2.0
 metadata:
   tags: "incident, postmortem, operations"
