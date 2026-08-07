@@ -34,7 +34,7 @@ const expectedSkills = [
   "three-code-paths",
   "what-just-happened",
 ];
-const variants = ["with-sidecars", "without-sidecars"];
+const variants = ["manual-only"];
 
 function fail(message) {
   console.error(`ERROR: ${message}`);
@@ -141,16 +141,13 @@ async function prepareVariant(
     for (const skill of expectedSkills) {
       const target = path.join(skillRoot, skill);
       await cp(path.join(sourceRoot, "skills", skill), target, { recursive: true });
-      if (variant === "without-sidecars") {
-        await rm(path.join(target, "agents"), { recursive: true, force: true });
-      }
     }
   }
 
   await writeFile(
     path.join(harness, "QA-MANIFEST.json"),
     `${JSON.stringify({
-      schema_version: 2,
+      schema_version: 3,
       suite: "acta-development-skill-suite",
       acta_version: actaVersion,
       acta2_version: acta2Version,
@@ -212,7 +209,7 @@ try {
   }
   await writeFile(
     path.join(stagingRoot, "QA-START-HERE.md"),
-    `# Acta v2 manual QA harnesses\n\nSource revision: \`${revision}\`\n\nActive artifact system: Acta v2 \`${acta2Version}\` (legacy rollback: Acta \`${actaVersion}\`).\n\nOpen either \`with-sidecars/\` or \`without-sidecars/\` as the project root in Codex or Claude Code. Read \`EVALUATOR-RUNBOOK.md\` inside the selected variant before testing.\n`,
+    `# Acta v2 manual QA harness\n\nSource revision: \`${revision}\`\n\nActive artifact system: Acta v2 \`${acta2Version}\` (legacy rollback: Acta \`${actaVersion}\`).\n\nOpen \`manual-only/\` as the project root in Codex or Claude Code. Read \`EVALUATOR-RUNBOOK.md\` inside it before testing.\n`,
   );
   await rename(stagingRoot, destination);
 } catch (error) {

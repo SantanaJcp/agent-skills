@@ -4,7 +4,14 @@
 
 Every stable skill supports the current stable Codex and Claude Code versions tested during promotion and release. The repository does not promise long-term support for obsolete clients.
 
-The initial fifteen skills are stable. Optional Codex sidecars improve presentation but were removed during part of manual testing to prove the portable core behaves identically in Claude Code and Codex.
+The initial fifteen skills are stable. Their task workflows remain portable in
+`SKILL.md`, while manual-only invocation uses the supported client adapters:
+`disable-model-invocation: true` for Claude Code and
+`policy.allow_implicit_invocation: false` in the required Codex sidecar.
+
+The `v1.0.0` promotion removed sidecars during part of its historical implicit
+routing evaluation. ADR 0006 supersedes that policy; sidecar-free Codex
+installation is not covered by the current manual-only promise.
 
 ## v1.0.0 baseline
 

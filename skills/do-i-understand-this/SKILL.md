@@ -1,6 +1,7 @@
 ---
 name: do-i-understand-this
 description: "Verify understanding of a completed change through an evidence-backed quiz, explanations, and a targeted review plan. Use after an implementation or pull request, including requests to quiz me on this change; never use as a merge gate or generic code review."
+disable-model-invocation: true
 license: Apache-2.0
 metadata:
   tags: "learning, review, quiz"

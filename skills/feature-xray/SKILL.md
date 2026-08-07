@@ -1,6 +1,7 @@
 ---
 name: feature-xray
 description: "Produce a source-backed walkthrough of how an existing feature works, including entry points, data flow, dependencies, usage, and gotchas. Use for repository-grounded explanations; do not use for general concept teaching or proposed implementation design."
+disable-model-invocation: true
 license: Apache-2.0
 metadata:
   tags: "codebase, explanation, documentation"

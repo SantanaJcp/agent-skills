@@ -18,10 +18,10 @@ npm run check
 npm run qa:prepare -- --destination ../agent-skills-manual-qa
 ```
 
-The command refuses an existing destination and a dirty source worktree. It creates two project roots:
-
-- `with-sidecars/` contains the complete bundles, including Codex presentation metadata.
-- `without-sidecars/` contains otherwise identical bundles with `agents/openai.yaml` removed.
+The command refuses an existing destination and a dirty source worktree. It
+creates one `manual-only/` project root containing the complete bundles. Do not
+remove `agents/openai.yaml`: its Codex policy is part of the supported
+manual-invocation contract.
 
 Confirm that `QA-MANIFEST.json` contains the expected full source revision, `active_artifact_system: "acta2"`, and the expected Acta v2 version before beginning. Never include credentials, private repositories, or production data in evidence.
 
@@ -38,15 +38,26 @@ A pass requires an observed result, not only the absence of an error. Screenshot
 
 ## 3. Client activation
 
-Open `with-sidecars/` as the project root in the assigned current stable client. For every assigned skill:
+Open `manual-only/` as the project root in the assigned current stable client.
+For every assigned skill:
 
 1. Read its cases in `smoke-cases/<skill>.yaml`.
-2. Start a fresh conversation for each case.
-3. Send the prompt exactly as committed, without explicitly naming the skill.
-4. Record which skill activated, whether behavior matched `expected`, and any competing skill that activated.
-5. Treat unexpected activation, non-activation, or materially wrong behavior as a failure.
+2. For each `trigger`, start a fresh conversation and send the bare prompt
+   exactly as committed. Verify that none of the fifteen skills activates.
+3. Start another fresh conversation, explicitly invoke the named skill, and
+   append the committed prompt: use `$<skill-name>` in Codex and
+   `/<skill-name>` in Claude Code. Verify that the requested skill activates and
+   its material behavior matches `expected`.
+4. For each `non-trigger`, explicitly invoke the case's named skill in a fresh
+   conversation. Verify that it honors its boundary by declining or redirecting
+   as described in `expected`, rather than executing the adjacent workflow.
+5. Treat bare-prompt activation, failed explicit activation, or materially
+   wrong behavior as a failure.
 
-Run the seven paired cases in `smoke-cases/collisions.yaml` the same way. For Codex sidecar independence, repeat at least one trigger and one adjacent non-trigger per skill from `without-sidecars/`; the portable behavior must not change. Claude Code must not require the sidecar to complete any case.
+For each paired case in `smoke-cases/collisions.yaml`, first verify that its bare
+prompt activates no suite skill. Then explicitly invoke the expected owner and
+verify the stated boundary. Cross-skill descriptions remain catalog guidance;
+they no longer authorize implicit routing.
 
 ### Automated CLI isolation
 

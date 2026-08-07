@@ -1,6 +1,7 @@
 ---
 name: draw-the-flow
 description: "Map how a system works end to end, including decisions, failures, and recovery paths, with a readable diagram and full textual walkthrough. Use when relationships and sequence are the main question; do not use for general illustration or implementation planning."
+disable-model-invocation: true
 license: Apache-2.0
 metadata:
   tags: "diagram, flow, visualization"

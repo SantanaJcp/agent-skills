@@ -1,6 +1,7 @@
 ---
 name: make-me-realize
 description: "Turn a vague request into a clear decision landscape by surfacing hidden assumptions, constraints, stakeholders, risks, and unanswered questions. Use before solution design when important unknowns remain; do not use to rewrite an already-settled specification."
+disable-model-invocation: true
 license: Apache-2.0
 metadata:
   tags: "discovery, planning, requirements"

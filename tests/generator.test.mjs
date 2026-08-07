@@ -24,7 +24,21 @@ test("author can scaffold a new incubator skill", async () => {
     "utf8",
   );
   assert.match(skill, /^name: research-notes$/m);
+  assert.match(skill, /^disable-model-invocation: true$/m);
   assert.match(skill, /^# Research Notes$/m);
+
+  const sidecar = await readFile(
+    path.join(
+      root,
+      "incubator",
+      "research-notes",
+      "agents",
+      "openai.yaml",
+    ),
+    "utf8",
+  );
+  assert.match(sidecar, /^  display_name: "Research Notes"$/m);
+  assert.match(sidecar, /^policy:\n  allow_implicit_invocation: false$/m);
 
   const smoke = await readFile(
     path.join(root, "tests", "smoke", "research-notes.yaml"),

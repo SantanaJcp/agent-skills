@@ -11,6 +11,7 @@ const collections = ["skills", "incubator"];
 const stableFields = new Set([
   "name",
   "description",
+  "disable-model-invocation",
   "license",
   "compatibility",
   "metadata",
@@ -152,6 +153,11 @@ function validateFrontmatter(frontmatter, collection, directoryName, location) {
   ) {
     errors.push(
       `${location}: compatibility must be a string of at most 500 characters.`,
+    );
+  }
+  if (frontmatter["disable-model-invocation"] !== true) {
+    errors.push(
+      `${location}: disable-model-invocation must be true for manual-only skills.`,
     );
   }
 
@@ -470,7 +476,7 @@ function validateOpenAiSidecar(sidecar, name, location) {
     return;
   }
   for (const field of Object.keys(sidecar)) {
-    if (field !== "interface") {
+    if (!["interface", "policy"].includes(field)) {
       errors.push(location + ": unsupported top-level field " + field + ".");
     }
   }
@@ -481,28 +487,48 @@ function validateOpenAiSidecar(sidecar, name, location) {
     Array.isArray(presentation)
   ) {
     errors.push(location + ": interface must be a mapping.");
-    return;
-  }
-  for (const field of ["display_name", "short_description", "default_prompt"]) {
+  } else {
+    for (const field of ["display_name", "short_description", "default_prompt"]) {
+      if (
+        typeof presentation[field] !== "string" ||
+        presentation[field].trim().length === 0
+      ) {
+        errors.push(location + ": interface." + field + " must be a non-empty string.");
+      }
+    }
     if (
-      typeof presentation[field] !== "string" ||
-      presentation[field].trim().length === 0
+      typeof presentation.short_description === "string" &&
+      (presentation.short_description.length < 25 ||
+        presentation.short_description.length > 64)
     ) {
-      errors.push(location + ": interface." + field + " must be a non-empty string.");
+      errors.push(location + ": short_description must be 25–64 characters.");
+    }
+    if (
+      typeof presentation.default_prompt === "string" &&
+      !presentation.default_prompt.includes("$" + name)
+    ) {
+      errors.push(location + ": default_prompt must mention $" + name + ".");
     }
   }
+
+  const policy = sidecar.policy;
   if (
-    typeof presentation.short_description === "string" &&
-    (presentation.short_description.length < 25 ||
-      presentation.short_description.length > 64)
+    policy === null ||
+    typeof policy !== "object" ||
+    Array.isArray(policy)
   ) {
-    errors.push(location + ": short_description must be 25–64 characters.");
-  }
-  if (
-    typeof presentation.default_prompt === "string" &&
-    !presentation.default_prompt.includes("$" + name)
-  ) {
-    errors.push(location + ": default_prompt must mention $" + name + ".");
+    errors.push(location + ": policy must be a mapping.");
+  } else {
+    for (const field of Object.keys(policy)) {
+      if (field !== "allow_implicit_invocation") {
+        errors.push(location + ": unsupported policy field " + field + ".");
+      }
+    }
+    if (policy.allow_implicit_invocation !== false) {
+      errors.push(
+        location + ": policy.allow_implicit_invocation must be false.",
+      );
+    }
   }
 }
 
@@ -582,7 +608,12 @@ async function validateBundle(skillDirectory, location) {
       location + "/agents/openai.yaml",
     );
   } catch (error) {
-    if (error.code !== "ENOENT") {
+    if (error.code === "ENOENT") {
+      errors.push(
+        location +
+          "/agents/openai.yaml: required for Codex manual-only invocation policy.",
+      );
+    } else {
       errors.push(location + "/agents/openai.yaml: " + error.message + ".");
     }
   }

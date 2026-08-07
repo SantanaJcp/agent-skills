@@ -12,7 +12,9 @@ Contributions are welcome through curated pull requests. The maintainer retains 
 
 ## Skill lifecycle
 
-Every new skill begins in the incubator. An incubator change provides portable metadata, auditable content, trigger/non-trigger cases, and passing deterministic checks.
+Every new skill begins in the incubator. An incubator change provides portable
+task instructions, dual-client manual-invocation metadata, auditable content,
+trigger/non-trigger boundary cases, and passing deterministic checks.
 
 The initial fifteen Acta skills were promoted together in `v1.0.0` after the
 client and core-cycle rows passed. ADR 0005 records the owner's one-time waiver
@@ -21,7 +23,10 @@ tracks that deferred work without treating it as passed. Later skills use the
 normal separate reviewed promotion process unless another ADR establishes a
 cohort.
 
-A stable promotion records current client versions, observed activation results, optional-sidecar independence, isolated installation, network review, provenance, and security review. Fundamentally client-specific skills remain incubating.
+A stable promotion records current client versions, bare-prompt non-activation,
+explicit activation results in both clients, isolated installation, network
+review, provenance, and security review. Fundamentally client-specific task
+workflows remain incubating.
 
 ## Checks
 
@@ -45,7 +50,7 @@ Record exact source and tool versions. Preserve failures against their original 
 - Keep each pull request focused on one coherent slice.
 - Use an English title and description suitable for squash history and release notes.
 - Complete the deterministic checklist and attach manual evidence only when promoting.
-- Confirm descriptions distinguish neighboring skills and that sidecars remain presentation-only.
+- Confirm descriptions distinguish neighboring skills and both manual-invocation declarations are enforced.
 - Do not include model credentials or expect public CI to run paid model evaluations.
 
 ## Licensing

@@ -2,6 +2,9 @@
 
 - **Status:** Accepted
 - **Date:** 2026-07-21
+- **Superseded in part:** ADR 0006 replaces implicit model invocation with
+  explicit user invocation; the suite topology and Acta decisions remain
+  accepted.
 
 ## Context
 

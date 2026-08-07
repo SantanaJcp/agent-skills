@@ -1,6 +1,7 @@
 ---
 name: concept-lab
 description: "Make a difficult concept click through trusted research, an interactive model, declared simplifications, and optional retrieval practice. Use for focused conceptual learning; do not use to document one repository feature or manage a long-term curriculum."
+disable-model-invocation: true
 license: Apache-2.0
 metadata:
   tags: "research, learning, visualization"

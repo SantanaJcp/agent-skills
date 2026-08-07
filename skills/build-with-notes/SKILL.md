@@ -1,6 +1,7 @@
 ---
 name: build-with-notes
 description: "Ship a requested code change safely with test-first implementation, live progress visibility, explicit decision checkpoints, and final verification. Use when the user asks to implement, build, fix, or refactor now; do not use for planning, diagnosis-only work, or read-only review."
+disable-model-invocation: true
 license: Apache-2.0
 metadata:
   tags: "implementation, tdd, review"

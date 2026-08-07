@@ -25,12 +25,11 @@ const title = name
   .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
   .join(" ");
 const root = process.cwd();
-const templatePath = path.resolve(
+const templateDirectory = path.resolve(
   import.meta.dirname,
   "..",
   "templates",
   "skill",
-  "SKILL.md.tmpl",
 );
 const skillDirectory = path.join(root, "incubator", name);
 const smokeDirectory = path.join(root, "tests", "smoke");
@@ -52,8 +51,18 @@ for (const conflict of conflicts) {
   }
 }
 
-const template = await readFile(templatePath, "utf8");
-const skill = template
+const skillTemplate = await readFile(
+  path.join(templateDirectory, "SKILL.md.tmpl"),
+  "utf8",
+);
+const sidecarTemplate = await readFile(
+  path.join(templateDirectory, "agents", "openai.yaml.tmpl"),
+  "utf8",
+);
+const skill = skillTemplate
+  .replaceAll("{{name}}", name)
+  .replaceAll("{{title}}", title);
+const sidecar = sidecarTemplate
   .replaceAll("{{name}}", name)
   .replaceAll("{{title}}", title);
 const smoke = `skill: ${name}
@@ -67,8 +76,14 @@ cases:
 `;
 
 await mkdir(skillDirectory, { recursive: true });
+await mkdir(path.join(skillDirectory, "agents"), { recursive: true });
 await mkdir(smokeDirectory, { recursive: true });
 await writeFile(path.join(skillDirectory, "SKILL.md"), skill, { flag: "wx" });
+await writeFile(
+  path.join(skillDirectory, "agents", "openai.yaml"),
+  sidecar,
+  { flag: "wx" },
+);
 await writeFile(path.join(smokeDirectory, `${name}.yaml`), smoke, { flag: "wx" });
 
 console.log(`Created incubator skill ${name}.`);

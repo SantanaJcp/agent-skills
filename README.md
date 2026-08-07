@@ -4,6 +4,10 @@ A bundle-first, Apache-2.0 development system of fifteen portable [Agent Skills]
 
 > **Stable:** all fifteen skills are promoted for current Codex and Claude Code. Acta v2 is the authoritative offline artifact system.
 
+All skills are **manual-only**. Natural-language matching does not activate
+them; choose one explicitly with `$skill-name` in Codex or `/skill-name` in
+Claude Code.
+
 ## Install the complete suite
 
 The recommended experience installs the whole development cycle and its autonomous tools globally for both supported clients:
@@ -39,7 +43,7 @@ For a project-local installation, omit `-g`. A consumer may commit its generated
 
 The bundle also includes `feel-the-flow`, `feature-xray`, `concept-lab`, `what-just-happened`, `draw-the-flow`, `draw-it-in-svg`, `deepen-the-codebase`, `find-the-cause`, and `learning-workbench`.
 
-Skills may recommend a handoff, but never invoke the next stage automatically. Markdown/JSON is canonical; Acta HTML is an offline, printable human interface.
+Skills may recommend a handoff, but no skill activates implicitly or invokes the next stage automatically. Markdown/JSON is canonical; Acta HTML is an offline, printable human interface.
 
 ## Browse
 

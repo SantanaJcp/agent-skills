@@ -1,6 +1,7 @@
 ---
 name: learning-workbench
 description: "Build a durable learning program around any topic with sourced lessons, practice, progress records, and spaced review. Use for multi-session learning; do not use for a one-off concept model or a post-change understanding check."
+disable-model-invocation: true
 license: Apache-2.0
 metadata:
   tags: "learning, teaching, research"

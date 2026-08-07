@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- Made every stable and future incubating skill explicitly invocable only in
+  Codex and Claude Code, with publisher validation and manual-QA coverage for
+  both client-specific policy declarations.
+
 ## [1.0.0] - 2026-07-23
 
 ### Added

@@ -1,6 +1,7 @@
 ---
 name: draw-it-in-svg
 description: "Turn an explanation into accessible, reusable SVG diagrams with clear labels, text alternatives, and copyable source. Use for standalone technical or conceptual illustrations, even when the source content must be requested first; do not use for process-flow analysis or raster image generation."
+disable-model-invocation: true
 license: Apache-2.0
 metadata:
   tags: "svg, illustration, visualization"
