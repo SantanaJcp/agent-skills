@@ -31,7 +31,7 @@
     "@types/node": "22.20.1",
     "acorn": "8.17.0",
     "parse5": "8.0.1",
-    "skills": "1.5.19",
+    "skills": "1.5.22",
     "typescript": "7.0.2",
     "yaml": "2.9.0"
   }
