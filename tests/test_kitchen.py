@@ -32,8 +32,11 @@ class KitchenFixture(unittest.TestCase):
         (self.repo / "skills").mkdir(parents=True)
         (self.repo / "bin").mkdir()
         shutil.copy(KITCHEN, self.repo / "bin" / "kitchen")
+        shutil.copytree(KITCHEN.parent.parent / "lib", self.repo / "lib", ignore=shutil.ignore_patterns("__pycache__"))
         self.home.mkdir()
         subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
+
+    extra_env = {}
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -52,10 +55,13 @@ class KitchenFixture(unittest.TestCase):
         rules.write_text("# Rules\n")
         return rules
 
-    def kitchen(self, *args, denylist=None):
+    def kitchen(self, *args, denylist=None, cwd=None):
         env = {**os.environ, "HOME": str(self.home), "KITCHEN_REPO": str(self.repo)}
         env["KITCHEN_DENYLIST"] = str(denylist or self.home / "no-denylist.txt")
-        return subprocess.run([sys.executable, str(KITCHEN), *args], env=env, capture_output=True, text=True)
+        env["KITCHEN_STATE"] = str(self.home / "state")
+        env["KITCHEN_CONFIG"] = str(self.home / "config")
+        env.update(self.extra_env)
+        return subprocess.run([sys.executable, str(KITCHEN), *args], env=env, capture_output=True, text=True, cwd=cwd)
 
 
 class InstallTests(KitchenFixture):

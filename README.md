@@ -19,7 +19,7 @@ Project-specific skills (deploy, verification for one app) stay in that project'
 
 ## Install
 
-Requires Python 3.10+ and git. No other dependencies.
+Requires Python 3.11+ and git; `gh` for pull-request status. No other dependencies.
 
 ```bash
 git clone https://github.com/SantanaJcp/agent-skills.git
@@ -29,6 +29,32 @@ bin/kitchen doctor    # proves every link resolves and the pre-commit hook is ac
 ```
 
 `install` links each `skills/<name>` into `~/.claude/skills/` and `~/.agents/skills/`, and `global/AGENTS.md` to `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`. It refuses to replace anything it does not manage; `--backup` moves those paths to `~/.kitchen-backups/` first.
+
+## Daily use
+
+```bash
+kitchen status              # every project: branch, upstream, PRs, nightly guard, agent checkpoints, owed decisions
+kitchen log "msg" --status done|blocked|decision|note   # agents leave checkpoints during autonomous runs
+kitchen inventory           # skills, rule files and Codex automations the agents can see, and where copies drift
+kitchen retro --since 7d    # my prompts from Claude Code and Codex, for the retro skill
+```
+
+Per-machine config lives outside the repo, in `~/.config/kitchen/`: `projects.txt` (one project path per line) and `denylist.txt`. State (journal, nightly history, retro reports) lives in `~/.local/state/kitchen/`.
+
+## Skills
+
+| Skill | Use it when | Invocation |
+|---|---|---|
+| `make-me-realize` | Before designing: settle open decisions through numbered questions | manual |
+| `feature-xray` | "Primero analicemos": read-only investigation that ends in decisions | automatic |
+| `find-the-cause` | Something is broken and the cause is unknown | automatic |
+| `second-opinion` | Before merging: cross-model review with triaged findings | automatic |
+| `handoff` | Passing work to another agent, tool or session | manual |
+| `retro` | Weekly: turn repeated corrections into environment fixes | manual |
+| `wait-what` | The last answer did not land | manual |
+| `audit-verification` | Periodically: prove a project's verify skill still tells the truth | manual |
+
+Manual skills are invoked with `/name` in Claude Code and `$name` in Codex; `kitchen check` keeps that flag identical in both.
 
 ## Check
 

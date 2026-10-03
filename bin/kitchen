@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import json
 import os
 import re
 import shutil
@@ -18,6 +19,9 @@ import sys
 from pathlib import Path
 
 REPO = Path(os.environ.get("KITCHEN_REPO") or Path(__file__).resolve().parent.parent).resolve()
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
+
+from kitchen import common, inventory, journal, status, transcripts  # noqa: E402
 MAX_SKILL_LINES = 150
 MAX_DESCRIPTION_CHARS = 1024
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -301,6 +305,35 @@ def cmd_check(args: argparse.Namespace) -> int:
     return tests.returncode
 
 
+def cmd_log(args: argparse.Namespace) -> int:
+    entry = journal.write(args.message, args.status, Path.cwd())
+    print(f"logged  {entry['status']} · {entry['repo']} @ {entry['sha'] or 'no git'} · {entry['agent']}")
+    return 0
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    since = common.parse_since(args.since)
+    repos = [Path(p).resolve() for p in args.paths] or common.projects()
+    if not repos:
+        print(f"No projects: list one path per line in {common.config_dir() / 'projects.txt'}, or pass paths.")
+        return 1
+    report = [status.project(repo, since) for repo in repos]
+    print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else status.render(report, args.since))
+    return 0
+
+
+def cmd_inventory(args: argparse.Namespace) -> int:
+    report = inventory.build(REPO)
+    print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else inventory.render(report))
+    return 0
+
+
+def cmd_retro(args: argparse.Namespace) -> int:
+    prompts = transcripts.collect(common.parse_since(args.since), args.tool, args.match)
+    print(json.dumps(prompts, indent=2, ensure_ascii=False) if args.json else transcripts.render(prompts, args.full))
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="kitchen", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -316,6 +349,29 @@ def main() -> int:
     check.add_argument("--lint-only", action="store_true")
     check.add_argument("--skills-dir", help="lint this directory instead of the repo skills")
     check.set_defaults(func=cmd_check)
+
+    log = sub.add_parser("log", help="leave a checkpoint for kitchen status (autonomous runs)")
+    log.add_argument("message")
+    log.add_argument("--status", choices=journal.STATUSES, default="note")
+    log.set_defaults(func=cmd_log)
+
+    stat = sub.add_parser("status", help="where every project stands: git, PRs, nightly guard, journal, decisions")
+    stat.add_argument("paths", nargs="*", help="project paths; default: ~/.config/kitchen/projects.txt")
+    stat.add_argument("--since", default="24h", help="journal window, e.g. 24h or 7d")
+    stat.add_argument("--json", action="store_true")
+    stat.set_defaults(func=cmd_status)
+
+    inv = sub.add_parser("inventory", help="skills, rule files and automations the agents can see, and their drift")
+    inv.add_argument("--json", action="store_true")
+    inv.set_defaults(func=cmd_inventory)
+
+    retro = sub.add_parser("retro", help="my prompts from Claude Code and Codex transcripts")
+    retro.add_argument("--since", default="7d")
+    retro.add_argument("--tool", choices=("all", "claude", "codex"), default="all")
+    retro.add_argument("--match", help="only prompts matching this regex (case-insensitive)")
+    retro.add_argument("--full", action="store_true", help="do not truncate prompts")
+    retro.add_argument("--json", action="store_true")
+    retro.set_defaults(func=cmd_retro)
 
     args = parser.parse_args()
     return args.func(args)
