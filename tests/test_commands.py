@@ -71,6 +71,14 @@ class LogAndStatusTests(ProjectFixture):
 
         self.assertIn("PRs        unknown:", out)
 
+    def test_status_accepts_a_configured_project_name(self):
+        project = self.make_project("shop")
+        self.list_projects(project)
+
+        out = self.kitchen("status", "shop", cwd=self.home).stdout
+
+        self.assertIn("shop  main @", out)
+
     def test_status_reports_a_missing_project_instead_of_skipping_it(self):
         self.list_projects(self.home / "gone")
 

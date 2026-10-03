@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Schedules the kitchen jobs with launchd (macOS).
+# Usage:
+#   install-schedule <project> [guard-hour] [gardener-weekday] [gardener-hour]   defaults: 02:00 daily, Monday 06:00
+#   install-schedule --retro [weekday] [hour]                                    default: Monday 07:00
+set -euo pipefail
+
+if [ "$(uname)" != Darwin ]; then
+  echo "install-schedule supports launchd (macOS) only; on Linux, add systemd user timers for automation/bin/* by hand." >&2
+  exit 2
+fi
+
+AUTOMATION="$(cd "$(dirname "$0")/.." && pwd)"
+STATE_ROOT="${KITCHEN_STATE:-$HOME/.local/state/kitchen}"
+AGENTS="$HOME/Library/LaunchAgents"
+mkdir -p "$AGENTS"
+
+write_plist() { # label log-dir calendar-xml program-args...
+  local label="$1" log_dir="$2" calendar="$3"; shift 3
+  local plist="$AGENTS/$label.plist" args=""
+  for arg in "$@"; do args="$args<string>$arg</string>"; done
+  mkdir -p "$log_dir"
+  cat > "$plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$label</string>
+  <key>ProgramArguments</key>
+  <array>$args</array>
+  <key>StartCalendarInterval</key>$calendar
+  <key>StandardOutPath</key><string>$log_dir/launchd.log</string>
+  <key>StandardErrorPath</key><string>$log_dir/launchd.log</string>
+  <key>ProcessType</key><string>Background</string>
+</dict>
+</plist>
+PLIST
+  launchctl bootout "gui/$(id -u)/$label" 2>/dev/null || true
+  launchctl bootstrap "gui/$(id -u)" "$plist"
+  echo "scheduled $label"
+}
+
+calendar() { # [weekday] hour
+  if [ $# = 2 ]; then
+    echo "<dict><key>Weekday</key><integer>$1</integer><key>Hour</key><integer>$2</integer><key>Minute</key><integer>0</integer></dict>"
+  else
+    echo "<dict><key>Hour</key><integer>$1</integer><key>Minute</key><integer>0</integer></dict>"
+  fi
+}
+
+if [ "${1:-}" = "--retro" ]; then
+  write_plist "com.kitchen.retro" "$STATE_ROOT/retro/logs" "$(calendar "${2:-1}" "${3:-7}")" \
+    /bin/bash "$AUTOMATION/bin/weekly-retro"
+  exit 0
+fi
+
+PROJECT="${1:?usage: install-schedule <project> | --retro}"
+[ -f "${KITCHEN_CONFIG:-$HOME/.config/kitchen}/automation/$PROJECT.env" ] || { echo "no config for $PROJECT" >&2; exit 2; }
+write_plist "com.kitchen.$PROJECT.nightly-guard" "$STATE_ROOT/automation/$PROJECT/logs" "$(calendar "${2:-2}")" \
+  /bin/bash "$AUTOMATION/bin/nightly-guard" "$PROJECT"
+write_plist "com.kitchen.$PROJECT.weekly-gardener" "$STATE_ROOT/automation/$PROJECT/logs" "$(calendar "${3:-1}" "${4:-6}")" \
+  /bin/bash "$AUTOMATION/bin/weekly-gardener" "$PROJECT"

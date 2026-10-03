@@ -313,7 +313,8 @@ def cmd_log(args: argparse.Namespace) -> int:
 
 def cmd_status(args: argparse.Namespace) -> int:
     since = common.parse_since(args.since)
-    repos = [Path(p).resolve() for p in args.paths] or common.projects()
+    by_name = {project.name: project for project in common.projects()}
+    repos = [by_name.get(p) or Path(p).resolve() for p in args.paths] or common.projects()
     if not repos:
         print(f"No projects: list one path per line in {common.config_dir() / 'projects.txt'}, or pass paths.")
         return 1
@@ -356,7 +357,7 @@ def main() -> int:
     log.set_defaults(func=cmd_log)
 
     stat = sub.add_parser("status", help="where every project stands: git, PRs, nightly guard, journal, decisions")
-    stat.add_argument("paths", nargs="*", help="project paths; default: ~/.config/kitchen/projects.txt")
+    stat.add_argument("paths", nargs="*", help="project paths or configured project names; default: ~/.config/kitchen/projects.txt")
     stat.add_argument("--since", default="24h", help="journal window, e.g. 24h or 7d")
     stat.add_argument("--json", action="store_true")
     stat.set_defaults(func=cmd_status)
