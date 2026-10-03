@@ -1,6 +1,0 @@
-interface:
-  display_name: "Find The Cause"
-  short_description: "Find the root cause with reproducible evidence"
-  default_prompt: "Use $find-the-cause to build a tight repro and validate the actual cause."
-policy:
-  allow_implicit_invocation: false

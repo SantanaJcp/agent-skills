@@ -1,6 +1,0 @@
-interface:
-  display_name: "Deepen The Codebase"
-  short_description: "Find stronger software module boundaries"
-  default_prompt: "Use $deepen-the-codebase to find and compare the strongest module-boundary improvements."
-policy:
-  allow_implicit_invocation: false

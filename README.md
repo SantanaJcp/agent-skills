@@ -1,82 +1,43 @@
 # agent-skills
 
-A bundle-first, Apache-2.0 development system of fifteen portable [Agent Skills](https://agentskills.io/) for current stable Codex and Claude Code.
+My personal agent kitchen: small, owned skills plus the tooling that keeps them honest, shared by Claude Code and Codex from one source.
 
-> **Stable:** all fifteen skills are promoted for current Codex and Claude Code. Acta v2 is the authoritative offline artifact system.
+> Built on ideas from [Poteto's pstack](https://github.com/cursor/plugins/tree/main/pstack) and [Matt Pocock's skills](https://github.com/mattpocock/skills), rewritten small and owned. The previous Acta v2 suite is preserved at tag `acta-v2-final`.
 
-All skills are **manual-only**. Natural-language matching does not activate
-them; choose one explicitly with `$skill-name` in Codex or `/skill-name` in
-Claude Code.
+## Layout
 
-## Install the complete suite
+| Path | What lives there |
+|---|---|
+| `global/AGENTS.md` | Rules every session follows, in every project and tool |
+| `skills/<name>/` | One skill per folder: a short `SKILL.md`, plus scripts when a step is mechanical |
+| `bin/kitchen` | The CLI that installs and checks everything |
+| `templates/` | Starting points for per-project pieces, such as a `verify-<repo>` skill |
+| `automation/` | Scheduled jobs (nightly guard, weekly gardener) |
+| `tests/` | The repo verifies itself |
 
-The recommended experience installs the whole development cycle and its autonomous tools globally for both supported clients:
+Project-specific skills (deploy, verification for one app) stay in that project's `.agents/skills/`.
 
-```bash
-npx skills add SantanaJcp/agent-skills --skill '*' -g --agent codex claude-code
-```
+## Install
 
-For a reviewed, reproducible CLI version, use `npx skills@1.5.19`. Avoid `-y` until you have inspected the skills and scripts. Set `DO_NOT_TRACK=1` or `DISABLE_TELEMETRY=1` to disable install telemetry.
-
-Advanced consumers may select skills interactively:
-
-```bash
-npx skills add SantanaJcp/agent-skills -g --agent codex claude-code
-```
-
-Or install one self-contained skill:
+Requires Python 3.10+ and git. No other dependencies.
 
 ```bash
-npx skills add SantanaJcp/agent-skills@<skill-name> -g --agent codex claude-code
+git clone https://github.com/SantanaJcp/agent-skills.git
+cd agent-skills
+bin/kitchen install   # symlinks skills and global rules into Claude Code and Codex
+bin/kitchen doctor    # proves every link resolves and the pre-commit hook is active
 ```
 
-For a project-local installation, omit `-g`. A consumer may commit its generated `skills-lock.json`; this publisher does not.
+`install` links each `skills/<name>` into `~/.claude/skills/` and `~/.agents/skills/`, and `global/AGENTS.md` to `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`. It refuses to replace anything it does not manage; `--backup` moves those paths to `~/.kitchen-backups/` first.
 
-## Development cycle
-
-1. `make-me-realize` — expose blind spots and own every unknown.
-2. `three-code-paths` — compare three structural implementation choices.
-3. `interface-directions` — conditionally choose a product-interface direction.
-4. `change-blueprint` — approve a compact spec and implementation plan.
-5. `build-with-notes` — implement test-first with live notes and STOP gates.
-6. `do-i-understand-this` — diagnose understanding of the completed change.
-
-The bundle also includes `feel-the-flow`, `feature-xray`, `concept-lab`, `what-just-happened`, `draw-the-flow`, `draw-it-in-svg`, `deepen-the-codebase`, `find-the-cause`, and `learning-workbench`.
-
-Skills may recommend a handoff, but no skill activates implicitly or invokes the next stage automatically. Markdown/JSON is canonical; Acta HTML is an offline, printable human interface.
-
-## Browse
-
-- [Stable catalog](CATALOG.md)
-- [Incubator](INCUBATOR.md)
-- [Acta architecture](docs/architecture.md)
-- [Acta v2 promotion evidence](docs/qa/acta-suite-0.2.0.md)
-
-## Author
-
-Requirements: Node `>=22.20.0` and npm.
+## Check
 
 ```bash
-npm ci
-npm run new:skill -- my-skill
-npm run acta
-npm run acta2   # authoritative Acta v2 suite
-npm run catalog
-npm run check
-# For assigned manual evaluation:
-npm run qa:prepare -- --destination ../agent-skills-manual-qa
+bin/kitchen check     # lint skills, scan for private data, run the tests
 ```
 
-Acta authoring sources are publisher-only. Materialized protocol and HTML scaffolds are committed inside skill bundles so whole-collection and isolated installs work without network, runtime packages, sibling skills, renderers, watchers, or servers.
+The pre-commit hook runs the same command. Because this repo is public, `check` rejects personal absolute paths and any term listed in `~/.config/kitchen/denylist.txt` (one term per line, kept outside the repo).
 
-Read the [authoring guide](docs/authoring.md), [testing guide](docs/testing.md), and [contribution guide](CONTRIBUTING.md) before promotion.
+## License
 
-## Security
-
-Skills execute with the invoking client's permissions. Review instructions, scripts, artifacts, and updates before use. HTML views do not write canonical files or persist browser storage. See [SECURITY.md](SECURITY.md).
-
-## Publication status
-
-The repository is published from the personal `SantanaJcp` account with protected `main`, required Linux/Windows CI, squash merges, a maintainer emergency bypass, and private vulnerability reporting.
-
-The initial cohort is promoted and published as `v1.0.0`.
+Apache-2.0

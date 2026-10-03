@@ -1,6 +1,0 @@
-interface:
-  display_name: "Draw The Flow"
-  short_description: "Diagram normal, failure, and recovery flow"
-  default_prompt: "Use $draw-the-flow to diagram this process with failure and recovery paths."
-policy:
-  allow_implicit_invocation: false

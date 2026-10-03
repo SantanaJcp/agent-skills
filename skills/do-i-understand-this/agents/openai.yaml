@@ -1,6 +1,0 @@
-interface:
-  display_name: "Do I Understand This"
-  short_description: "Verify understanding of a completed change"
-  default_prompt: "Use $do-i-understand-this to test my understanding of this completed change."
-policy:
-  allow_implicit_invocation: false
