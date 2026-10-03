@@ -1,30 +1,27 @@
 ---
 name: feature-xray
-description: "Produce a source-backed walkthrough of how an existing feature works, including entry points, data flow, dependencies, usage, and gotchas. Use for repository-grounded explanations; do not use for general concept teaching or proposed implementation design."
-disable-model-invocation: true
-license: Apache-2.0
-metadata:
-  tags: "codebase, explanation, documentation"
+description: "Read-only investigation of an area (feature, folder, service, branch, deployment) that ends in numbered decisions, never in changes. Use when I say 'analiza', 'primero analicemos', 'qué hace X hoy', 'no cambies nada', or before proposing changes to code you have not read."
 ---
 
-# Feature X-Ray
+# feature-xray
 
-## Purpose
+Explain how something works today, from evidence, and hand me the decisions. The x-ray ends at decisions; it never fixes anything.
 
-Produce a verifiable operational explanation of an existing feature without modifying it.
+## Read-only, strictly
 
-Read [the interactive artifact protocol](references/acta2-protocol.md). The X-ray is a **record-only** artifact — nothing in it changes with human action, so it carries no controls. Write `scenario.json` (TL;DR, system-map nodes/edges, evidence-located steps, usage snippet, gotchas, FAQ) and, after the explanation is verified and accepted in chat, `canonical.json`; generate the record with [the bundled generator](references/acta2/generate-record.mjs). [record.html](references/record.html) is a rendered example.
+No edits, commits, branch changes, installs, migrations, deploys or deletions. Run only commands that read: `git log`, `grep`, builds and tests that touch no shared state, the project's verify skill in its read-only commands. If answering needs a mutating step, stop and ask.
 
-## Process
+## Steps
 
-1. Define the feature boundary, audience, and questions. Read project domain context and ADRs before tracing code.
-2. Follow the feature from entry point through domain modules, state/data changes, external adapters, failure/recovery, and observable output. Prefer runtime/tests/logs as corroboration when available.
-3. Write `feature-xray.md`. Every load-bearing claim receives Fact or Inference, a repository-relative file:line location, and an evidence register id. Keep snippets minimal and decision-relevant.
-4. Add a TL;DR, operational timeline, data flow, important invariants, security/permission behavior, failure paths, gotchas, and FAQ disclosures. Do not invent behavior that source evidence cannot support.
-5. Generate `view.html`, verify all locations and links, and mark complete when every claim is labeled and locatable.
+1. **Scope.** State the area, the question it answers, and what is out of scope.
+2. **Map from source.** Entry points, data flow, callers, configuration, tests. Cite `file:line`.
+3. **Churn.** `git log --since=60.days --stat -- <path>`: what changes often, who touched it last, which large files change the most (size × commits).
+4. **Check against reality** when it is cheap: run the tests or the verify command that covers it. Label each claim measured, inferred or guess.
+5. **Look for** dead or orphaned pieces, docs or comments that contradict the code, existing fallbacks (report them per the global rules), and risks.
 
-## Guardrails
+## Output
 
-- Do not propose a redesign unless the user separately asks; explanation is the product.
-- Use trusted external docs only when dependency behavior cannot be established locally and label the source.
-- Do not modify code or expose secret values in snippets.
+- **In short**: one paragraph, what it is and your verdict.
+- **Map**: table of component → role → `file:line`.
+- **Findings**: each with its evidence label and location, worst first.
+- **Decisions**: numbered, each with your recommended option, its cost, and whether it is a one-way or two-way door.

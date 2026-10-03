@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# Nightly guard: build, test and prove the tip of the project's branch.
+# Opens (or comments on) one GitHub issue when a step fails and closes it when the branch is green.
+# Every run, green or red, lands in the nightly history read by `kitchen status`.
+# Usage: nightly-guard <project>
+# Trial run: GUARD_ONLY="build,fast-tests" GUARD_NO_REPORT=1 nightly-guard <project>
+source "$(dirname "$0")/../lib/common.sh" "$1"
+
+RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+RUN_LOG="$LOG_DIR/guard-$RUN_ID.log"
+exec > >(tee -a "$RUN_LOG") 2>&1
+
+ISSUE_TITLE="Nightly guard failing on $BRANCH"
+
+open_issue_number() {
+  gh issue list -R "$GH_REPO" --label "$GUARD_LABEL" --state open --search "in:title \"$ISSUE_TITLE\"" \
+    --json number --jq '.[0].number // empty'
+}
+
+report_failure() { # step sha log-file
+  [ "${GUARD_NO_REPORT:-0}" = 1 ] && { log "issue report suppressed (GUARD_NO_REPORT)"; return 0; }
+  gh label create "$GUARD_LABEL" -R "$GH_REPO" --color B60205 --description "Nightly guard on the shared branch" >/dev/null 2>&1 || true
+  local body existing
+  body="$(printf 'Step **%s** failed on `%s` at %s (run %s).\n\nLast lines of the log:\n\n```\n%s\n```\n\nFull log on the guard machine: `%s`' \
+    "$1" "$2" "$(date -u +%Y-%m-%dT%H:%MZ)" "$RUN_ID" "$(tail -60 "$3")" "$RUN_LOG")"
+  existing="$(open_issue_number)"
+  if [ -n "$existing" ]; then
+    gh issue comment "$existing" -R "$GH_REPO" --body "$body" >/dev/null
+    log "commented on issue #$existing"
+  else
+    gh issue create -R "$GH_REPO" --title "$ISSUE_TITLE" --label "$GUARD_LABEL" --body "$body" >/dev/null
+    log "opened issue: $ISSUE_TITLE"
+  fi
+}
+
+report_green() { # sha
+  [ "${GUARD_NO_REPORT:-0}" = 1 ] && return 0
+  local existing; existing="$(open_issue_number)"
+  [ -z "$existing" ] && return 0
+  gh issue close "$existing" -R "$GH_REPO" --comment "Green again on \`$1\` (run $RUN_ID)." >/dev/null
+  log "closed issue #$existing"
+}
+
+log "guard start: project=$PROJECT branch=$BRANCH"
+sync_clone
+cd "$CLONE_DIR"
+SHA="$(git rev-parse --short HEAD)"
+log "testing $SHA"
+
+if [ "${NEEDS_DOCKER:-0}" = 1 ] && ! ensure_docker; then
+  echo "Docker is required by this project and is not available." > "$LOG_DIR/guard-$RUN_ID-docker.log"
+  report_failure docker "$SHA" "$LOG_DIR/guard-$RUN_ID-docker.log"
+  record_nightly red docker skipped skipped "$SHA" "$RUN_ID" "$RUN_LOG"
+  log "guard end: status=1"
+  exit 1
+fi
+
+status=0; failed=""
+for entry in "${GUARD_STEPS[@]}"; do
+  name="${entry%%|*}"; cmd="${entry#*|}"
+  if [ -n "${GUARD_ONLY:-}" ] && [[ ",$GUARD_ONLY," != *",$name,"* ]]; then continue; fi
+  step_log="$LOG_DIR/guard-$RUN_ID-$name.log"
+  log "step $name"
+  if ! bash -c "$cmd" > "$step_log" 2>&1; then
+    log "step $name FAILED (log $step_log)"
+    [ -z "${GUARD_ONLY:-}" ] && report_failure "$name" "$SHA" "$step_log"
+    status=1; failed="$name"; break
+  fi
+done
+
+cleanup="none"
+if [ -n "${CLEANUP_CMD:-}" ]; then
+  if bash -c "$CLEANUP_CMD" > "$LOG_DIR/guard-$RUN_ID-cleanup.log" 2>&1; then
+    cleanup="ok"
+  else
+    cleanup="failed"
+    log "cleanup FAILED: something the guard started may still be running (log $LOG_DIR/guard-$RUN_ID-cleanup.log)"
+  fi
+fi
+
+metrics="none"
+if [ -n "${METRICS_CMD:-}" ] && [ -z "${GUARD_ONLY:-}" ]; then
+  snapshot="$HISTORY_DIR/$RUN_ID-$SHA.json"
+  if bash -c "$METRICS_CMD" > "$snapshot" 2> "$LOG_DIR/guard-$RUN_ID-metrics.log"; then
+    python3 - "$snapshot" "$HISTORY_DIR/history.jsonl" "$SHA" "$RUN_ID" "$status" <<'PY'
+import json, sys
+snapshot, history, sha, run_id, status = sys.argv[1:]
+data = json.load(open(snapshot))
+open(history, "a").write(json.dumps({"sha": sha, "run_id": run_id, "guard_green": status == "0", "metrics": data}) + "\n")
+PY
+    metrics="ok"
+    log "metrics recorded"
+  else
+    metrics="failed"
+    log "metrics FAILED: no snapshot for this run (log $LOG_DIR/guard-$RUN_ID-metrics.log)"
+  fi
+fi
+
+if [ -n "${GUARD_ONLY:-}" ]; then
+  log "trial run (GUARD_ONLY=$GUARD_ONLY): not recorded in the nightly history, issue left as is"
+elif [ "$status" = 0 ]; then
+  record_nightly green "" "$cleanup" "$metrics" "$SHA" "$RUN_ID" "$RUN_LOG"
+  report_green "$SHA"
+else
+  record_nightly red "$failed" "$cleanup" "$metrics" "$SHA" "$RUN_ID" "$RUN_LOG"
+fi
+find "$LOG_DIR" -name 'guard-*' -mtime +30 -delete
+log "guard end: status=$status"
+exit "$status"

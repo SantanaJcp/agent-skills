@@ -1,0 +1,382 @@
+#!/usr/bin/env python3
+"""kitchen: install, check and inspect the personal agent setup.
+
+One source of truth for Claude Code and Codex:
+  skills/<name>/      -> ~/.claude/skills/<name> and ~/.agents/skills/<name>
+  global/AGENTS.md    -> ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md
+Every installed path is an absolute symlink back into this repo.
+"""
+from __future__ import annotations
+
+import argparse
+import datetime
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+REPO = Path(os.environ.get("KITCHEN_REPO") or Path(__file__).resolve().parent.parent).resolve()
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
+
+from kitchen import common, inventory, journal, status, transcripts  # noqa: E402
+MAX_SKILL_LINES = 150
+MAX_DESCRIPTION_CHARS = 1024
+NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+LINK_RE = re.compile(r"\]\(([^)\s]+)\)")
+BLOCK_SCALARS = {">", "|", ">-", "|-", ">+", "|+"}
+
+
+def home() -> Path:
+    return Path(os.environ["HOME"])
+
+
+def skills_dir() -> Path:
+    return REPO / "skills"
+
+
+def global_rules() -> Path:
+    return REPO / "global" / "AGENTS.md"
+
+
+def skill_target_dirs(h: Path) -> list[Path]:
+    return [h / ".claude" / "skills", h / ".agents" / "skills"]
+
+
+def rules_targets(h: Path) -> list[Path]:
+    return [h / ".claude" / "CLAUDE.md", h / ".codex" / "AGENTS.md"]
+
+
+def repo_skills() -> list[Path]:
+    if not skills_dir().is_dir():
+        return []
+    return sorted(p for p in skills_dir().iterdir() if (p / "SKILL.md").is_file())
+
+
+def cli_link(h: Path) -> Path:
+    return h / ".local" / "bin" / "kitchen"
+
+
+def planned_links(h: Path) -> list[tuple[Path, Path]]:
+    links = [(target / skill.name, skill) for skill in repo_skills() for target in skill_target_dirs(h)]
+    if global_rules().is_file():
+        links += [(target, global_rules()) for target in rules_targets(h)]
+    links.append((cli_link(h), REPO / "bin" / "kitchen"))
+    return links
+
+
+def link_target(link: Path) -> Path:
+    raw = Path(os.readlink(link))
+    return Path(os.path.normpath(raw if raw.is_absolute() else link.parent / raw))
+
+
+def owned(link: Path) -> bool:
+    return link.is_symlink() and link_target(link).is_relative_to(REPO)
+
+
+def owned_links_in_targets(h: Path) -> list[Path]:
+    found = [d / entry for d in skill_target_dirs(h) if d.is_dir() for entry in os.listdir(d)]
+    found += rules_targets(h) + [cli_link(h)]
+    return [p for p in found if owned(p)]
+
+
+def set_hooks_path() -> None:
+    if (REPO / ".git").exists():
+        subprocess.run(["git", "-C", str(REPO), "config", "core.hooksPath", ".githooks"], check=True)
+
+
+def cmd_install(args: argparse.Namespace) -> int:
+    h = home()
+    plan = planned_links(h)
+    conflicts = [link for link, _ in plan if (link.exists() or link.is_symlink()) and not owned(link)]
+    if conflicts and not args.backup:
+        print("Refusing to install: these paths exist and are not managed by kitchen.")
+        for link in conflicts:
+            print(f"  {link}")
+        print("Inspect them, then rerun with --backup to move them to ~/.kitchen-backups/.")
+        return 1
+
+    if conflicts:
+        backup_root = h / ".kitchen-backups" / datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+        for link in conflicts:
+            dest = backup_root / link.relative_to(h)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(link), str(dest))
+            print(f"backed up  {link} -> {dest}")
+
+    wanted = {link: source for link, source in plan}
+    for link in owned_links_in_targets(h):
+        if link not in wanted:
+            link.unlink()
+            print(f"removed    {link} (its source is gone)")
+
+    for link, source in plan:
+        if link.is_symlink() and link_target(link) == source:
+            continue
+        if link.is_symlink():
+            link.unlink()
+        link.parent.mkdir(parents=True, exist_ok=True)
+        link.symlink_to(source, target_is_directory=source.is_dir())
+        print(f"linked     {link} -> {source}")
+
+    set_hooks_path()
+    print(f"installed  {len(repo_skills())} skills, global rules: {'yes' if global_rules().is_file() else 'not in repo yet'}")
+    return 0
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    h = home()
+    failures: list[str] = []
+    warnings: list[str] = []
+
+    for link, source in planned_links(h):
+        if not link.is_symlink():
+            failures.append(f"missing link {link} -> {source}")
+        elif link_target(link) != source:
+            failures.append(f"{link} points to {link_target(link)}, expected {source}")
+
+    wanted = {link for link, _ in planned_links(h)}
+    for link in owned_links_in_targets(h):
+        if not link.exists():
+            failures.append(f"dangling link {link} -> {link_target(link)}")
+        elif link not in wanted:
+            failures.append(f"stale link {link}: its source is no longer an installable skill; run `bin/kitchen install`")
+
+    if not global_rules().is_file():
+        warnings.append("global/AGENTS.md is not in the repo yet; Claude and Codex have no shared global rules")
+
+    on_path = shutil.which("kitchen", path=os.environ.get("PATH", ""))
+    if not on_path or Path(on_path).resolve() != (REPO / "bin" / "kitchen").resolve():
+        warnings.append(f"`kitchen` on PATH is {on_path or 'missing'}; add {cli_link(h).parent} to PATH so skills and rules can call it")
+
+    hooks = subprocess.run(["git", "-C", str(REPO), "config", "core.hooksPath"], capture_output=True, text=True)
+    if hooks.stdout.strip() != ".githooks":
+        failures.append("pre-commit hook inactive: run `bin/kitchen install` (sets core.hooksPath=.githooks)")
+
+    unmanaged = sorted(
+        str(d / entry)
+        for d in skill_target_dirs(h) if d.is_dir()
+        for entry in os.listdir(d)
+        if not entry.startswith(".") and not owned(d / entry)
+    )
+
+    for line in failures:
+        print(f"FAIL  {line}")
+    for line in warnings:
+        print(f"WARN  {line}")
+    for path in unmanaged:
+        print(f"INFO  not managed by kitchen: {path}")
+    print(f"{'FAIL' if failures else 'OK'}    {len(repo_skills())} skills, {len(failures)} failures, {len(warnings)} warnings")
+    return 1 if failures else 0
+
+
+def parse_frontmatter(text: str) -> dict[str, str]:
+    if not text.startswith("---\n"):
+        raise ValueError("SKILL.md must start with a --- frontmatter block")
+    end = text.find("\n---", 4)
+    if end == -1:
+        raise ValueError("frontmatter block is not closed")
+    fields: dict[str, str] = {}
+    for line in text[4:end].splitlines():
+        if not line.strip() or line.startswith((" ", "\t", "#")):
+            continue
+        key, sep, value = line.partition(":")
+        if not sep:
+            raise ValueError(f"frontmatter line is not `key: value`: {line!r}")
+        value = value.strip()
+        if value in BLOCK_SCALARS:
+            raise ValueError(f"`{key.strip()}` uses a YAML block scalar; keep it on one line")
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        fields[key.strip()] = value
+    return fields
+
+
+def lint_skill(skill: Path) -> list[str]:
+    problems: list[str] = []
+    manifest = skill / "SKILL.md"
+    if not manifest.is_file():
+        return [f"{skill.name}: missing SKILL.md"]
+    text = manifest.read_text(encoding="utf-8")
+    try:
+        fields = parse_frontmatter(text)
+    except ValueError as error:
+        return [f"{skill.name}: {error}"]
+
+    name = fields.get("name", "")
+    if name != skill.name:
+        problems.append(f"{skill.name}: frontmatter name {name!r} must equal the directory name")
+    if not NAME_RE.match(skill.name):
+        problems.append(f"{skill.name}: directory name must be kebab-case")
+    description = fields.get("description", "")
+    if not description:
+        problems.append(f"{skill.name}: description is required")
+    elif len(description) > MAX_DESCRIPTION_CHARS:
+        problems.append(f"{skill.name}: description has {len(description)} chars (max {MAX_DESCRIPTION_CHARS})")
+
+    lines = text.count("\n") + 1
+    if lines > MAX_SKILL_LINES:
+        problems.append(f"{skill.name}: SKILL.md has {lines} lines (max {MAX_SKILL_LINES}); move detail into a referenced file or a script")
+
+    for target in LINK_RE.findall(text):
+        if target.startswith(("http://", "https://", "mailto:", "#")):
+            continue
+        if not (skill / target.split("#", 1)[0]).exists():
+            problems.append(f"{skill.name}: broken link {target}")
+
+    problems += invocation_parity(skill, fields)
+    return problems
+
+
+def invocation_parity(skill: Path, fields: dict[str, str]) -> list[str]:
+    """A manual-only skill must be manual-only in Claude Code and in Codex."""
+    manual_in_claude = fields.get("disable-model-invocation", "").lower() == "true"
+    policy = skill / "agents" / "openai.yaml"
+    policy_text = policy.read_text(encoding="utf-8") if policy.is_file() else ""
+    manual_in_codex = re.search(r"^\s*allow_implicit_invocation:\s*false\s*$", policy_text, re.MULTILINE) is not None
+    if manual_in_claude and not manual_in_codex:
+        return [f"{skill.name}: manual-only for Claude but not for Codex; add agents/openai.yaml with `allow_implicit_invocation: false`"]
+    if manual_in_codex and not manual_in_claude:
+        return [f"{skill.name}: manual-only for Codex but not for Claude; add `disable-model-invocation: true` to SKILL.md"]
+    return []
+
+
+def denylist_path() -> Path:
+    return Path(os.environ.get("KITCHEN_DENYLIST") or home() / ".config" / "kitchen" / "denylist.txt")
+
+
+def publishable_files() -> list[Path]:
+    listed = subprocess.run(
+        ["git", "-C", str(REPO), "ls-files", "-co", "--exclude-standard"], capture_output=True, text=True
+    )
+    if listed.returncode != 0:
+        raise RuntimeError(f"cannot list repo files: {listed.stderr.strip()}")
+    return [REPO / line for line in listed.stdout.splitlines() if (REPO / line).is_file()]
+
+
+def public_safety() -> tuple[list[str], list[str]]:
+    """The repo is public: no personal absolute paths, no private terms."""
+    patterns = [("personal path", re.compile(r"/(?:Users|home)/[A-Za-z0-9._-]+/"))]
+    warnings: list[str] = []
+    if denylist_path().is_file():
+        terms = [
+            line.strip() for line in denylist_path().read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.startswith("#")
+        ]
+        # Smart case, whole words: the name "Acme" must not flag "the acme of design".
+        patterns += [
+            ("private term", re.compile(rf"\b{re.escape(term)}\b", 0 if term != term.lower() else re.IGNORECASE))
+            for term in terms
+        ]
+    else:
+        warnings.append(f"private-term scan skipped: {denylist_path()} does not exist")
+
+    problems: list[str] = []
+    for path in publishable_files():
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            continue
+        for number, line in enumerate(text.splitlines(), start=1):
+            for label, pattern in patterns:
+                if pattern.search(line):
+                    problems.append(f"{path.relative_to(REPO)}:{number}: {label} in a public repo")
+    return problems, warnings
+
+
+def cmd_check(args: argparse.Namespace) -> int:
+    root = Path(args.skills_dir).resolve() if args.skills_dir else skills_dir()
+    skills = sorted(p for p in root.iterdir() if p.is_dir()) if root.is_dir() else []
+    problems = [problem for skill in skills for problem in lint_skill(skill)]
+    safety_problems, warnings = ([], []) if args.skills_dir else public_safety()
+    problems += safety_problems
+    for problem in problems:
+        print(f"FAIL  {problem}")
+    for warning in warnings:
+        print(f"WARN  {warning}")
+    print(f"{'FAIL' if problems else 'OK'}    lint: {len(skills)} skills, {len(problems)} problems")
+    if problems:
+        return 1
+    if args.lint_only:
+        return 0
+    tests = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-t", "."], cwd=REPO)
+    return tests.returncode
+
+
+def cmd_log(args: argparse.Namespace) -> int:
+    entry = journal.write(args.message, args.status, Path.cwd())
+    print(f"logged  {entry['status']} · {entry['repo']} @ {entry['sha'] or 'no git'} · {entry['agent']}")
+    return 0
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    since = common.parse_since(args.since)
+    by_name = {project.name: project for project in common.projects()}
+    repos = [by_name.get(p) or Path(p).resolve() for p in args.paths] or common.projects()
+    if not repos:
+        print(f"No projects: list one path per line in {common.config_dir() / 'projects.txt'}, or pass paths.")
+        return 1
+    report = [status.project(repo, since) for repo in repos]
+    print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else status.render(report, args.since))
+    return 0
+
+
+def cmd_inventory(args: argparse.Namespace) -> int:
+    report = inventory.build(REPO)
+    print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else inventory.render(report))
+    return 0
+
+
+def cmd_retro(args: argparse.Namespace) -> int:
+    prompts = transcripts.collect(common.parse_since(args.since), args.tool, args.match)
+    print(json.dumps(prompts, indent=2, ensure_ascii=False) if args.json else transcripts.render(prompts, args.full))
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="kitchen", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    install = sub.add_parser("install", help="link skills and global rules into Claude Code and Codex")
+    install.add_argument("--backup", action="store_true", help="move conflicting unmanaged paths to ~/.kitchen-backups/")
+    install.set_defaults(func=cmd_install)
+
+    doctor = sub.add_parser("doctor", help="verify the installed links and repo hooks")
+    doctor.set_defaults(func=cmd_doctor)
+
+    check = sub.add_parser("check", help="lint skills and run the repo tests")
+    check.add_argument("--lint-only", action="store_true")
+    check.add_argument("--skills-dir", help="lint this directory instead of the repo skills")
+    check.set_defaults(func=cmd_check)
+
+    log = sub.add_parser("log", help="leave a checkpoint for kitchen status (autonomous runs)")
+    log.add_argument("message")
+    log.add_argument("--status", choices=journal.STATUSES, default="note")
+    log.set_defaults(func=cmd_log)
+
+    stat = sub.add_parser("status", help="where every project stands: git, PRs, nightly guard, journal, decisions")
+    stat.add_argument("paths", nargs="*", help="project paths or configured project names; default: ~/.config/kitchen/projects.txt")
+    stat.add_argument("--since", default="24h", help="journal window, e.g. 24h or 7d")
+    stat.add_argument("--json", action="store_true")
+    stat.set_defaults(func=cmd_status)
+
+    inv = sub.add_parser("inventory", help="skills, rule files and automations the agents can see, and their drift")
+    inv.add_argument("--json", action="store_true")
+    inv.set_defaults(func=cmd_inventory)
+
+    retro = sub.add_parser("retro", help="my prompts from Claude Code and Codex transcripts")
+    retro.add_argument("--since", default="7d")
+    retro.add_argument("--tool", choices=("all", "claude", "codex"), default="all")
+    retro.add_argument("--match", help="only prompts matching this regex (case-insensitive)")
+    retro.add_argument("--full", action="store_true", help="do not truncate prompts")
+    retro.add_argument("--json", action="store_true")
+    retro.set_defaults(func=cmd_retro)
+
+    args = parser.parse_args()
+    return args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

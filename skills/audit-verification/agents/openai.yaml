@@ -1,0 +1,5 @@
+interface:
+  display_name: "Audit Verification"
+  short_description: "Check that a verify skill still tells the truth"
+policy:
+  allow_implicit_invocation: false

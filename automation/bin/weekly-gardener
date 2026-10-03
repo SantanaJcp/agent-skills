@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Weekly gardener: one unattended Claude Code run that opens at most one small, verified PR.
+# Skips while a previous gardener PR is still open, so reviews never pile up.
+# Usage: weekly-gardener <project>
+source "$(dirname "$0")/../lib/common.sh" "$1"
+
+RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+RUN_LOG="$LOG_DIR/gardener-$RUN_ID.log"
+exec > >(tee -a "$RUN_LOG") 2>&1
+
+gh label create "$GARDENER_LABEL" -R "$GH_REPO" --color 0E8A16 --description "Weekly gardener PR" >/dev/null 2>&1 || true
+pending="$(gh pr list -R "$GH_REPO" --label "$GARDENER_LABEL" --state open --json number --jq 'length')"
+if [ "${pending:-0}" -gt 0 ]; then
+  log "gardener skipped: $pending gardener PR(s) still open"; exit 0
+fi
+
+log "gardener start: project=$PROJECT"
+sync_clone
+cd "$CLONE_DIR"
+if [ "${NEEDS_DOCKER:-0}" = 1 ] && ! ensure_docker; then
+  log "gardener end: status=1 (Docker is required and not available; the gardener could not verify its change)"
+  exit 1
+fi
+
+PROMPT="$(cat "$KITCHEN_AUTOMATION/prompts/gardener.md")
+
+Project facts:
+- base branch: $BRANCH
+- gardener label: $GARDENER_LABEL
+- quality metrics command: ${QUALITY_CMD:-none configured}
+- committed baseline: ${BASELINE_FILE:-none configured}
+- metrics history (one JSON object per nightly run): $HISTORY_DIR/history.jsonl
+- run id: $RUN_ID"
+
+status=0
+claude -p "$PROMPT" \
+  --permission-mode acceptEdits \
+  --allowedTools "Bash" "Read" "Edit" "Write" "Grep" "Glob" \
+  --disallowedTools "Bash(gh pr merge:*)" "Bash(git push --force:*)" "Bash(git push -f:*)" \
+  --add-dir "$HISTORY_DIR" \
+  --output-format text || status=$?
+
+if [ -n "${CLEANUP_CMD:-}" ] && ! bash -c "$CLEANUP_CMD" > "$LOG_DIR/gardener-$RUN_ID-cleanup.log" 2>&1; then
+  log "cleanup FAILED: something the gardener started may still be running (log $LOG_DIR/gardener-$RUN_ID-cleanup.log)"
+fi
+find "$LOG_DIR" -name 'gardener-*' -mtime +90 -delete
+log "gardener end: status=$status"
+exit "$status"

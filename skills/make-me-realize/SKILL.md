@@ -1,32 +1,33 @@
 ---
 name: make-me-realize
-description: "Turn a vague request into a clear decision landscape by surfacing hidden assumptions, constraints, stakeholders, risks, and unanswered questions. Use before solution design when important unknowns remain; do not use to rewrite an already-settled specification."
+description: "Interview me about a plan, decision or vague request until we share one understanding: rounds of numbered questions, each with your recommended answer. Use when I ask to be grilled or interviewed, or before designing something whose important decisions are still open."
 disable-model-invocation: true
-license: Apache-2.0
-metadata:
-  tags: "discovery, planning, requirements"
 ---
 
-# Make Me Realize
+# make-me-realize
 
-## Purpose
+Turn what I asked for into a settled set of decisions before anyone designs or builds.
 
-Turn a vague idea into an owned map of facts, constraints, decisions, and unknowns. This is discovery, not solution design or specification writing. It deliberately produces no HTML.
+## How
 
-Read [the artifact protocol](references/acta-protocol.md) before creating the record.
+1. Map the request as a decision tree: every decision branches into the decisions that depend on it.
+2. Work in rounds. The frontier is every decision whose prerequisites are already settled. Ask the whole frontier in one round, numbered, each with your recommended answer and a one-line reason. A question that depends on another question still open in this round belongs to a later round.
+3. Facts are your job, decisions are mine. Look up anything the repo, the tools or the docs can answer; never ask me for it. Only the questions downstream of a lookup still running wait for it.
+4. After each round, recompute the frontier from my answers. Short answers like "1 sí, 2 B, 3 lo que recomiendes" are normal.
+5. Stop when the frontier is empty: every branch visited, nothing silently assumed. Write the result and wait for my confirmation before acting on it.
 
-## Process
+## Round format
 
-1. **Establish the initiative.** Infer and confirm the stable initiative slug, create this skill's workspace, and start `realization.md` with the required artifact frontmatter. Completion: the request and scope are faithfully restated.
-2. **Separate facts from decisions.** Inspect the repository, project instructions, domain context, ADRs, issue tracker, and trusted external sources when needed. Never ask the user for a discoverable fact. Completion: every current statement is classified as fact, constraint, user decision, or unknown.
-3. **Run the blind-spot pass.** Search across user value, scope, actors, data, interfaces, architecture, operations, security, failure, migration, rollout, testing, ownership, and reversibility. Record why each unknown matters. Completion: every material blind spot is visible in the record.
-4. **Build the decision tree.** A decision may enter the frontier only after its prerequisites are settled. Group every currently answerable frontier question into one round, number the questions, and include a recommended choice with its trade-off. Wait for the answers before recomputing the frontier. Completion: no question depends on another still open in the same round.
-5. **Own every remaining unknown.** Research new facts, record user decisions, or assign unresolved work to a named owner and observable next action. Do not treat “later” as ownership. Completion: the frontier is empty and every unknown is answered or explicitly owned.
-6. **Close the realization.** Summarize constraints, decisions, open owned work, non-goals, and readiness for approach exploration. Mark the artifact `completed`; recommend a next skill without invoking it.
+```
+**Q1 · <title>**: <question, with options when there are any>
+→ Recommended: <answer> (<one-line reason>)
+```
 
-## Guardrails
+## Result
 
-- Do not propose three solutions, write the final spec, implement, or publish during realization.
-- Reopen the frontier when a user answer introduces a new dependency.
-- Prefer positive target behavior over long lists of prohibitions.
-- The completion criterion is exhaustive ownership, not the number of questions asked.
+- **Decided**: one line per decision.
+- **Out of scope**: what we explicitly will not do.
+- **Still unknown**: what nobody can answer yet, and what would answer it.
+- **One-way doors**: decisions that are expensive to reverse. Each gets two structurally different options before we choose.
+
+If the project has a `decisions.md`, offer to append the decisions that should outlive this session.

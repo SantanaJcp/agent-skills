@@ -1,31 +1,18 @@
-# Agent Instructions
+# Working on this repo
 
-## Repository contract
+This file is for agents editing the kitchen itself. The rules every session follows everywhere live in `global/AGENTS.md`.
 
-- Treat `skills/` as the stable public collection and `incubator/` as experimental work.
-- Create new skills with `npm run new:skill -- <name>`; never import or scan personal skill directories.
-- Keep every skill self-contained and portable across current stable Codex and Claude Code.
-- Skill scripts must be `.mjs` files that use Node built-ins or relative bundled modules only.
-- Do not add symlinks, opaque executables, secrets, hidden install-time behavior, or undeclared external tools.
-- Edit canonical skill metadata, then regenerate catalogs with `npm run catalog`.
-- Run `npm run check` before declaring work complete.
+## Rules
 
-## Generated files
+- The repo is public. Never commit personal absolute paths, client or project names, credentials, or machine-specific config. Per-machine config lives in `~/.config/kitchen/`.
+- Python 3.11+ standard library and POSIX sh only. No package managers, no Node. CLI code lives in `lib/kitchen/`; `bin/kitchen` only wires commands.
+- A skill is a workflow, not a manual: `SKILL.md` stays under 150 lines (`bin/kitchen check` enforces it). Move mechanical steps into a script inside the skill and detail into a referenced file.
+- Skill names and descriptions are English and kebab-case; the folder name equals the frontmatter `name`; descriptions are one line.
+- Prefer the strongest fix for a recurring mistake: make it impossible in code, then a check in `bin/kitchen check`, then a rule here.
 
-`CATALOG.md` and `INCUBATOR.md` are generated. Do not edit them directly.
+## Verify
 
-## Agent skills
-
-### Issue tracker
-
-Public work is tracked in GitHub Issues. `.scratch/` is an optional ignored
-local drafting area and is never repository state. See
-`docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-Use the canonical triage labels without overrides. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-This is a single-context repository using root `CONTEXT.md` and `docs/adr/`. See `docs/agents/domain.md`.
+- `bin/kitchen check` lints skills, scans for private data and runs `tests/`. The pre-commit hook runs it; never bypass it with `--no-verify`.
+- `bin/kitchen doctor` checks the real installation on this machine.
+- Tests use a throwaway repo and `HOME` (`KITCHEN_REPO`, `HOME`, `KITCHEN_DENYLIST`, `KITCHEN_STATE`, `KITCHEN_CONFIG`); never let a test touch the real `~/.claude`, `~/.codex`, `~/.agents` or `~/.config/kitchen`.
+- A behavior change ships with a test that fails without it.

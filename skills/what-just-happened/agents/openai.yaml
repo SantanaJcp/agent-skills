@@ -1,6 +1,0 @@
-interface:
-  display_name: "What Just Happened"
-  short_description: "Create a trustworthy incident postmortem"
-  default_prompt: "Use $what-just-happened to create an evidence-backed postmortem for this incident."
-policy:
-  allow_implicit_invocation: false

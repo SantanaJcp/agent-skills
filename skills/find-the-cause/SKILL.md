@@ -1,31 +1,39 @@
 ---
 name: find-the-cause
-description: "Find the root cause of a bug, failing test, unexpected behavior, or slowdown using reproducible evidence and falsifiable experiments. Use when the cause is unknown, even if the reported failure is not yet reproducible; do not use when the fix is already specified or implementation is requested."
-disable-model-invocation: true
-license: Apache-2.0
-metadata:
-  tags: "debugging, diagnosis, testing"
+description: "Find and fix the root cause of a bug, failing test, wrong output or slowdown: a red-capable repro first, falsifiable hypotheses, and the failing test committed before the fix. Use when something is broken, throwing, failing or slow and the cause is not known yet."
 ---
 
-# Find The Cause
+# find-the-cause
 
-## Purpose
+Every shipped line traces to runtime evidence. A change that "might help" is a hypothesis, not a fix, and it does not ship.
 
-Produce an evidence-backed diagnosis and fix direction, not a production fix. Temporary diagnostic mutations are allowed and must be cleaned.
+## 1. Red
 
-Read [the interactive artifact protocol](references/acta2-protocol.md). Artifacts are **generated from structured JSON, never hand-edited**: write `scenario.json` (symptom facts, causal map, hypotheses each with predicts/probe/observed/evidence, verdict vocabulary) and run [the bundled generator](references/acta2/generate-instrument.mjs); the human judges every hypothesis — nothing auto-eliminates — and after the diagnosis is confirmed in chat, `canonical.json` + [the record generator](references/acta2/generate-record.mjs) emit the diagnosis record.
+Build one command that goes red on this exact symptom, and run it. It must be red-capable (drives the real code path and asserts the reported symptom), deterministic, fast, and runnable without me. Try in order: a failing test at the nearest seam, the project's verify skill, an HTTP or CLI script, a replayed captured payload, old-versus-new differential, `git bisect run`.
 
-## Process
+No red command, no hypotheses. If you cannot build one, stop, list what you tried, and ask for access or a captured artifact.
 
-1. **Build the feedback loop.** Read project context/ADRs, then create the fastest agent-runnable command that drives the actual bug path and asserts the user's exact symptom. Run it. Completion: name one already-run command that is red-capable, deterministic or usefully high-reproduction, fast, and specific. If no loop can be built, record attempts and request the missing access/artifact instead of hypothesizing.
-2. **Reproduce and minimize.** Confirm the same symptom across runs. Remove input, config, callers, and steps one variable at a time until every remaining element is load-bearing.
-3. **Rank 3–5 falsifiable hypotheses.** For each, state the prediction that would distinguish it. Show the ranking to the user; proceed with the evidence ranking if they are unavailable.
-4. **Instrument one prediction at a time.** Prefer debugger/inspection, then targeted uniquely tagged logs. For performance, establish a baseline and profile/bisect instead of logging. Temporary tests, harnesses, or instrumentation may live in the workspace or working tree.
-5. **Validate the cause.** A cause is Fact only after observed evidence matches its prediction and meaningful alternatives are falsified. Record the fix direction, regression-test seam, and architectural prevention opportunity without applying them.
-6. **Clean and export.** Remove temporary instrumentation/harness changes unless the user explicitly authorizes preserving evidence. Recheck repository status. Write `diagnosis.md`, generate `view.html`, and export `blueprint-seed.md`.
+## 2. Minimise
 
-## Guardrails
+Cut inputs, steps and config one at a time, rerunning the red command after each cut, until every remaining element is load-bearing.
 
-- No red-capable loop means no theory-building phase.
-- Do not apply the production fix, commit a regression test, or refactor architecture.
-- Do not leave debug logs, prototypes, credentials, or unrelated changes behind.
+## 3. Hypothesise
+
+Write 3 to 5 ranked hypotheses, each falsifiable: "If X is the cause, changing Y makes the bug disappear." Show me the list; continue with your ranking if I am away.
+
+## 4. Instrument
+
+One variable at a time. Tag every debug log with one prefix, such as `[DEBUG-a4f2]`, and remove them all with one grep at the end. When evidence refutes a hypothesis, revert what it motivated. If two fixes failed on the same premise, attack the premise.
+
+## 5. Fix
+
+Only when fixing is authorized; otherwise stop and report the cause.
+
+- Commit the failing test first. It must fail for the right reason.
+- Commit the smallest fix the evidence justifies on top of it.
+- Prefer no new test over a tautological one: expected values come from an independent source, never recomputed the way the code does.
+- Rerun the red command: green. Run the project's verification for the affected flows. Inconclusive, or green on a different surface, is not a pass.
+
+## Reply
+
+What broke, the root cause and the evidence that proves it, the fix, the red and green output trimmed to the assertion, and what remains unverified. Then say whether this class of bug can be made impossible, and at which layer: code, guard or lint, hook, or rule.
