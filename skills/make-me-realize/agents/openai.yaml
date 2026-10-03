@@ -1,0 +1,5 @@
+interface:
+  display_name: "Make Me Realize"
+  short_description: "Interview me until our decisions are settled"
+policy:
+  allow_implicit_invocation: false

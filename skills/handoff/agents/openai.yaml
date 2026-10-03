@@ -1,0 +1,5 @@
+interface:
+  display_name: "Handoff"
+  short_description: "Pass this work to another agent or session"
+policy:
+  allow_implicit_invocation: false

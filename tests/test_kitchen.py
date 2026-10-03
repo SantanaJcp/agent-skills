@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -29,6 +30,8 @@ class KitchenFixture(unittest.TestCase):
         self.repo = root / "repo"
         self.home = root / "home"
         (self.repo / "skills").mkdir(parents=True)
+        (self.repo / "bin").mkdir()
+        shutil.copy(KITCHEN, self.repo / "bin" / "kitchen")
         self.home.mkdir()
         subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
 
@@ -113,6 +116,14 @@ class InstallTests(KitchenFixture):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertFalse((self.home / ".claude" / "skills" / "alpha").is_symlink())
         self.assertTrue(foreign.is_dir())
+
+    def test_install_puts_the_cli_on_the_user_bin(self):
+        result = self.kitchen("install")
+
+        link = self.home / ".local" / "bin" / "kitchen"
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(link.resolve(), (self.repo / "bin" / "kitchen").resolve())
 
     def test_install_is_idempotent(self):
         self.add_skill("alpha")
@@ -213,6 +224,33 @@ class LintTests(KitchenFixture):
         self.assertIn("broken link reference.md", self.lint().stdout)
 
 
+class InvocationParityTests(KitchenFixture):
+    MANUAL = VALID_SKILL.replace('description:', 'disable-model-invocation: true\ndescription:')
+
+    def add_codex_policy(self, skill, allow):
+        (skill / "agents").mkdir()
+        (skill / "agents" / "openai.yaml").write_text(f"policy:\n  allow_implicit_invocation: {allow}\n")
+
+    def test_manual_in_both_tools_passes(self):
+        skill = self.add_skill("alpha", self.MANUAL.format(name="alpha"))
+        self.add_codex_policy(skill, "false")
+
+        result = self.kitchen("check", "--lint-only")
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_manual_only_in_claude_fails(self):
+        self.add_skill("alpha", self.MANUAL.format(name="alpha"))
+
+        self.assertIn("manual-only for Claude but not for Codex", self.kitchen("check", "--lint-only").stdout)
+
+    def test_manual_only_in_codex_fails(self):
+        skill = self.add_skill("alpha")
+        self.add_codex_policy(skill, "false")
+
+        self.assertIn("manual-only for Codex but not for Claude", self.kitchen("check", "--lint-only").stdout)
+
+
 class PublicSafetyTests(KitchenFixture):
     def test_personal_absolute_path_fails(self):
         self.add_skill("alpha")
@@ -236,8 +274,8 @@ class PublicSafetyTests(KitchenFixture):
         self.assertIn("notes.md:1: private term", result.stdout)
 
     def test_capitalized_term_matches_only_the_exact_name(self):
-        flagged = self.denylisted(["Acme"], "built for Acme\n")
-        common_word = self.denylisted(["Acme"], "the acme of design\n")
+        flagged = self.denylisted(["Kestrel"], "built for Kestrel\n")
+        common_word = self.denylisted(["Kestrel"], "a kestrel flew by\n")
 
         self.assertEqual(flagged.returncode, 1)
         self.assertEqual(common_word.returncode, 0, common_word.stdout)

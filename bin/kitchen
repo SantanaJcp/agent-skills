@@ -51,10 +51,15 @@ def repo_skills() -> list[Path]:
     return sorted(p for p in skills_dir().iterdir() if (p / "SKILL.md").is_file())
 
 
+def cli_link(h: Path) -> Path:
+    return h / ".local" / "bin" / "kitchen"
+
+
 def planned_links(h: Path) -> list[tuple[Path, Path]]:
     links = [(target / skill.name, skill) for skill in repo_skills() for target in skill_target_dirs(h)]
     if global_rules().is_file():
         links += [(target, global_rules()) for target in rules_targets(h)]
+    links.append((cli_link(h), REPO / "bin" / "kitchen"))
     return links
 
 
@@ -69,7 +74,7 @@ def owned(link: Path) -> bool:
 
 def owned_links_in_targets(h: Path) -> list[Path]:
     found = [d / entry for d in skill_target_dirs(h) if d.is_dir() for entry in os.listdir(d)]
-    found += rules_targets(h)
+    found += rules_targets(h) + [cli_link(h)]
     return [p for p in found if owned(p)]
 
 
@@ -137,6 +142,10 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     if not global_rules().is_file():
         warnings.append("global/AGENTS.md is not in the repo yet; Claude and Codex have no shared global rules")
+
+    on_path = shutil.which("kitchen", path=os.environ.get("PATH", ""))
+    if not on_path or Path(on_path).resolve() != (REPO / "bin" / "kitchen").resolve():
+        warnings.append(f"`kitchen` on PATH is {on_path or 'missing'}; add {cli_link(h).parent} to PATH so skills and rules can call it")
 
     hooks = subprocess.run(["git", "-C", str(REPO), "config", "core.hooksPath"], capture_output=True, text=True)
     if hooks.stdout.strip() != ".githooks":
@@ -212,7 +221,22 @@ def lint_skill(skill: Path) -> list[str]:
             continue
         if not (skill / target.split("#", 1)[0]).exists():
             problems.append(f"{skill.name}: broken link {target}")
+
+    problems += invocation_parity(skill, fields)
     return problems
+
+
+def invocation_parity(skill: Path, fields: dict[str, str]) -> list[str]:
+    """A manual-only skill must be manual-only in Claude Code and in Codex."""
+    manual_in_claude = fields.get("disable-model-invocation", "").lower() == "true"
+    policy = skill / "agents" / "openai.yaml"
+    policy_text = policy.read_text(encoding="utf-8") if policy.is_file() else ""
+    manual_in_codex = re.search(r"^\s*allow_implicit_invocation:\s*false\s*$", policy_text, re.MULTILINE) is not None
+    if manual_in_claude and not manual_in_codex:
+        return [f"{skill.name}: manual-only for Claude but not for Codex; add agents/openai.yaml with `allow_implicit_invocation: false`"]
+    if manual_in_codex and not manual_in_claude:
+        return [f"{skill.name}: manual-only for Codex but not for Claude; add `disable-model-invocation: true` to SKILL.md"]
+    return []
 
 
 def denylist_path() -> Path:
