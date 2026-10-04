@@ -942,6 +942,29 @@ git commit -q -am "More notes"
         self.assertIn("srt is not installed", result.stdout)
         self.assertNotIn("claude", self.calls_log())
 
+    def test_prepare_runs_on_the_pinned_base_before_the_agent(self):
+        out = Path(self.tmp.name) / "prepared"
+        self.commit_to_origin({"base.txt": ("from the base\n", 0o644)})
+        self.configure([], extra=f'GARDENER_PREPARE_CMD="cat base.txt > {out} && test ! -e .git && echo prepare >> $CALLS"')
+        self.agent(self.commit_script())
+
+        result = self.run_job("weekly-gardener", "shop")
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(out.read_text(), "from the base\n")
+        calls = self.calls_log().splitlines()
+        self.assertLess(calls.index("prepare"), calls.index("claude"))
+
+    def test_failed_prepare_stops_the_run_before_the_agent(self):
+        self.configure([], extra='GARDENER_PREPARE_CMD="false; true"')
+        self.agent(self.commit_script())
+
+        result = self.run_job("weekly-gardener", "shop")
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("GARDENER_PREPARE_CMD failed", result.stdout)
+        self.assertNotIn("claude", self.calls_log())
+
     def test_without_verify_steps_the_pr_says_the_agent_is_the_only_evidence(self):
         self.configure([])
         self.agent(self.commit_script())
