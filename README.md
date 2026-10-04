@@ -37,7 +37,12 @@ kitchen status              # every project: branch, upstream, PRs, nightly guar
 kitchen log "msg" --status done|blocked|decision|note   # agents leave checkpoints during autonomous runs
 kitchen inventory           # skills, rule files and Codex automations the agents can see, and where copies drift
 kitchen retro --since 7d    # my prompts from Claude Code and Codex, for the retro skill
+kitchen integrate fix/a fix/b --base main   # merge in order in a disposable clone, run the project's checks after each merge
 ```
+
+`integrate` reads check commands from `~/.config/kitchen/integrate.toml` (`[projects.<repo folder>]` with `checks = [...]`, optional `base` and `path`), prints PASS or FAIL bound to the exact SHA vector, and records it in `~/.local/state/kitchen/integrate/`. `kitchen integrate <refs> --recorded` runs nothing and passes only if a recorded PASS matches the refs' current SHAs, so any moved HEAD invalidates it. Nothing it runs inherits `GIT_*`.
+
+`status` shows `unknown` whenever a git read fails, never a zero; it groups `kitchen log` checkpoints by repository, so a checkpoint logged from a worktree shows under its repo. `retro` keeps only messages I typed: it classifies each one by provenance (Claude `origin`, `promptSource`, `entrypoint`, synthetic replays and agent-launched `claude -p` sessions; Codex `originator`, `source`, `thread_source` and heartbeat automations), ends with one coverage line of included and excluded counts by reason, and `--include-automated` shows the excluded ones tagged with their reason.
 
 Per-machine config lives outside the repo, in `~/.config/kitchen/`: `projects.txt` (one project path per line) and `denylist.txt`. State (journal, nightly history, retro reports) lives in `~/.local/state/kitchen/`.
 
@@ -62,7 +67,9 @@ Manual skills are invoked with `/name` in Claude Code and `$name` in Codex; `kit
 bin/kitchen check     # lint skills, scan for private data, run the tests
 ```
 
-The pre-commit hook runs the same command. Because this repo is public, `check` rejects personal absolute paths and any term listed in `~/.config/kitchen/denylist.txt` (one term per line, kept outside the repo).
+The pre-commit hook runs the same command. Because this repo is public, `check` rejects personal absolute paths, credential shapes (GitHub, Slack, AWS and OpenAI-style tokens, JWTs, private key blocks, literal password or secret assignments) and any term listed in `~/.config/kitchen/denylist.txt` (one term per line, kept outside the repo). It scans the working tree and the exact staged blobs, so a secret staged and then deleted from the working file still fails.
+
+Each detector (credentials, private terms, retro provenance) is tested against its attack corpus in `tests/corpus/<detector>/cases.json`: positive, negative and bypass cases, read by detection and redaction alike. A miss found in review becomes a new bypass case.
 
 ## License
 

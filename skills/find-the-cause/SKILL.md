@@ -1,6 +1,6 @@
 ---
 name: find-the-cause
-description: "Find and fix the root cause of a bug, failing test, wrong output or slowdown: a red-capable repro first, falsifiable hypotheses, and the failing test committed before the fix. Use when something is broken, throwing, failing or slow and the cause is not known yet."
+description: "Find and fix the root cause of a bug, failing test, wrong output or slowdown: a red-capable repro first, falsifiable hypotheses, and the red run shown before the fix. Use when something is broken, throwing, failing or slow and the cause is not known yet."
 ---
 
 # find-the-cause
@@ -29,10 +29,12 @@ One variable at a time. Tag every debug log with one prefix, such as `[DEBUG-a4f
 
 Only when fixing is authorized; otherwise stop and report the cause.
 
-- Commit the failing test first. It must fail for the right reason.
-- Commit the smallest fix the evidence justifies on top of it.
+- Show the red run before writing the fix: the failing test or red command, its output trimmed to the assertion. It must fail for the right reason.
+- Commit the failing test on its own first only when the repo's hooks allow a red commit. When a pre-commit or pre-push hook runs the tests, do not bypass it: commit test and fix together and put the red run in the PR description.
+- Commit the smallest fix the evidence justifies.
 - Prefer no new test over a tautological one: expected values come from an independent source, never recomputed the way the code does.
 - Rerun the red command: green. Run the project's verification for the affected flows. Inconclusive, or green on a different surface, is not a pass.
+- For a guard or verifier, replay the known counterexample and test a distinct bypass. Include a control that removes execution or its effect. Reverting the fix proves regression sensitivity, not completeness.
 
 ## Reply
 

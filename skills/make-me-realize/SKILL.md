@@ -10,6 +10,7 @@ Turn what I asked for into a settled set of decisions before anyone designs or b
 
 ## How
 
+0. Read the project's `decisions.md` first, when it exists. A decision already recorded there is settled: build on it, do not ask it again. Reopen one only by naming the new evidence that could change it (what changed, where, since when), and ask it as a reopening, not as a fresh question.
 1. Map the request as a decision tree: every decision branches into the decisions that depend on it.
 2. Work in rounds. The frontier is every decision whose prerequisites are already settled. Ask the whole frontier in one round, numbered, each with your recommended answer and a one-line reason. A question that depends on another question still open in this round belongs to a later round.
 3. Facts are your job, decisions are mine. Look up anything the repo, the tools or the docs can answer; never ask me for it. Only the questions downstream of a lookup still running wait for it.
