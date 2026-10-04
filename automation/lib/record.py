@@ -3,6 +3,7 @@
 
   record.py <file> write <status> <failed_step> <cleanup> <metrics> <sha> <run_id> <log> <started> [warning...]
   record.py <file> close-stale <current-run-id>
+  record.py <file> mark-survivors <run-id> <pids>
 
 A run writes "running" when it starts and replaces that line when it ends. A "running" line left by a
 run that was killed (SIGKILL cannot be trapped) is closed as "incomplete" by the next run that holds
@@ -47,6 +48,15 @@ def main() -> int:
             if isinstance(entry, dict) and entry.get("status") == "running" and entry.get("run_id") != current:
                 entry.update(status="incomplete", failed_step=entry.get("failed_step") or "killed",
                              warnings=[*entry.get("warnings", []), KILLED])
+        save(path, entries)
+        return 0
+    if action == "mark-survivors":
+        run_id, pids = args
+        for entry in entries:
+            if isinstance(entry, dict) and entry.get("run_id") == run_id:
+                entry.update(status="incomplete", failed_step=f"survivors {pids}",
+                             warnings=[*entry.get("warnings", []),
+                                       f"survivors {pids} still held files in the clone after TERM and KILL"])
         save(path, entries)
         return 0
     status, failed, cleanup, metrics, sha, run_id, log, started, *warnings = args

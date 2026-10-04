@@ -7,7 +7,12 @@ A layer independent of the sandbox: whatever the agent managed to read, a secret
 Three checks on every added line:
 - the kitchen's own redaction patterns (lib/kitchen, the same ones `kitchen retro` uses);
 - known token shapes, kept here so this check does not depend on the kitchen's list;
-- long high-entropy runs (random-looking keys with no known prefix).
+- long high-entropy runs (random-looking keys with no known prefix);
+and, per file, the known token shapes on each run of consecutive added lines joined together with quotes,
+`+`, whitespace and line continuations removed, so a token split across lines is still seen.
+This catches accidental leaks. Encoded or deliberately disguised exfiltration (base64, hex, reversed
+strings...) is out of its reach; only the boundary stops that (sandboxed reads and the environment
+allowlist, see README).
 Prints one line per finding (file, line, kind; never the value) and exits 1 when anything matched.
 """
 import math
@@ -60,12 +65,28 @@ def high_entropy(line: str) -> bool:
     return False
 
 
+JOIN_STRIP = re.compile(r"""[\s'"`+\\]""")
+
+
 def findings(diff: str) -> list[str]:
     found, path, line_no = [], "?", 0
+    run, run_start, run_flagged = [], 0, False
+
+    def close_run():
+        nonlocal run, run_flagged
+        if len(run) > 1 and not run_flagged:
+            joined = JOIN_STRIP.sub("", "".join(run))
+            kinds = [label for label, pattern in KNOWN if pattern.search(joined)]
+            if kinds:
+                found.append(f"{path}:{run_start}-{run_start + len(run) - 1}: {', '.join(kinds)} (across lines)")
+        run, run_flagged = [], False
+
     for line in diff.splitlines():
         if line.startswith("+++ "):
+            close_run()
             path = line[6:] if line.startswith("+++ b/") else line[4:]
         elif line.startswith("@@"):
+            close_run()
             match = re.search(r"\+(\d+)", line)
             line_no = int(match.group(1)) if match else 0
         elif line.startswith("+"):
@@ -77,7 +98,14 @@ def findings(diff: str) -> list[str]:
                 kinds.append("high-entropy string")
             if kinds:
                 found.append(f"{path}:{line_no}: {', '.join(dict.fromkeys(kinds))}")
+            if not run:
+                run_start = line_no
+            run.append(added)
+            run_flagged = run_flagged or bool(kinds)
             line_no += 1
+        else:
+            close_run()
+    close_run()
     return found
 
 

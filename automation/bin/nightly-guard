@@ -11,7 +11,6 @@
 # Trial run (neither recorded nor reported): GUARD_ONLY="build,fast-tests" nightly-guard <project>
 source "$(dirname "$0")/../lib/common.sh" "$1"
 
-RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
 STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%S+00:00)"
 RUN_LOG="$LOG_DIR/guard-$RUN_ID.log"
 exec > >(tee -a "$RUN_LOG") 2>&1

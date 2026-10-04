@@ -32,12 +32,17 @@ export PATH="$KITCHEN_AUTOMATION/shims:$TOOL_PATH"
 # the clone that sync_clone resets), in its own process group that is stopped as a whole before the lock
 # is released. The supervisor re-runs this script with KITCHEN_LOCK_STATE=held, or =busy when the lock
 # stayed taken for LOCK_WAIT_SECONDS (default 3600); the job then records the skip.
+# The supervisor also refuses to release the project while any process still has files open in the clone
+# or the gardener's work dirs (see lib/supervise.py); such survivors mark this run's record incomplete.
 if [ -z "${KITCHEN_LOCK_STATE:-}" ]; then
+  export KITCHEN_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
   exec python3 "$KITCHEN_AUTOMATION/lib/supervise.py" "$STATE_DIR/job.lock" "${LOCK_WAIT_SECONDS:-3600}" "${LOCK_POLL_SECONDS:-5}" \
+    --watch "$CLONE_DIR" --watch "$STATE_DIR/gardener" --record "$NIGHTLY_RECORD" --run-id "$KITCHEN_RUN_ID" \
     -- "$BASH" "$0" "$PROJECT"
 fi
 LOCK_STATE="$KITCHEN_LOCK_STATE"
-unset KITCHEN_LOCK_STATE
+RUN_ID="$KITCHEN_RUN_ID"
+unset KITCHEN_LOCK_STATE KITCHEN_RUN_ID
 
 log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
 
@@ -53,15 +58,16 @@ warn() { WARNINGS+=("$1"); log "WARNING: $1"; }
 redact() { python3 "$KITCHEN_AUTOMATION/lib/redact.py"; }
 
 # A dedicated clone at the tip of $BRANCH; the developer's checkout is never touched.
-# Destructive (reset and clean): call it only while holding the project lock.
+# Destructive (reset and clean): call it only while holding the project lock. Hooks stay off until the
+# tree is back at origin/$BRANCH: the gardener's agent could write files in the previous working tree.
 sync_clone() {
   if [ ! -d "$CLONE_DIR/.git" ]; then
     bounded "$NET_TIMEOUT" git clone --quiet "$REPO_URL" "$CLONE_DIR"
   fi
-  bounded "$NET_TIMEOUT" git -C "$CLONE_DIR" fetch --quiet --prune origin
-  git -C "$CLONE_DIR" checkout --quiet --detach "origin/$BRANCH"
-  git -C "$CLONE_DIR" reset --quiet --hard "origin/$BRANCH"
-  git -C "$CLONE_DIR" clean --quiet -fdx -e node_modules
+  bounded "$NET_TIMEOUT" git -C "$CLONE_DIR" -c core.hooksPath=/dev/null fetch --quiet --prune origin
+  git -C "$CLONE_DIR" -c core.hooksPath=/dev/null checkout --quiet --force --detach "origin/$BRANCH"
+  git -C "$CLONE_DIR" -c core.hooksPath=/dev/null reset --quiet --hard "origin/$BRANCH"
+  git -C "$CLONE_DIR" -c core.hooksPath=/dev/null clean --quiet -fdx -e node_modules
   install_push_guard
 }
 

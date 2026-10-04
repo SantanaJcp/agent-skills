@@ -15,7 +15,6 @@
 # Usage: weekly-gardener <project>
 source "$(dirname "$0")/../lib/common.sh" "$1"
 
-RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
 RUN_DATE="$(date -u +%Y-%m-%d)"
 RUN_LOG="$LOG_DIR/gardener-$RUN_ID.log"
 WORK_DIR="$STATE_DIR/gardener/$RUN_ID"
@@ -27,6 +26,7 @@ declare -p GARDENER_PROTECTED_PATHS >/dev/null 2>&1 || GARDENER_PROTECTED_PATHS=
 declare -p GARDENER_SANDBOX_DOMAINS >/dev/null 2>&1 || GARDENER_SANDBOX_DOMAINS=()
 declare -p GARDENER_SANDBOX_WRITE >/dev/null 2>&1 || GARDENER_SANDBOX_WRITE=()
 declare -p GARDENER_SANDBOX_READ >/dev/null 2>&1 || GARDENER_SANDBOX_READ=()
+declare -p GARDENER_ENV_PASS >/dev/null 2>&1 || GARDENER_ENV_PASS=()  # extra variable names the build needs
 declare -p GARDENER_SANDBOX_UNIX_SOCKETS >/dev/null 2>&1 || GARDENER_SANDBOX_UNIX_SOCKETS=()
 PROMPT_FILE="${GARDENER_PROMPT_FILE:-$KITCHEN_AUTOMATION/prompts/gardener.md}"  # override only for canary probes
 STARTED=0
@@ -35,9 +35,18 @@ finish() {
   local rc=$?
   trap - EXIT INT TERM HUP
   set +e
-  if [ "$STARTED" = 1 ] && [ -n "${CLEANUP_CMD:-}" ] &&
-    ! (cd "$CLONE_DIR" && bash -c "$CLEANUP_CMD") > "$LOG_DIR/gardener-$RUN_ID-cleanup.log" 2>&1; then
-    log "cleanup FAILED: something the gardener started may still be running (log $LOG_DIR/gardener-$RUN_ID-cleanup.log)"
+  if [ "$STARTED" = 1 ]; then
+    # Nothing the agent wrote runs unsealed: the tree goes back to the pinned base and every untracked file,
+    # node_modules included, is removed before the project's cleanup command runs, all with hooks off.
+    if git -C "$CLONE_DIR" -c core.hooksPath=/dev/null checkout --quiet --force --detach "$BASE_SHA" &&
+      git -C "$CLONE_DIR" -c core.hooksPath=/dev/null clean --quiet -ffdx; then
+      if [ -n "${CLEANUP_CMD:-}" ] &&
+        ! (cd "$CLONE_DIR" && bash -c "$CLEANUP_CMD") > "$LOG_DIR/gardener-$RUN_ID-cleanup.log" 2>&1; then
+        log "cleanup FAILED: something the gardener started may still be running (log $LOG_DIR/gardener-$RUN_ID-cleanup.log)"
+      fi
+    else
+      log "FAILED to restore the clone to $BASE_SHA; cleanup not run from a tree the agent wrote"
+    fi
   fi
   find "$LOG_DIR" -name 'gardener-*' -mtime +90 -delete
   find "$STATE_DIR/gardener" -mindepth 1 -maxdepth 1 -mtime +90 -exec rm -rf {} + 2>/dev/null
@@ -51,9 +60,21 @@ trap 'log "gardener interrupted (SIGHUP)"; exit 129' HUP
 
 # Claude's environment: everything it needs to edit, build, test and commit; nothing to publish with.
 run_sealed() {
-  local sealed="$KITCHEN_AUTOMATION/shims/sealed"
+  local sealed="$KITCHEN_AUTOMATION/shims/sealed" name keep=()
   mkdir -p "$WORK_DIR/gh-config"
-  env -u GH_TOKEN -u GITHUB_TOKEN -u GH_ENTERPRISE_TOKEN -u GITHUB_ENTERPRISE_TOKEN -u KITCHEN_REAL_GH -u SSH_AUTH_SOCK \
+  # The environment is an allowlist: nothing inherited reaches Claude unless named here. HOME and USER let
+  # claude read its own login from the macOS keychain; the two auth variables pass only when set (an
+  # account that logs in with a token instead), and are then visible to the agent's Bash too.
+  # Claude Code re-applies the user's shell startup files to every Bash command (a shell snapshot taken
+  # outside the sandbox), which would bring back their exports, functions and aliases, tokens included.
+  # So the agent's shell is zsh with an empty ZDOTDIR: no user startup file is read.
+  mkdir -p "$WORK_DIR/zdotdir"
+  for name in HOME USER LOGNAME TMPDIR LANG TERM ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN \
+    ${GARDENER_ENV_PASS[@]+"${GARDENER_ENV_PASS[@]}"} $(compgen -e | grep '^LC_' || true); do
+    if [ -n "${!name+x}" ]; then keep+=("$name=${!name}"); fi
+  done
+  env -i "${keep[@]}" \
+    SHELL=/bin/zsh ZDOTDIR="$WORK_DIR/zdotdir" \
     PATH="$sealed:$TOOL_PATH" \
     GH_CONFIG_DIR="$WORK_DIR/gh-config" \
     GIT_SSH_COMMAND="$sealed/refuse" GIT_ASKPASS="$sealed/refuse" SSH_ASKPASS="$sealed/refuse" GIT_TERMINAL_PROMPT=0 \
@@ -68,19 +89,24 @@ run_sealed() {
 refuse() { log "GARDENER-RESULT: refused - $1"; return 1; }
 
 # Deterministic publication of what the agent committed. Returns 1 when it refuses or fails.
+# Every check and the published commit use SHAs pinned once (BASE_SHA before Claude ran, the branch's
+# commit and tree right here), never ref names: a leftover agent process could move a ref mid-publish.
+# Git runs with hooks off: the working tree (where project hooks live) was writable by the agent.
 publish() {
-  local branches br ahead added deleted path pattern changed=0 title
-  branches="$(git for-each-ref --format='%(refname:short)' refs/heads/gardener/)"
-  if [ -z "$branches" ]; then
+  local listing br head tree ahead added deleted path pattern changed=0 title
+  listing="$(git for-each-ref --format='%(objectname) %(refname:short)' refs/heads/gardener/)"
+  if [ -z "$listing" ]; then
     log "GARDENER-RESULT: none - no gardener branch was committed"
     return 0
   fi
-  [ "$(printf '%s\n' "$branches" | wc -l | tr -d ' ')" = 1 ] || refuse "more than one gardener branch: $(echo $branches)" || return 1
-  br="$branches"
+  [ "$(printf '%s\n' "$listing" | wc -l | tr -d ' ')" = 1 ] || refuse "more than one gardener branch: $(echo $listing)" || return 1
+  head="${listing%% *}"
+  br="${listing#* }"
+  tree="$(git rev-parse --verify --quiet "$head^{tree}")" || refuse "cannot read the tree of $br" || return 1
   local name_re="^gardener/${RUN_DATE}-[a-z0-9][a-z0-9-]*$"
   [[ "$br" =~ $name_re ]] || refuse "branch $br is not named gardener/$RUN_DATE-<slug>" || return 1
-  git merge-base --is-ancestor "origin/$BRANCH" "$br" || refuse "$br does not start from origin/$BRANCH" || return 1
-  ahead="$(git rev-list --count "origin/$BRANCH..$br")"
+  git merge-base --is-ancestor "$BASE_SHA" "$head" || refuse "$br does not start from origin/$BRANCH" || return 1
+  ahead="$(git rev-list --count "$BASE_SHA..$head")"
   [ "$ahead" -ge 1 ] || refuse "$br has no commits ahead of origin/$BRANCH" || return 1
   while IFS=$'\t' read -r -d '' added deleted path; do
     [ "$added" = - ] && { refuse "binary change in $path"; return 1; }
@@ -89,11 +115,11 @@ publish() {
       # shellcheck disable=SC2254
       case "$path" in $pattern) refuse "$br touches protected path $path ($pattern)"; return 1 ;; esac
     done
-  done < <(git diff --no-renames --numstat -z "origin/$BRANCH" "$br")
+  done < <(git diff --no-renames --numstat -z "$BASE_SHA" "$tree")
   [ "$changed" -le "$MAX_CHANGED_LINES" ] || refuse "$br changes $changed lines; the bound is $MAX_CHANGED_LINES" || return 1
   # Second layer, independent of the sandbox: no credential-looking content in what would be published.
   local secrets
-  secrets="$(git diff -U0 --no-color "origin/$BRANCH" "$br" | python3 "$KITCHEN_AUTOMATION/lib/scan_diff.py")" ||
+  secrets="$(git diff -U0 --no-color "$BASE_SHA" "$tree" | python3 "$KITCHEN_AUTOMATION/lib/scan_diff.py")" ||
     { refuse "possible secret in the diff: $(printf '%s' "$secrets" | tr '\n' ';' | cut -c1-300)"; return 1; }
   [ -s "$SUMMARY_FILE" ] || refuse "no PR summary at $SUMMARY_FILE" || return 1
   title="$(grep -m1 -v '^[[:space:]]*$' "$SUMMARY_FILE" | sed -E 's/^#+[[:space:]]*//' | cut -c1-120 | redact)" || refuse "could not read the PR title" || return 1
@@ -101,18 +127,20 @@ publish() {
   awk 'seen { print; next } /[^[:space:]]/ { seen = 1 }' "$SUMMARY_FILE" | redact > "$WORK_DIR/body.md" ||
     refuse "could not redact the PR summary" || return 1
 
-  # One commit: the validated tree, on origin/$BRANCH, with the agent's messages (redacted) and author.
+  # One commit: the validated tree, on the pinned base, with the agent's messages (redacted) and author.
   local commit
   if [ "$ahead" = 1 ]; then
-    git log -1 --format=%B "$br" | redact > "$WORK_DIR/message.txt"
+    git log -1 --format=%B "$head" | redact > "$WORK_DIR/message.txt"
   else
-    { printf '%s\n\n' "$title"; git log --reverse --format='* %B' "origin/$BRANCH..$br"; } | redact > "$WORK_DIR/message.txt"
+    { printf '%s\n\n' "$title"; git log --reverse --format='* %B' "$BASE_SHA..$head"; } | redact > "$WORK_DIR/message.txt"
   fi || refuse "could not build the commit message" || return 1
-  commit="$(GIT_AUTHOR_NAME="$(git log -1 --format=%an "$br")" GIT_AUTHOR_EMAIL="$(git log -1 --format=%ae "$br")" \
-    git commit-tree "$br^{tree}" -p "origin/$BRANCH" -F "$WORK_DIR/message.txt")" || refuse "could not build the commit" || return 1
+  commit="$(GIT_AUTHOR_NAME="$(git log -1 --format=%an "$head")" GIT_AUTHOR_EMAIL="$(git log -1 --format=%ae "$head")" \
+    git commit-tree "$tree" -p "$BASE_SHA" -F "$WORK_DIR/message.txt")" || refuse "could not build the commit" || return 1
+  [ "$(git rev-parse "$commit^{tree}")" = "$tree" ] || refuse "the built commit does not hold the validated tree" || return 1
 
-  install_push_guard
-  bounded "$NET_TIMEOUT" git push --quiet origin "$commit:refs/heads/$br" || refuse "push of $br failed" || return 1
+  # The refspec is built here and can only name refs/heads/gardener/...; no hook from the tree runs.
+  bounded "$NET_TIMEOUT" git -c core.hooksPath=/dev/null push --quiet origin "$commit:refs/heads/$br" ||
+    refuse "push of $br failed" || return 1
   local url
   url="$(gh pr create -R "$GH_REPO" --base "$BRANCH" --head "$br" --label "$GARDENER_LABEL" \
     --title "$title" --body-file "$WORK_DIR/body.md")" || refuse "gh pr create failed for pushed branch $br" || return 1
@@ -133,6 +161,7 @@ fi
 log "gardener start: project=$PROJECT"
 sync_clone
 cd "$CLONE_DIR"
+BASE_SHA="$(git rev-parse --verify "origin/$BRANCH^{commit}")"  # pinned before the agent can touch refs
 # Branches left by earlier runs were published (they live on origin) or refused; start from none.
 git for-each-ref --format='%(refname)' refs/heads/gardener/ | while read -r ref; do git update-ref -d "$ref"; done
 mkdir -p "$WORK_DIR"
