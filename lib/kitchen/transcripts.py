@@ -22,13 +22,16 @@ from .credentials import redact
 
 T3_CONTEXT = re.compile(r"<t3_context.*?</t3_context>", re.S)
 HARNESS = (
-    "<task-notification", "<command-name", "<local-command", "<system-reminder",
+    "<task-notification", "<local-command", "<system-reminder",
     "This session is being continued", "[Request interrupted",
     "Context handoff (",  # T3 Code injects these when it moves context between threads
 )
 DELEGATED = re.compile(r"^Act as the [\w -]+ sub-agent for this task\.")  # T3 Code wraps delegated tasks this way
 DELEGATION_NOTICE = re.compile(r"^Delegated task \S+ reached a terminal state\.")  # T3 Code reports a finished delegation
 CODEX_REQUEST = re.compile(r"## My request(?: for Codex)?:\s*\n(.*)", re.S)
+SLASH_COMMAND = re.compile(r"^<command-(?:name|message)>")  # Claude Code's envelope for a slash command I typed
+COMMAND_NAME = re.compile(r"<command-name>([^<]*)</command-name>")
+COMMAND_ARGS = re.compile(r"<command-args>([^<]*)</command-args>")
 HEARTBEAT = re.compile(r"^<heartbeat>\s*<automation_id>([^<]+)</automation_id>")
 LAUNCH = re.compile(r"\bclaude\b[^\n|;&]*\s(?:-p|--print)\b|\bcodex\s+exec\b")
 CODEX_NOT_HUMAN_THREADS = {"subagent", "guardian_review", "security_scan"}
@@ -49,6 +52,12 @@ def _text_of(content) -> list[str]:
     if isinstance(content, list):
         return [part.get("text", "") for part in content if isinstance(part, dict) and part.get("type") == "text"]
     return [content or ""]
+
+
+def slash_command(text: str) -> str:
+    """`<command-name>/reload-skills</command-name>...` becomes `/reload-skills`, with its arguments."""
+    name, args = COMMAND_NAME.search(text), COMMAND_ARGS.search(text)
+    return f"{name.group(1) if name else ''} {args.group(1) if args else ''}".strip() or text
 
 
 def agent_launches(since) -> list[str]:
@@ -116,6 +125,8 @@ def claude_prompts(since, launches: list[str]) -> list[dict]:
             origin = event.get("origin") if isinstance(event.get("origin"), dict) else {}
             for raw in _text_of(content):
                 text = T3_CONTEXT.sub("", raw).strip()
+                if SLASH_COMMAND.match(text):
+                    text = slash_command(text)
                 if not text:
                     continue
                 if origin.get("kind", "human") != "human" or event.get("promptSource") == "system" or DELEGATION_NOTICE.match(text):

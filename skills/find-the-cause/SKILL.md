@@ -34,6 +34,7 @@ Only when fixing is authorized; otherwise stop and report the cause.
 - Commit the smallest fix the evidence justifies.
 - Prefer no new test over a tautological one: expected values come from an independent source, never recomputed the way the code does.
 - Rerun the red command: green. Run the project's verification for the affected flows. Inconclusive, or green on a different surface, is not a pass.
+- For a guard or verifier, replay the known counterexample and test a distinct bypass. Include a control that removes execution or its effect. Reverting the fix proves regression sensitivity, not completeness.
 
 ## Reply
 

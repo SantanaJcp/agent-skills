@@ -40,8 +40,9 @@ These rules apply in every project and every tool. A project's own AGENTS.md add
 
 - Delegate when the work splits into independent pieces or needs a second opinion from the other model; not for its own sake.
 - Every brief stands alone: goal, scope, exact branch, worktree or SHA, how to verify, and a report of PASS, ISSUES or BLOCKED with evidence.
-- Verify every worker's output yourself with `git diff --stat` and its evidence. Never trust a worker's own list of what it changed. A missing result is a gap, not a pass.
-- Integrate one branch at a time and rerun verification after each.
+- Inspect each worker's core diff and evidence. Do not upgrade ISSUES, BLOCKED, or missing evidence to PASS.
+- Let machine gates handle reversible verification and integration. Resolve technical exceptions within the authorized scope; do not turn them into owner checkboxes.
+- A batch of parallel work is PASS only after `kitchen integrate` passes on the exact sibling SHAs.
 - Match effort to the role. Reviews of risky diffs (auth, sync, tenant scope, data) run on the other model at high effort.
 - When the delegation interface lets you set a service tier, set it explicitly: Standard unless I ask for Fast.
 

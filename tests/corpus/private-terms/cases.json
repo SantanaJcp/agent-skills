@@ -1,0 +1,15 @@
+{
+  "detector": "public safety: private terms from the denylist and personal paths, in `kitchen check`",
+  "denylist": ["acmecorp", "Kestrel", "novus"],
+  "format": "same as credentials; redaction does not apply (retro output stays on this machine).",
+  "cases": [
+    {"id": "lowercase-term-any-case", "kind": "positive", "text": "built for AcmeCorp", "check": ["private term"]},
+    {"id": "capitalized-term-exact", "kind": "positive", "text": "built for Kestrel", "check": ["private term"]},
+    {"id": "capitalized-term-common-word", "kind": "negative", "text": "a kestrel flew by", "check": []},
+    {"id": "term-inside-a-word", "kind": "negative", "text": "a novusual word", "check": []},
+    {"id": "staged-only-term", "kind": "bypass", "found": "2026-10-03 review: check read the working tree while the hook commits the index", "where": "staged-only", "text": "deployed at acmecorp", "check": ["private term"]},
+    {"id": "personal-path", "kind": "positive", "text": ["see /", "Users/someone/project"], "check": ["personal path"]},
+    {"id": "linux-personal-path", "kind": "positive", "text": ["see /", "home/someone/.config"], "check": ["personal path"]},
+    {"id": "system-path", "kind": "negative", "text": "see /usr/local/bin and /home alone", "check": []}
+  ]
+}

@@ -130,6 +130,108 @@ class LogAndStatusTests(ProjectFixture):
         self.assertIn("gone  ✗ path does not exist", out)
 
 
+class IntegrateTests(ProjectFixture):
+    """A source repo where feature-a and feature-b each pass alone and break together."""
+
+    CHECK = 'if [ -f feature-a ] && [ -f feature-b ]; then echo "a and b collide"; exit 1; fi'
+
+    def setUp(self):
+        super().setUp()
+        self.source = self.make_project("shop")
+        (self.source / "shared.txt").write_text("base\n")
+        git(self.source, "add", ".")
+        git(self.source, "commit", "-q", "-m", "base")
+        for name in ("a", "b"):
+            git(self.source, "checkout", "-q", "-b", f"feature-{name}", "main")
+            (self.source / f"feature-{name}").write_text(f"{name}\n")
+            git(self.source, "add", ".")
+            git(self.source, "commit", "-q", "-m", f"add {name}")
+        git(self.source, "checkout", "-q", "main")
+        self.configure(f"checks = [{json.dumps(self.CHECK)}]")
+
+    def configure(self, body, project="shop"):
+        (self.home / "config").mkdir(exist_ok=True)
+        (self.home / "config" / "integrate.toml").write_text(f"[projects.{project}]\nbase = \"main\"\n{body}\n")
+
+    def integrate(self, *args, env_extra=None):
+        return self.kitchen("integrate", "--repo", str(self.source), *args, env_extra=env_extra)
+
+    def records(self):
+        return [json.loads(line) for line in (self.home / "state" / "integrate" / "shop.jsonl").read_text().splitlines()]
+
+    def sha(self, ref):
+        return subprocess.run(["git", "-C", str(self.source), "rev-parse", ref], capture_output=True, text=True, check=True).stdout.strip()
+
+    def test_branches_green_alone_and_red_together_fail_together(self):
+        alone = [self.integrate(branch) for branch in ("feature-a", "feature-b")]
+        together = self.integrate("feature-a", "feature-b")
+
+        self.assertEqual([r.returncode for r in alone], [0, 0], [r.stdout for r in alone])
+        self.assertEqual(together.returncode, 1, together.stdout)
+        self.assertIn("check failed after feature-b", together.stdout)
+        vector = [self.sha("main"), self.sha("feature-a"), self.sha("feature-b")]
+        self.assertEqual((self.records()[-1]["vector"], self.records()[-1]["status"]), (vector, "FAIL"))
+        self.assertIn(f"[{' '.join(s[:8] for s in vector)}]", together.stdout)
+
+    def test_a_pass_is_bound_to_the_exact_shas_and_a_moved_head_invalidates_it(self):
+        self.integrate("feature-a")
+        before = self.integrate("feature-a", "--recorded")
+        git(self.source, "checkout", "-q", "feature-a")
+        (self.source / "more").write_text("x\n")
+        git(self.source, "add", ".")
+        git(self.source, "commit", "-q", "-m", "more")
+        after = self.integrate("feature-a", "--recorded")
+
+        self.assertEqual(before.returncode, 0, before.stdout)
+        self.assertEqual(after.returncode, 1, after.stdout)
+        self.assertIn("stale: feature-a", after.stdout)
+
+    def test_a_merge_conflict_fails_at_that_branch(self):
+        for name in ("c1", "c2"):
+            git(self.source, "checkout", "-q", "-b", name, "main")
+            (self.source / "shared.txt").write_text(f"{name}\n")
+            git(self.source, "commit", "-qam", name)
+        git(self.source, "checkout", "-q", "main")
+
+        result = self.integrate("c1", "c2")
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("merge conflict at c2", result.stdout)
+
+    def test_missing_check_config_fails_instead_of_passing(self):
+        (self.home / "config" / "integrate.toml").unlink()
+
+        result = self.integrate("feature-a")
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("no check commands", result.stdout)
+
+    def test_nothing_it_runs_inherits_git_variables_and_the_source_is_untouched(self):
+        self.configure('checks = ["env | grep ^GIT_ && exit 1 || exit 0"]')
+        decoy = self.make_project("decoy")
+        hook_env = {"GIT_DIR": str(decoy / ".git"), "GIT_INDEX_FILE": str(decoy / ".git" / "index")}
+        refs_before = subprocess.run(["git", "-C", str(self.source), "for-each-ref"], capture_output=True, text=True).stdout
+
+        result = self.integrate("feature-a", "feature-b", "--check", "env | grep ^GIT_ && exit 1 || exit 0", env_extra=hook_env)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        refs_after = subprocess.run(["git", "-C", str(self.source), "for-each-ref"], capture_output=True, text=True).stdout
+        self.assertEqual(refs_after, refs_before)
+        self.assertEqual(subprocess.run(["git", "-C", str(decoy), "log", "--oneline"], capture_output=True, text=True).stdout.count("\n"), 1)
+
+    def test_pr_heads_are_fetched_into_the_clone_only(self):
+        origin = self.home / "origin.git"
+        git(self.home, "clone", "-q", "--bare", str(self.source), str(origin))
+        git(origin, "update-ref", "refs/pull/7/head", self.sha("feature-a"))
+        git(self.source, "remote", "add", "origin", str(origin))
+
+        result = self.integrate("pr:7")
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.records()[-1]["branches"], [{"ref": "pr:7", "sha": self.sha("feature-a")}])
+        self.assertNotIn("pull", subprocess.run(["git", "-C", str(self.source), "for-each-ref"], capture_output=True, text=True).stdout)
+
+
 class InventoryTests(ProjectFixture):
     def add_user_skill(self, base, name, body):
         folder = self.home / base / name

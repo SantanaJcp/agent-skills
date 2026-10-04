@@ -66,6 +66,8 @@ Keep the axes separate. Do not merge or rerank Standards findings against Reques
 
 One line each: two-way or one-way door; blast radius; the one fact the change is safe because of, and how far it is proven (said, pointed at the line, walked the failure, ran it, reproduced it in the app).
 
+For permissions, publication, migrations, or verification changes, test the critical safety invariant across its real boundary or a failure sequence. State what remains unproven. Reuse deterministic gates; do not repeat them without a changed input or unresolved concern.
+
 ## Reply
 
 Verdict in one line; author model and review route (direct, or reviewers on which CLI); Act on; Consider; Noted; Dismissed; Merge danger; reviewers run (CLI, model, output files). Change no code during the review unless I asked you to resolve the findings.
