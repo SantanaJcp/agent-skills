@@ -814,6 +814,20 @@ git commit -q -am "More notes"
         self.assertIn("Job verification: the job reran these steps on exactly this tree, sandboxed by srt", body)
         self.assertIn("- notes: passed\n- checkout: passed", body)
 
+    def test_tree_attributes_cannot_make_the_verify_checkout_fail(self):
+        # working-tree-encoding converts on add: re-adding the exported (stored) bytes must not apply it again
+        (self.origin / ".gitattributes").write_text("*.ps1 text working-tree-encoding=UTF-16\n")
+        (self.origin / "run.ps1").write_bytes("Write-Output 'hi'\n".encode("utf-16"))
+        self.git(self.origin, "add", ".gitattributes", "run.ps1")
+        self.git(self.origin, "commit", "-q", "-m", "utf-16 script")
+        self.verify_config('"build|true"')
+        self.agent(self.commit_script())
+
+        result = self.run_job("weekly-gardener", "shop")
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("- build: passed", self.pr_body())
+
     @unittest.skipUnless(platform.system() == "Linux", "the sandboxes mask absent dangerous files only on Linux")
     def test_git_and_gitmodules_readers_work_despite_the_sandbox_masks(self):
         seen = Path(self.tmp.name) / "agent-gitmodules"
@@ -1006,6 +1020,27 @@ class LinuxScheduleTests(AutomationFixture):
         self.assertIn(f"ExecStart=/bin/bash {AUTOMATION}/bin/weekly-gardener shop", service)
         self.assertIn("OnCalendar=Mon *-*-* 06:00:00", (units / "kitchen-shop-weekly-gardener.timer").read_text())
         self.assertIn("systemctl --user enable --now kitchen-shop-weekly-gardener.timer", self.calls_log())
+
+    def test_refuses_a_path_systemd_would_read_differently(self):
+        self.configure([])
+        odd = Path(self.tmp.name) / "kitchen 100%"
+        shutil.copytree(AUTOMATION, odd / "automation", ignore=shutil.ignore_patterns("node_modules"))
+        self.fake("loginctl", "echo yes")
+        self.fake("systemctl", 'echo "systemctl $*" >> "$CALLS"')
+        self.fake("npm", "true")
+        (odd / "automation" / "node_modules" / ".bin").mkdir(parents=True)
+        (odd / "automation" / "node_modules" / ".bin" / "srt").write_text("#!/bin/sh\necho 0.0.78\n")
+        (odd / "automation" / "node_modules" / ".bin" / "srt").chmod(0o755)
+        home = Path(self.tmp.name) / "home"
+        env = {**self.job_env(), "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"),
+               "PATH": f"{self.bin}:{os.environ['PATH']}"}
+
+        result = subprocess.run(["bash", str(odd / "automation" / "bin" / "install-schedule"), "--gardener", "shop"],
+                                env=env, capture_output=True, text=True)
+
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("cannot pass", result.stderr)
+        self.assertNotIn("enable", self.calls_log())
 
     def test_refuses_without_lingering(self):
         self.configure([])

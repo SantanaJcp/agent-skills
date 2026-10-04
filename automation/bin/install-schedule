@@ -55,7 +55,11 @@ PLIST
 write_units() { # label log-dir weekday-or-empty hour program-args...
   local label="$1" log_dir="$2" weekday="$3" hour="$4"; shift 4
   local days=(Sun Mon Tue Wed Thu Fri Sat Sun) exec_line="" arg on_calendar
-  for arg in "$@"; do exec_line="$exec_line $(printf '%q' "$arg")"; done
+  for arg in "$@"; do
+    # systemd has its own quoting and % specifiers: refuse what would need either rather than half-escape it
+    [[ "$arg" =~ ^[A-Za-z0-9_./@+-]+$ ]] || { echo "install-schedule: cannot pass '$arg' to systemd unquoted; move kitchen to a plain path" >&2; exit 2; }
+    exec_line="$exec_line $arg"
+  done
   on_calendar="*-*-* $(printf '%02d' "$hour"):00:00"
   [ -z "$weekday" ] || on_calendar="${days[$weekday]} $on_calendar"
   mkdir -p "$log_dir"

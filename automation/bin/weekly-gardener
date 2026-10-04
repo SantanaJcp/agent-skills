@@ -138,9 +138,11 @@ verify_tree() {
   git config --file "$JOB_DIR/gitconfig" user.name kitchen-gardener-verify
   git config --file "$JOB_DIR/gitconfig" user.email kitchen-gardener@localhost
   # A git checkout of exactly that tree, for project checks that run git. add -f: a tracked file can match an
-  # ignore rule, and the commit must hold every file of the tree, which the comparison below proves.
+  # ignore rule. info/attributes overrides the tree's .gitattributes, so add stores the exported bytes as they
+  # are (no eol or working-tree-encoding conversion, no filter). The comparison below proves the result.
   (cd "$vdir" && env -u GIT_DIR GIT_CONFIG_GLOBAL="$JOB_DIR/gitconfig" GIT_CONFIG_NOSYSTEM=1 sh -c \
-    'git init -q -b kitchen-verify && git add -A -f && git -c core.hooksPath=/dev/null commit -q -m "kitchen: validated tree"') \
+    'git init -q -b kitchen-verify && echo "* -text -eol -working-tree-encoding -filter -ident" > .git/info/attributes &&
+     git add -A -f && git -c core.hooksPath=/dev/null commit -q -m "kitchen: validated tree"') \
     >> "$JOB_DIR/verify.log" 2>&1 || refuse "could not make a git checkout of the validated tree" || return 1
   [ "$(git -C "$vdir" --git-dir="$vdir/.git" rev-parse 'HEAD^{tree}')" = "$tree" ] ||
     refuse "the verification checkout does not hold the validated tree" || return 1
