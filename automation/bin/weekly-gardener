@@ -8,7 +8,8 @@
 #      PR summary file.
 #   2. After Claude exits, this script validates the branch's final tree against origin/$BRANCH: the only
 #      gardener branch, 1+ commits, at most GARDENER_MAX_CHANGED_LINES changed lines (default 400), none of
-#      GARDENER_PROTECTED_PATHS (default: .github/*). It then publishes ONE new commit holding exactly that
+#      GARDENER_PROTECTED_PATHS (default: .github/*), no credential-looking content in the added lines
+#      (lib/scan_diff.py). It then publishes ONE new commit holding exactly that
 #      validated tree on top of origin/$BRANCH, never the agent's history (a file added and removed again
 #      there would otherwise be published), and opens the PR.
 # Usage: weekly-gardener <project>
@@ -25,6 +26,7 @@ MAX_CHANGED_LINES="${GARDENER_MAX_CHANGED_LINES:-400}"
 declare -p GARDENER_PROTECTED_PATHS >/dev/null 2>&1 || GARDENER_PROTECTED_PATHS=(".github/*")
 declare -p GARDENER_SANDBOX_DOMAINS >/dev/null 2>&1 || GARDENER_SANDBOX_DOMAINS=()
 declare -p GARDENER_SANDBOX_WRITE >/dev/null 2>&1 || GARDENER_SANDBOX_WRITE=()
+declare -p GARDENER_SANDBOX_READ >/dev/null 2>&1 || GARDENER_SANDBOX_READ=()
 declare -p GARDENER_SANDBOX_UNIX_SOCKETS >/dev/null 2>&1 || GARDENER_SANDBOX_UNIX_SOCKETS=()
 PROMPT_FILE="${GARDENER_PROMPT_FILE:-$KITCHEN_AUTOMATION/prompts/gardener.md}"  # override only for canary probes
 STARTED=0
@@ -55,6 +57,7 @@ run_sealed() {
     PATH="$sealed:$TOOL_PATH" \
     GH_CONFIG_DIR="$WORK_DIR/gh-config" \
     GIT_SSH_COMMAND="$sealed/refuse" GIT_ASKPASS="$sealed/refuse" SSH_ASKPASS="$sealed/refuse" GIT_TERMINAL_PROMPT=0 \
+    GIT_CONFIG_GLOBAL="$WORK_DIR/gitconfig" \
     GIT_CONFIG_COUNT=2 \
     GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0= \
     GIT_CONFIG_KEY_1=remote.origin.pushurl GIT_CONFIG_VALUE_1="kitchen-sealed://the-gardener-job-publishes" \
@@ -88,6 +91,10 @@ publish() {
     done
   done < <(git diff --no-renames --numstat -z "origin/$BRANCH" "$br")
   [ "$changed" -le "$MAX_CHANGED_LINES" ] || refuse "$br changes $changed lines; the bound is $MAX_CHANGED_LINES" || return 1
+  # Second layer, independent of the sandbox: no credential-looking content in what would be published.
+  local secrets
+  secrets="$(git diff -U0 --no-color "origin/$BRANCH" "$br" | python3 "$KITCHEN_AUTOMATION/lib/scan_diff.py")" ||
+    { refuse "possible secret in the diff: $(printf '%s' "$secrets" | tr '\n' ';' | cut -c1-300)"; return 1; }
   [ -s "$SUMMARY_FILE" ] || refuse "no PR summary at $SUMMARY_FILE" || return 1
   title="$(grep -m1 -v '^[[:space:]]*$' "$SUMMARY_FILE" | sed -E 's/^#+[[:space:]]*//' | cut -c1-120 | redact)" || refuse "could not read the PR title" || return 1
   [ -n "$title" ] || refuse "empty PR title in $SUMMARY_FILE" || return 1
@@ -134,10 +141,16 @@ if [ "${NEEDS_DOCKER:-0}" = 1 ] && ! ensure_docker; then
   exit 1
 fi
 
-python3 "$KITCHEN_AUTOMATION/lib/sandbox_settings.py" "$WORK_DIR" \
-  "$(printf '%s\n' ${GARDENER_SANDBOX_WRITE[@]+"${GARDENER_SANDBOX_WRITE[@]}"})" \
-  ${GARDENER_SANDBOX_DOMAINS[@]+"${GARDENER_SANDBOX_DOMAINS[@]}"} -- \
-  ${GARDENER_SANDBOX_UNIX_SOCKETS[@]+"${GARDENER_SANDBOX_UNIX_SOCKETS[@]}"} > "$WORK_DIR/settings.json"
+# Reads are an allowlist: the clone, the run's work dir, the metrics history and the project's tool paths.
+sandbox_args=(--read "$CLONE_DIR" --read "$WORK_DIR" --read "$HISTORY_DIR" --write "$WORK_DIR")
+for path in ${GARDENER_SANDBOX_READ[@]+"${GARDENER_SANDBOX_READ[@]}"}; do sandbox_args+=(--read "$path"); done
+for path in ${GARDENER_SANDBOX_WRITE[@]+"${GARDENER_SANDBOX_WRITE[@]}"}; do sandbox_args+=(--read "$path" --write "$path"); done
+for name in ${GARDENER_SANDBOX_DOMAINS[@]+"${GARDENER_SANDBOX_DOMAINS[@]}"}; do sandbox_args+=(--domain "$name"); done
+for path in ${GARDENER_SANDBOX_UNIX_SOCKETS[@]+"${GARDENER_SANDBOX_UNIX_SOCKETS[@]}"}; do sandbox_args+=(--socket "$path"); done
+python3 "$KITCHEN_AUTOMATION/lib/sandbox_settings.py" "${sandbox_args[@]}" > "$WORK_DIR/settings.json"
+# ~/.gitconfig is outside the allowlist: the agent's git gets only the identity.
+git config --file "$WORK_DIR/gitconfig" user.name "$(git config user.name || echo kitchen-gardener)"
+git config --file "$WORK_DIR/gitconfig" user.email "$(git config user.email || echo kitchen-gardener@localhost)"
 
 PROMPT="$(cat "$PROMPT_FILE")
 

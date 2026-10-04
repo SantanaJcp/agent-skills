@@ -2,7 +2,9 @@ import datetime
 import fcntl
 import json
 import os
+import random
 import shutil
+import string
 import signal
 import subprocess
 import tempfile
@@ -499,8 +501,9 @@ class GardenerPublicationTests(AutomationFixture):
 
     def test_agent_bash_runs_in_the_os_sandbox_without_credential_reads(self):
         args = Path(self.tmp.name) / "args"
-        self.configure([], extra='GARDENER_SANDBOX_DOMAINS=("nuget.org")\nGARDENER_SANDBOX_WRITE=("$HOME/.nuget")')
-        self.agent(f'printf "%s\\n" "$@" > {args}')
+        tools = Path(self.tmp.name) / "tools"
+        self.configure([], extra=f'GARDENER_SANDBOX_DOMAINS=("nuget.org")\nGARDENER_SANDBOX_WRITE=("$HOME/.nuget")\nGARDENER_SANDBOX_READ=("{tools}")')
+        self.agent(f'printf "%s\\n" "$@" > {args}; git config --global --list > {args}.git')
 
         result = self.run_job("weekly-gardener", "shop")
 
@@ -515,6 +518,18 @@ class GardenerPublicationTests(AutomationFixture):
         self.assertIn("Read(~/.ssh/**)", settings["permissions"]["deny"])
         self.assertEqual(sandbox["network"]["allowedDomains"], ["nuget.org"])
         self.assertIn(f"{os.environ['HOME']}/.nuget", sandbox["filesystem"]["allowWrite"])
+        # reads are an allowlist: the whole home is denied, then exactly the job's paths are re-opened
+        self.assertTrue(settings["permissions"]["blockReadsOutsideWorkingDirectories"])
+        self.assertIn("~/", sandbox["filesystem"]["denyRead"])
+        state = self.state / "automation" / "shop"
+        allowed = sandbox["filesystem"]["allowRead"]
+        self.assertEqual(allowed[:3], [str(state / "clone"), str(Path(argv[argv.index("--settings") + 1]).parent), str(state / "history")])
+        self.assertIn(str(tools), allowed)
+        self.assertNotIn(os.environ["HOME"], allowed)
+        self.assertNotIn("~", allowed)
+        # ~/.gitconfig stays out of reach: the agent's git sees only an identity
+        keys = sorted(line.split("=")[0] for line in Path(f"{args}.git").read_text().splitlines())
+        self.assertEqual(keys, ["user.email", "user.name"])
 
     def test_job_publishes_the_agents_branch_with_the_label_and_summary(self):
         branch = f"gardener/{datetime.datetime.now(datetime.timezone.utc):%Y-%m-%d}-tidy"
@@ -553,6 +568,22 @@ class GardenerPublicationTests(AutomationFixture):
         published = self.git(self.origin, "rev-list", "--objects", "--all")
         self.assertNotIn("leaked.txt", published)
         self.assertNotIn("test.yml", published)
+
+    def test_planted_token_is_refused_and_nothing_is_pushed(self):
+        token = "gh" + "p_" + "".join(random.Random(3).choice(string.ascii_letters) for _ in range(36))  # runtime only
+        self.configure([])
+        self.agent(self.commit_script() + f'echo "export TOKEN={token}" >> notes.txt && git commit -q -am "More notes"\n')
+
+        self.assert_refused(self.run_job("weekly-gardener", "shop"), "possible secret in the diff: notes.txt:4: GitHub token")
+        self.assertNotIn(token, self.calls_log())
+
+    def test_planted_random_key_is_refused(self):
+        rng = random.Random(11)
+        key = "".join(rng.choice(string.ascii_letters + string.digits) for _ in range(40))
+        self.configure([])
+        self.agent(self.commit_script() + f'echo "client = Client(\\"{key}\\")" >> notes.txt && git commit -q -am "More notes"\n')
+
+        self.assert_refused(self.run_job("weekly-gardener", "shop"), "notes.txt:4: high-entropy string")
 
     def assert_refused(self, result, reason):
         self.assertEqual(result.returncode, 1, result.stdout)

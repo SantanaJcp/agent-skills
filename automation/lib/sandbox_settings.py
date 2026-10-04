@@ -1,26 +1,38 @@
 #!/usr/bin/env python3
 """Claude Code settings that put an OS boundary around the gardener's tools.
 
-  sandbox_settings.py <work-dir> <writable-paths-separated-by-newlines> <domains...> -- <unix-sockets...>
+  sandbox_settings.py --read PATH... [--write PATH...] [--domain NAME...] [--socket PATH...]
 
-Bash runs in Claude Code's sandbox (Seatbelt on macOS): no reads of credential locations, writes only to
-the working directory, the run's work dir and the configured paths, network only to the configured
-domains, and no way out (failIfUnavailable, allowUnsandboxedCommands false). The same credential paths are
-denied to Read, Edit, Grep and Glob through permission rules. The claude process itself stays outside the
-sandbox, so its own login (macOS keychain) and the model API keep working.
+Reads are an allowlist (Claude Code settings reference: permissions.blockReadsOutsideWorkingDirectories,
+sandbox.filesystem.denyRead / allowRead, "the rule with the narrower path applies"):
+- blockReadsOutsideWorkingDirectories makes Read, Grep and Glob refuse paths outside the working
+  directories, and denies sandboxed Bash the home directory and the other user roots (/Users, /home...);
+- denyRead "~/" denies the whole home directory to Bash even where the block re-opens files, and
+  allowRead re-opens exactly the --read paths (the clone, the run's work dir, the metrics history, and
+  the tool or cache paths the project's build needs, from its config);
+- the credential locations below stay denied even inside an allowed path (narrower deny wins).
+Writes go only to the working directory, the session temp dir and the --write paths; network only to
+the --domain names. failIfUnavailable and allowUnsandboxedCommands=false leave no way out. The claude
+process itself stays outside the sandbox, so its own login and the model API keep working.
 """
+import argparse
 import json
 import sys
 
 CREDENTIAL_DIRS = ["~/.ssh", "~/Library/Keychains", "~/.config/gh", "~/.aws", "~/.config/gcloud", "~/.azure",
-                   "~/.kube", "~/.docker", "~/.gnupg"]
-CREDENTIAL_FILES = ["~/.git-credentials", "~/.netrc", "~/.npmrc", "~/.pypirc"]
+                   "~/.kube", "~/.docker", "~/.gnupg", "~/.codex", "~/.claude/projects"]
+CREDENTIAL_FILES = ["~/.git-credentials", "~/.netrc", "~/.npmrc", "~/.pypirc", "~/.gitconfig"]
 
 
 def main() -> int:
-    work_dir, writable, *rest = sys.argv[1:]
-    split = rest.index("--") if "--" in rest else len(rest)
-    domains, sockets = rest[:split], rest[split + 1:]
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--read", action="append", default=[], required=True)
+    parser.add_argument("--write", action="append", default=[])
+    parser.add_argument("--domain", action="append", default=[])
+    parser.add_argument("--socket", action="append", default=[])
+    args = parser.parse_args()
+    reads = [path for path in args.read if path]
+    writes = [path for path in args.write if path]
     deny_rules = []
     for path in CREDENTIAL_DIRS:
         deny_rules += [f"Read({path}/**)", f"Edit({path}/**)"]
@@ -32,12 +44,13 @@ def main() -> int:
             "failIfUnavailable": True,
             "allowUnsandboxedCommands": False,
             "filesystem": {
-                "denyRead": CREDENTIAL_DIRS + CREDENTIAL_FILES,
-                "allowWrite": [work_dir] + [line for line in writable.splitlines() if line],
+                "denyRead": ["~/"] + CREDENTIAL_DIRS + CREDENTIAL_FILES,
+                "allowRead": reads,
+                "allowWrite": writes,
             },
-            "network": {"allowedDomains": domains, "allowUnixSockets": sockets},
+            "network": {"allowedDomains": [d for d in args.domain if d], "allowUnixSockets": [s for s in args.socket if s]},
         },
-        "permissions": {"deny": deny_rules},
+        "permissions": {"blockReadsOutsideWorkingDirectories": True, "deny": deny_rules},
     }
     print(json.dumps(settings, indent=2))
     return 0
