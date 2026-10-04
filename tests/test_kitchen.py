@@ -230,6 +230,41 @@ class LintTests(KitchenFixture):
         self.assertIn("broken link reference.md", self.lint().stdout)
 
 
+class RedactionTests(unittest.TestCase):
+    """`kitchen.transcripts.scrub` is an API: the automation imports it to redact issue logs."""
+
+    def scrub(self, text):
+        sys.path.insert(0, str(KITCHEN.parent.parent / "lib"))
+        try:
+            from kitchen.transcripts import scrub
+        finally:
+            sys.path.pop(0)
+        return scrub(text)
+
+    def test_quoted_json_keys_lose_their_values(self):
+        value = "synthetic-" + "review-secret"
+        text = '{"pass' + f'word": "{value}", "api' + f'Key":"{value}", "tok' + f'en": "{value}", "user": "ana"}}'
+
+        scrubbed = self.scrub(text)
+
+        self.assertNotIn(value, scrubbed)
+        self.assertIn('"user": "ana"', scrubbed)
+
+    def test_a_whole_pem_block_is_redacted(self):
+        body = "MIIEsynthetic" + "KeyBody" * 6
+        block = "-----BEGIN " + "RSA PRIVATE KEY-----\n" + body + "\n" + body[::-1] + "\n-----END " + "RSA PRIVATE KEY-----"
+
+        scrubbed = self.scrub(f"before\n{block}\nafter")
+
+        self.assertEqual(scrubbed, "before\n[REDACTED]\nafter")
+
+    def test_a_truncated_pem_block_is_redacted_to_the_end(self):
+        body = "MIIEsynthetic" + "KeyBody" * 6
+        scrubbed = self.scrub("log:\n-----BEGIN " + "PRIVATE KEY-----\n" + body + "\n")
+
+        self.assertNotIn(body, scrubbed)
+
+
 class CheckRunsTestsHermeticallyTests(KitchenFixture):
     def test_tests_never_inherit_the_git_variables_a_hook_exports(self):
         (self.repo / "tests").mkdir()
@@ -351,6 +386,30 @@ class PublicSafetyTests(KitchenFixture):
                 result = self.lint()
 
                 self.assertIn(f"notes.md:1: {label} in a public repo", result.stdout)
+
+    def test_staged_json_and_yaml_secrets_with_quoted_keys_fail(self):
+        value = "synthetic-" + "review-secret"
+        samples = [
+            '{"pass' + f'word":"{value}"}}',
+            '{"api' + f'Key": "{value}"}}',
+            "{'client" + f"_secret': '{value}'}}",
+            '"tok' + f'en": "{value}",',
+            '"github' + f'_token" = "{value}"',
+        ]
+        for number, sample in enumerate(samples):
+            with self.subTest(sample[:12]):
+                self.staged(f"config{number}.json", sample + "\n")
+
+                result = self.lint()
+
+                self.assertIn(f"config{number}.json:1: credential assignment in a public repo", result.stdout)
+
+    def test_quoted_placeholders_are_not_credentials(self):
+        (self.repo / "notes.json").write_text('{"pass' + 'word": "", "tok' + 'en": "<redacted>", "secret": "${SECRET}"}\n')
+
+        result = self.lint()
+
+        self.assertEqual(result.returncode, 0, result.stdout)
 
     def test_placeholders_and_lookups_are_not_credentials(self):
         (self.repo / "notes.md").write_text("pass" + "word: <redacted>\napi_key = $API_KEY\nsecret = os.environ[\"X\"]\n")

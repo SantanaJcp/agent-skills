@@ -13,20 +13,26 @@ TOKENS = [
     ("private key", r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----"),
 ]
 
-_NAME = r"(?:password|passwd|secret|client[_-]?secret|api[_-]?key|access[_-]?token|auth[_-]?token)"
+# Key names that hold a secret, bare or quoted as in JSON and YAML: password, client_secret, apiKey,
+# api_key, token, github_token, access_token... A prefix is allowed; a suffix is not (password_hash, max_tokens).
+_NAME = r"[\w-]*?(?:password|passwd|secret|token|api[_-]?key|private[_-]?key)"
+_KEY = rf"(?:\"{_NAME}\"|'{_NAME}'|\b{_NAME}\b)"
 
-# A password, secret, API key or token assigned a literal value: quoted, or a bare run of 8+ token characters.
-# Variables, placeholders (<...>, ${...}) and lookups (os.environ[...], get_key()) are not literals.
+# A secret key assigned a literal value: quoted (6+ chars), or a bare run of 8+ token characters.
+# Variables, empty strings, placeholders (<...>, ${...}) and lookups (os.environ[...], get_key()) are not literals.
 ASSIGNMENT = re.compile(
-    rf"(?i)\b{_NAME}\b\s*[=:]\s*(?:([\"'])[^\"'\s$<{{]{{6,}}\1|(?![\"'$<{{(\[])[A-Za-z0-9_+/.=-]{{8,}}(?![\w(\[]))"
+    rf"(?i){_KEY}\s*[=:]\s*(?:([\"'])[^\"'\s$<{{]{{6,}}\1|(?![\"'$<{{(\[])[A-Za-z0-9_+/.=-]{{8,}}(?![\w(\[]))"
 )
 
 CREDENTIALS = [(label, re.compile(pattern)) for label, pattern in TOKENS] + [("credential assignment", ASSIGNMENT)]
 
-# Redaction is broader than the publish check: in a transcript any `token: value` is worth hiding.
+# Redaction is broader than the publish check: any value under a secret key goes, quoted or not,
+# and a private key goes from BEGIN to END (or to the end of the text when the block is cut off).
+PEM_BLOCK = r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----(?:.*?-----END (?:[A-Z0-9]+ )*PRIVATE KEY-----|.*\Z)"
 REDACT = re.compile(
-    "|".join(pattern for _, pattern in TOKENS)
-    + r"|(?i:(?:password|passwd|token|secret|api[_-]?key)\s*[=:]\s*)\S+"
+    rf"(?s:{PEM_BLOCK})"
+    + "".join(f"|{pattern}" for label, pattern in TOKENS if label != "private key")
+    + rf"|(?i:{_KEY}\s*[=:]\s*(?:\"[^\"]*\"|'[^']*'|\S+))"
 )
 
 

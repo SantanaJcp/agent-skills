@@ -11,7 +11,7 @@ The value is a model other than the author looking at the final work. The lead's
 
 Identify the authoring model before anything else: `Co-Authored-By` trailers in `git log <base>..<head>`, the brief that produced the work, or the delegator's message. Say it in one line.
 
-- You are a different model from the author: review directly yourself, on the same axes. Never send it back to the author's model, and do not recurse into another reviewer.
+- You are a different model from the author: review directly. Skip step 3 entirely: launch no panel and no other CLI; apply the lenses from step 2 yourself, one pass per lens, on the same axes. Never send it back to the author's model, and do not recurse into another reviewer.
 - You are the author's model: run the reviewers on the other model's CLI (step 3).
 - Author unknown: say so and treat it as written by your own model.
 
@@ -21,6 +21,7 @@ Pick the mode:
 
 - **Diff review** (default): resolve the base ref and head SHA with `git rev-parse`; run `git diff --stat <base>...<head>`. A bad ref or an empty diff fails here.
 - **Design review**: the whole setup, not a diff (rules, skills, automation, architecture). Pin the commit SHA and the exact list of files or folders in scope.
+- **Design+diff**: both at once, when the change only makes sense against the whole setup. Declare it, pin both (range and file list), and report Design findings apart from the diff's Standards and Request findings.
 
 State the intent in two lines and name the originating request: issue, my message, or spec.
 
@@ -30,7 +31,7 @@ State the intent in two lines and name the originating request: issue, my messag
 |---|---|
 | Under 50 lines, 1–2 files | Skeptic |
 | Up to 200 lines, up to 5 files | Skeptic, Architect |
-| Larger, or any design review | Skeptic, Architect, Minimalist |
+| Larger, or any design or design+diff review | Skeptic, Architect, Minimalist |
 
 Auth, tenant scope, sync, data and migrations always get the Skeptic at high effort, whatever the size.
 
@@ -47,7 +48,7 @@ Build each prompt from [reviewer-prompt.md](reviewer-prompt.md). Before reading,
 
 You hold the full context; the reviewers saw a diff or a file list. For every finding, trace the code: a hypothetical input the callers can never pass is not a finding. Every finding you keep carries:
 
-- its **axis**: Standards, Request or (design review) Design;
+- its **axis**: Standards, Request or (design and design+diff reviews) Design;
 - its **evidence**: measured (the command you ran and what came out) or inferred (the `file:line` you read).
 
 Then place it in exactly one bucket:

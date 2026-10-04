@@ -43,7 +43,7 @@ These rules apply in every project and every tool. A project's own AGENTS.md add
 - Verify every worker's output yourself with `git diff --stat` and its evidence. Never trust a worker's own list of what it changed. A missing result is a gap, not a pass.
 - Integrate one branch at a time and rerun verification after each.
 - Match effort to the role. Reviews of risky diffs (auth, sync, tenant scope, data) run on the other model at high effort.
-- Set the model's service tier explicitly when delegating: Standard unless I ask for Fast.
+- When the delegation interface lets you set a service tier, set it explicitly: Standard unless I ask for Fast.
 
 ## Verification
 
