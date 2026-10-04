@@ -56,6 +56,9 @@ fi
 
 PROJECT="${1:?usage: install-schedule <project> | --retro}"
 [ -f "${KITCHEN_CONFIG:-$HOME/.config/kitchen}/automation/$PROJECT.env" ] || { echo "no config for $PROJECT" >&2; exit 2; }
+# The gardener reruns its checks under srt, pinned with its integrity hashes in package-lock.json.
+npm ci --ignore-scripts --no-audit --no-fund --prefix "$AUTOMATION" >/dev/null
+echo "installed srt $("$AUTOMATION/node_modules/.bin/srt" --version)"
 write_plist "com.kitchen.$PROJECT.nightly-guard" "$STATE_ROOT/automation/$PROJECT/logs" "$(calendar "${2:-2}")" \
   /bin/bash "$AUTOMATION/bin/nightly-guard" "$PROJECT"
 write_plist "com.kitchen.$PROJECT.weekly-gardener" "$STATE_ROOT/automation/$PROJECT/logs" "$(calendar "${3:-1}" "${4:-6}")" \

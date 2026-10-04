@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Claude Code settings that put an OS boundary around the gardener's tools.
 
-  sandbox_settings.py --read PATH... [--write PATH...] [--domain NAME...] [--socket PATH...]
+  sandbox_settings.py [--format claude|srt] --read PATH... [--write PATH...] [--domain NAME...] [--socket PATH...]
+
+--format claude (default) writes Claude Code settings for the agent; --format srt writes the same boundary as a
+sandbox-runtime (srt) settings file, for the job's own verification of the agent's tree (see weekly-gardener).
 
 Reads are an allowlist (Claude Code settings reference: permissions.blockReadsOutsideWorkingDirectories,
 sandbox.filesystem.denyRead / allowRead, "the rule with the narrower path applies"):
@@ -30,9 +33,20 @@ def main() -> int:
     parser.add_argument("--write", action="append", default=[])
     parser.add_argument("--domain", action="append", default=[])
     parser.add_argument("--socket", action="append", default=[])
+    parser.add_argument("--format", choices=["claude", "srt"], default="claude")
     args = parser.parse_args()
     reads = [path for path in args.read if path]
     writes = [path for path in args.write if path]
+    domains = [d for d in args.domain if d]
+    sockets = [s for s in args.socket if s]
+    if args.format == "srt":
+        # srt refuses a settings file that omits a field, so every list is written even when empty.
+        print(json.dumps({
+            "filesystem": {"denyRead": ["~/"] + CREDENTIAL_DIRS + CREDENTIAL_FILES, "allowRead": reads,
+                           "allowWrite": writes, "denyWrite": CREDENTIAL_DIRS + CREDENTIAL_FILES},
+            "network": {"allowedDomains": domains, "deniedDomains": [], "allowUnixSockets": sockets},
+        }, indent=2))
+        return 0
     deny_rules = []
     for path in CREDENTIAL_DIRS:
         deny_rules += [f"Read({path}/**)", f"Edit({path}/**)"]
@@ -48,7 +62,7 @@ def main() -> int:
                 "allowRead": reads,
                 "allowWrite": writes,
             },
-            "network": {"allowedDomains": [d for d in args.domain if d], "allowUnixSockets": [s for s in args.socket if s]},
+            "network": {"allowedDomains": domains, "allowUnixSockets": sockets},
         },
         "permissions": {"blockReadsOutsideWorkingDirectories": True, "deny": deny_rules},
     }

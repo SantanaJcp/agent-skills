@@ -768,6 +768,86 @@ git commit -q -am "More notes"
 
         self.assert_refused(self.run_job("weekly-gardener", "shop"), "GitHub token (across lines)")
 
+    def verify_config(self, steps, extra=""):
+        """srt is a node script: the job finds node only on EXTRA_PATH, as under launchd."""
+        node = Path(shutil.which("node")).parent
+        self.configure([], extra=f'EXTRA_PATH="{self.bin}:{node}"\nGARDENER_VERIFY_STEPS=({steps})\n' + extra)
+
+    def pr_body(self):
+        line = next(line for line in self.calls_log().splitlines() if line.startswith("gh pr create"))
+        return Path(line.split("--body-file ")[1].split()[0]).read_text()
+
+    def test_job_reruns_the_verify_steps_on_the_exported_tree_and_lists_them_in_the_pr(self):
+        out = Path(self.tmp.name) / "verify-out"
+        out.mkdir()
+        self.verify_config(f'"notes|grep -qx 3 notes.txt" "export|[ ! -e .git ] && pwd > {out}/cwd"', f'GARDENER_SANDBOX_WRITE=("{out}")')
+        self.agent(self.commit_script())
+
+        result = self.run_job("weekly-gardener", "shop")
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("verify: notes", result.stdout)
+        self.assertTrue((out / "cwd").read_text().strip().endswith("/verify"))
+        body = self.pr_body()
+        self.assertIn("Job verification: the job reran these steps on exactly this tree, sandboxed by srt", body)
+        self.assertIn("- notes: passed\n- export: passed", body)
+
+    def test_failing_verify_step_publishes_nothing(self):
+        self.verify_config('"build|true" "tests|exit 3"')
+        self.agent(self.commit_script())
+
+        self.assert_refused(self.run_job("weekly-gardener", "shop"), "job verification step tests failed (exit 3")
+
+    def test_verify_steps_cannot_read_home_write_outside_or_reach_the_network(self):
+        home = Path(self.tmp.name) / "home"
+        (home / ".ssh").mkdir(parents=True)
+        (home / "private.txt").write_text("canary")
+        (home / ".ssh" / "id_test").write_text("canary")
+        probe = (  # each escape that works fails the step with its own exit code
+            'if cat "$HOME/private.txt"; then exit 10; fi; if cat "$HOME/.ssh/id_test"; then exit 11; fi; '
+            'if touch "$HOME/planted"; then exit 12; fi; if curl -s -m 5 https://example.com; then exit 13; fi; exit 0')
+        self.verify_config(f"'probe|{probe}'")
+        self.agent(self.commit_script())
+
+        result = self.run_job("weekly-gardener", "shop", HOME=str(home))
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("- probe: passed", self.pr_body())
+        self.assertFalse((home / "planted").exists())
+
+    def test_verify_steps_without_srt_stop_the_run_before_the_agent(self):
+        copy = Path(self.tmp.name) / "automation"
+        shutil.copytree(AUTOMATION, copy, ignore=shutil.ignore_patterns("node_modules"))
+        self.verify_config('"build|true"')
+        self.agent(self.commit_script())
+
+        result = subprocess.run(["bash", str(copy / "bin" / "weekly-gardener"), "shop"], env=self.job_env(),
+                                capture_output=True, text=True)
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("srt is not installed", result.stdout)
+        self.assertNotIn("claude", self.calls_log())
+
+    def test_without_verify_steps_the_pr_says_the_agent_is_the_only_evidence(self):
+        self.configure([])
+        self.agent(self.commit_script())
+
+        self.assertEqual(self.run_job("weekly-gardener", "shop").returncode, 0)
+        self.assertIn("Job verification: none configured", self.pr_body())
+
+    def test_verify_sandbox_settings_carry_the_agents_boundary(self):
+        settings = json.loads(subprocess.run(
+            ["python3", str(AUTOMATION / "lib" / "sandbox_settings.py"), "--format", "srt", "--read", "/clone",
+             "--write", "/cache", "--domain", "api.nuget.org"], check=True, capture_output=True, text=True).stdout)
+
+        fs, net = settings["filesystem"], settings["network"]
+        self.assertEqual(fs["denyRead"][0], "~/")
+        for path in ("~/.ssh", "~/Library/Keychains", "~/.config/gh", "~/.codex", "~/.netrc"):
+            self.assertIn(path, fs["denyRead"])
+            self.assertIn(path, fs["denyWrite"])
+        self.assertEqual((fs["allowRead"], fs["allowWrite"]), (["/clone"], ["/cache"]))
+        self.assertEqual((net["allowedDomains"], net["deniedDomains"], net["allowUnixSockets"]), (["api.nuget.org"], [], []))
+
     def assert_refused(self, result, reason):
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn(f"GARDENER-RESULT: refused - ", result.stdout)
