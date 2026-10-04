@@ -37,7 +37,7 @@ export PATH="$KITCHEN_AUTOMATION/shims:$TOOL_PATH"
 if [ -z "${KITCHEN_LOCK_STATE:-}" ]; then
   export KITCHEN_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
   exec python3 "$KITCHEN_AUTOMATION/lib/supervise.py" "$STATE_DIR/job.lock" "${LOCK_WAIT_SECONDS:-3600}" "${LOCK_POLL_SECONDS:-5}" \
-    --watch "$CLONE_DIR" --watch "$STATE_DIR/gardener" --record "$NIGHTLY_RECORD" --run-id "$KITCHEN_RUN_ID" \
+    --watch "$CLONE_DIR" --watch "$STATE_DIR/gardener" --watch "$STATE_DIR/gardener-job" --record "$NIGHTLY_RECORD" --run-id "$KITCHEN_RUN_ID" \
     -- "$BASH" "$0" "$PROJECT"
 fi
 LOCK_STATE="$KITCHEN_LOCK_STATE"
