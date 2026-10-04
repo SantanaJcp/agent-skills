@@ -1,12 +1,103 @@
 #!/usr/bin/env bash
 # Weekly gardener: one unattended Claude Code run that opens at most one small, verified PR.
 # Skips while a previous gardener PR is still open, so reviews never pile up.
+# Generation and publication are separate:
+#   1. Claude runs sealed: no gh, no tokens, no SSH, no git credentials, push URL refused.
+#      It may only commit on a local branch gardener/<date>-<slug> and write a PR summary file.
+#   2. After Claude exits, this script publishes that branch and opens the PR, but only when it is the
+#      only gardener branch, is ahead of origin/$BRANCH, changes at most GARDENER_MAX_CHANGED_LINES
+#      lines (default 400) and touches none of GARDENER_PROTECTED_PATHS (default: .github/*).
 # Usage: weekly-gardener <project>
 source "$(dirname "$0")/../lib/common.sh" "$1"
 
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+RUN_DATE="$(date -u +%Y-%m-%d)"
 RUN_LOG="$LOG_DIR/gardener-$RUN_ID.log"
+WORK_DIR="$STATE_DIR/gardener/$RUN_ID"
+SUMMARY_FILE="$WORK_DIR/summary.md"
 exec > >(tee -a "$RUN_LOG") 2>&1
+
+MAX_CHANGED_LINES="${GARDENER_MAX_CHANGED_LINES:-400}"
+declare -p GARDENER_PROTECTED_PATHS >/dev/null 2>&1 || GARDENER_PROTECTED_PATHS=(".github/*")
+STARTED=0
+
+finish() {
+  local rc=$?
+  trap - EXIT INT TERM HUP
+  set +e
+  if [ "$STARTED" = 1 ] && [ -n "${CLEANUP_CMD:-}" ] &&
+    ! (cd "$CLONE_DIR" && bash -c "$CLEANUP_CMD") > "$LOG_DIR/gardener-$RUN_ID-cleanup.log" 2>&1; then
+    log "cleanup FAILED: something the gardener started may still be running (log $LOG_DIR/gardener-$RUN_ID-cleanup.log)"
+  fi
+  release_project_lock
+  find "$LOG_DIR" -name 'gardener-*' -mtime +90 -delete
+  find "$STATE_DIR/gardener" -mindepth 1 -maxdepth 1 -mtime +90 -exec rm -rf {} + 2>/dev/null
+  log "gardener end: status=$rc"
+  exit "$rc"
+}
+trap finish EXIT
+trap 'log "gardener interrupted (SIGINT)"; exit 130' INT
+trap 'log "gardener interrupted (SIGTERM)"; exit 143' TERM
+trap 'log "gardener interrupted (SIGHUP)"; exit 129' HUP
+
+# Claude's environment: everything it needs to edit, build, test and commit; nothing to publish with.
+run_sealed() {
+  local sealed="$KITCHEN_AUTOMATION/shims/sealed"
+  mkdir -p "$WORK_DIR/gh-config"
+  env -u GH_TOKEN -u GITHUB_TOKEN -u GH_ENTERPRISE_TOKEN -u GITHUB_ENTERPRISE_TOKEN -u KITCHEN_REAL_GH -u SSH_AUTH_SOCK \
+    PATH="$sealed:$TOOL_PATH" \
+    GH_CONFIG_DIR="$WORK_DIR/gh-config" \
+    GIT_SSH_COMMAND="$sealed/refuse" GIT_ASKPASS="$sealed/refuse" SSH_ASKPASS="$sealed/refuse" GIT_TERMINAL_PROMPT=0 \
+    GIT_CONFIG_COUNT=2 \
+    GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0= \
+    GIT_CONFIG_KEY_1=remote.origin.pushurl GIT_CONFIG_VALUE_1="kitchen-sealed://the-gardener-job-publishes" \
+    GARDENER_BRANCH_PREFIX="gardener/$RUN_DATE-" GARDENER_SUMMARY_FILE="$SUMMARY_FILE" \
+    "$@"
+}
+
+refuse() { log "GARDENER-RESULT: refused - $1"; return 1; }
+
+# Deterministic publication of what the agent committed. Returns 1 when it refuses or fails.
+publish() {
+  local branches br ahead added deleted path pattern changed=0 title
+  branches="$(git for-each-ref --format='%(refname:short)' refs/heads/gardener/)"
+  if [ -z "$branches" ]; then
+    log "GARDENER-RESULT: none - no gardener branch was committed"
+    return 0
+  fi
+  [ "$(printf '%s\n' "$branches" | wc -l | tr -d ' ')" = 1 ] || refuse "more than one gardener branch: $(echo $branches)" || return 1
+  br="$branches"
+  local name_re="^gardener/${RUN_DATE}-[a-z0-9][a-z0-9-]*$"
+  [[ "$br" =~ $name_re ]] || refuse "branch $br is not named gardener/$RUN_DATE-<slug>" || return 1
+  git merge-base --is-ancestor "origin/$BRANCH" "$br" || refuse "$br does not start from origin/$BRANCH" || return 1
+  ahead="$(git rev-list --count "origin/$BRANCH..$br")"
+  [ "$ahead" -ge 1 ] || refuse "$br has no commits ahead of origin/$BRANCH" || return 1
+  while IFS=$'\t' read -r -d '' added deleted path; do
+    [ "$added" = - ] && { refuse "binary change in $path"; return 1; }
+    changed=$((changed + added + deleted))
+    for pattern in ${GARDENER_PROTECTED_PATHS[@]+"${GARDENER_PROTECTED_PATHS[@]}"}; do
+      # shellcheck disable=SC2254
+      case "$path" in $pattern) refuse "$br touches protected path $path ($pattern)"; return 1 ;; esac
+    done
+  done < <(git diff --no-renames --numstat -z "origin/$BRANCH" "$br")
+  [ "$changed" -le "$MAX_CHANGED_LINES" ] || refuse "$br changes $changed lines; the bound is $MAX_CHANGED_LINES" || return 1
+  [ -s "$SUMMARY_FILE" ] || refuse "no PR summary at $SUMMARY_FILE" || return 1
+  title="$(grep -m1 -v '^[[:space:]]*$' "$SUMMARY_FILE" | sed -E 's/^#+[[:space:]]*//' | cut -c1-120 | redact)" || refuse "could not read the PR title" || return 1
+  [ -n "$title" ] || refuse "empty PR title in $SUMMARY_FILE" || return 1
+  redact < "$SUMMARY_FILE" > "$WORK_DIR/body.md" || refuse "could not redact the PR summary" || return 1
+
+  install_push_guard
+  git push --quiet origin "refs/heads/$br:refs/heads/$br" || refuse "push of $br failed" || return 1
+  local url
+  url="$(gh pr create -R "$GH_REPO" --base "$BRANCH" --head "$br" --label "$GARDENER_LABEL" \
+    --title "$title" --body-file "$WORK_DIR/body.md")" || refuse "gh pr create failed for pushed branch $br" || return 1
+  log "GARDENER-RESULT: $url ($changed changed lines, $ahead commits)"
+}
+
+if ! acquire_project_lock; then
+  log "gardener skipped: busy (another job of $PROJECT held the clone for ${LOCK_WAIT_SECONDS:-3600}s)"
+  exit 75
+fi
 
 gh label create "$GARDENER_LABEL" -R "$GH_REPO" --color 0E8A16 --description "Weekly gardener PR" >/dev/null 2>&1 || true
 pending="$(gh pr list -R "$GH_REPO" --label "$GARDENER_LABEL" --state open --json number --jq 'length')"
@@ -17,6 +108,9 @@ fi
 log "gardener start: project=$PROJECT"
 sync_clone
 cd "$CLONE_DIR"
+# Branches left by earlier runs were published (they live on origin) or refused; start from none.
+git for-each-ref --format='%(refname)' refs/heads/gardener/ | while read -r ref; do git update-ref -d "$ref"; done
+mkdir -p "$WORK_DIR"
 if [ "${NEEDS_DOCKER:-0}" = 1 ] && ! ensure_docker; then
   log "gardener end: status=1 (Docker is required and not available; the gardener could not verify its change)"
   exit 1
@@ -26,23 +120,25 @@ PROMPT="$(cat "$KITCHEN_AUTOMATION/prompts/gardener.md")
 
 Project facts:
 - base branch: $BRANCH
-- gardener label: $GARDENER_LABEL
+- your branch name: gardener/$RUN_DATE-<slug> (exactly one branch)
+- PR summary file: $SUMMARY_FILE
+- largest diff the job will publish: $MAX_CHANGED_LINES changed lines
+- paths the job refuses to publish: ${GARDENER_PROTECTED_PATHS[*]:-none}
 - quality metrics command: ${QUALITY_CMD:-none configured}
 - committed baseline: ${BASELINE_FILE:-none configured}
 - metrics history (one JSON object per nightly run): $HISTORY_DIR/history.jsonl
 - run id: $RUN_ID"
 
+STARTED=1
 status=0
-claude -p "$PROMPT" \
+run_sealed claude -p "$PROMPT" \
   --permission-mode acceptEdits \
   --allowedTools "Bash" "Read" "Edit" "Write" "Grep" "Glob" \
-  --disallowedTools "Bash(gh pr merge:*)" "Bash(git push --force:*)" "Bash(git push -f:*)" \
-  --add-dir "$HISTORY_DIR" \
+  --disallowedTools "Bash(gh:*)" "Bash(git push:*)" \
+  --add-dir "$HISTORY_DIR" "$WORK_DIR" \
   --output-format text || status=$?
-
-if [ -n "${CLEANUP_CMD:-}" ] && ! bash -c "$CLEANUP_CMD" > "$LOG_DIR/gardener-$RUN_ID-cleanup.log" 2>&1; then
-  log "cleanup FAILED: something the gardener started may still be running (log $LOG_DIR/gardener-$RUN_ID-cleanup.log)"
+if [ "$status" != 0 ]; then
+  log "GARDENER-RESULT: none - claude exited $status; nothing published"
+  exit "$status"
 fi
-find "$LOG_DIR" -name 'gardener-*' -mtime +90 -delete
-log "gardener end: status=$status"
-exit "$status"
+publish

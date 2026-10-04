@@ -301,7 +301,10 @@ def cmd_check(args: argparse.Namespace) -> int:
         return 1
     if args.lint_only:
         return 0
-    tests = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-t", "."], cwd=REPO)
+    # A git hook exports GIT_DIR, GIT_INDEX_FILE and friends. Tests build throwaway repos; inheriting those
+    # variables would point their git commands at this repo (in a worktree: commits, branches, core.bare).
+    test_env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    tests = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-t", "."], cwd=REPO, env=test_env)
     return tests.returncode
 
 

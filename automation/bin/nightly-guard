@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Nightly guard: build, test and prove the tip of the project's branch.
 # Opens (or comments on) one GitHub issue when a step fails and closes it when the branch is green.
-# Every run, green or red, lands in the nightly history read by `kitchen status`.
+# Every run lands exactly once in the nightly history read by `kitchen status`, however it ends:
+#   green / red          the steps' verdict; problems around it (cleanup, metrics, issue report) go to "warnings"
+#   incomplete           interrupted or aborted before a verdict; failed_step names the phase
+#   skipped: busy        another job of this project held the clone for LOCK_WAIT_SECONDS
 # Usage: nightly-guard <project>
-# Trial run: GUARD_ONLY="build,fast-tests" GUARD_NO_REPORT=1 nightly-guard <project>
+# Trial run (neither recorded nor reported): GUARD_ONLY="build,fast-tests" nightly-guard <project>
 source "$(dirname "$0")/../lib/common.sh" "$1"
 
 RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -11,99 +14,156 @@ RUN_LOG="$LOG_DIR/guard-$RUN_ID.log"
 exec > >(tee -a "$RUN_LOG") 2>&1
 
 ISSUE_TITLE="Nightly guard failing on $BRANCH"
+TRIAL="${GUARD_ONLY:-}"
+VERDICT="incomplete"
+PHASE="start"
+FAILED=""
+FAILED_LOG=""
+STARTED=0   # 1 once a project command may have started something that needs cleanup
+SHA=""
+CLEANUP="skipped"
+METRICS="skipped"
 
 open_issue_number() {
   gh issue list -R "$GH_REPO" --label "$GUARD_LABEL" --state open --search "in:title \"$ISSUE_TITLE\"" \
     --json number --jq '.[0].number // empty'
 }
 
+# Each gh call ends the function with 1 on failure; the caller records it as a warning.
 report_failure() { # step sha log-file
   [ "${GUARD_NO_REPORT:-0}" = 1 ] && { log "issue report suppressed (GUARD_NO_REPORT)"; return 0; }
   gh label create "$GUARD_LABEL" -R "$GH_REPO" --color B60205 --description "Nightly guard on the shared branch" >/dev/null 2>&1 || true
-  local body existing
-  body="$(printf 'Step **%s** failed on `%s` at %s (run %s).\n\nLast lines of the log:\n\n```\n%s\n```\n\nFull log on the guard machine: `%s`' \
-    "$1" "$2" "$(date -u +%Y-%m-%dT%H:%MZ)" "$RUN_ID" "$(tail -60 "$3")" "$RUN_LOG")"
-  existing="$(open_issue_number)"
+  local last_lines body existing
+  last_lines="$(tail -60 "$3" | redact)" || return 1
+  body="$(printf 'Step **%s** failed on `%s` at %s (run %s).\n\nLast lines of the log (secrets redacted):\n\n```\n%s\n```\n\nFull log on the guard machine: `%s`' \
+    "$1" "$2" "$(date -u +%Y-%m-%dT%H:%MZ)" "$RUN_ID" "$last_lines" "$RUN_LOG")"
+  existing="$(open_issue_number)" || return 1
   if [ -n "$existing" ]; then
-    gh issue comment "$existing" -R "$GH_REPO" --body "$body" >/dev/null
+    gh issue comment "$existing" -R "$GH_REPO" --body "$body" >/dev/null || return 1
     log "commented on issue #$existing"
   else
-    gh issue create -R "$GH_REPO" --title "$ISSUE_TITLE" --label "$GUARD_LABEL" --body "$body" >/dev/null
+    gh issue create -R "$GH_REPO" --title "$ISSUE_TITLE" --label "$GUARD_LABEL" --body "$body" >/dev/null || return 1
     log "opened issue: $ISSUE_TITLE"
   fi
 }
 
 report_green() { # sha
   [ "${GUARD_NO_REPORT:-0}" = 1 ] && return 0
-  local existing; existing="$(open_issue_number)"
+  local existing
+  existing="$(open_issue_number)" || return 1
   [ -z "$existing" ] && return 0
-  gh issue close "$existing" -R "$GH_REPO" --comment "Green again on \`$1\` (run $RUN_ID)." >/dev/null
+  gh issue close "$existing" -R "$GH_REPO" --comment "Green again on \`$1\` (run $RUN_ID)." >/dev/null || return 1
   log "closed issue #$existing"
 }
 
+run_cleanup() {
+  [ "$STARTED" = 1 ] || return 0
+  CLEANUP="none"
+  [ -n "${CLEANUP_CMD:-}" ] || return 0
+  local cleanup_log="$LOG_DIR/guard-$RUN_ID-cleanup.log"
+  if (cd "$CLONE_DIR" && bash -c "$CLEANUP_CMD") > "$cleanup_log" 2>&1; then
+    CLEANUP="ok"
+  else
+    CLEANUP="failed"
+    log "cleanup FAILED: something the guard started may still be running (log $cleanup_log)"
+    warn "cleanup failed"
+  fi
+}
+
+record_metrics() {
+  METRICS="none"
+  [ -n "${METRICS_CMD:-}" ] && [ -z "$TRIAL" ] || return 0
+  local snapshot="$HISTORY_DIR/$RUN_ID-${SHA:0:12}.json" metrics_log="$LOG_DIR/guard-$RUN_ID-metrics.log"
+  if (cd "$CLONE_DIR" && bash -c "$METRICS_CMD") > "$snapshot" 2> "$metrics_log" &&
+    python3 - "$snapshot" "$HISTORY_DIR/history.jsonl" "$SHA" "$RUN_ID" "$VERDICT" 2>> "$metrics_log" <<'PY'
+import json, sys
+snapshot, history, sha, run_id, verdict = sys.argv[1:]
+data = json.load(open(snapshot))
+with open(history, "a") as handle:
+    handle.write(json.dumps({"sha": sha, "run_id": run_id, "guard_green": verdict == "green", "metrics": data}) + "\n")
+PY
+  then
+    METRICS="ok"
+    log "metrics recorded"
+  else
+    METRICS="failed"
+    log "metrics FAILED: no snapshot for this run (log $metrics_log)"
+    warn "metrics failed"
+  fi
+}
+
+# Runs on every exit: cleanup, metrics, issue report, exactly one record. Nothing here aborts.
+finish() {
+  local rc=$? code
+  trap - EXIT INT TERM HUP
+  set +e
+  if [ "$VERDICT" = incomplete ]; then
+    [ -z "$FAILED" ] && FAILED="$PHASE"
+    warn "aborted during $PHASE (exit $rc)"
+  fi
+  run_cleanup
+  case "$VERDICT" in green|red) [ "$STARTED" = 1 ] && record_metrics ;; esac
+  if [ -n "$TRIAL" ]; then
+    log "trial run (GUARD_ONLY=$TRIAL): not recorded in the nightly history, issue left as is"
+  else
+    case "$VERDICT" in
+      red) report_failure "$FAILED" "$SHA" "$FAILED_LOG" || warn "issue report failed" ;;
+      green) report_green "$SHA" || warn "issue report failed" ;;
+    esac
+    record_nightly "$VERDICT" "$FAILED" "$CLEANUP" "$METRICS" "$SHA" "$RUN_ID" "$RUN_LOG" ${WARNINGS[@]+"${WARNINGS[@]}"} ||
+      log "FAILED to write the nightly record $NIGHTLY_RECORD"
+  fi
+  release_project_lock
+  find "$LOG_DIR" -name 'guard-*' -mtime +30 -delete
+  case "$VERDICT" in
+    green) code=0 ;;
+    red) code=1 ;;
+    "skipped: busy") code=75 ;;
+    *) code=$rc; [ "$code" = 0 ] && code=1 ;;
+  esac
+  log "guard end: status=$code ($VERDICT)"
+  exit "$code"
+}
+trap finish EXIT
+trap 'log "guard interrupted (SIGINT)"; exit 130' INT
+trap 'log "guard interrupted (SIGTERM)"; exit 143' TERM
+trap 'log "guard interrupted (SIGHUP)"; exit 129' HUP
+
 log "guard start: project=$PROJECT branch=$BRANCH"
+PHASE="lock"
+if ! acquire_project_lock; then
+  VERDICT="skipped: busy"
+  log "guard skipped: busy (another job of $PROJECT held the clone for ${LOCK_WAIT_SECONDS:-3600}s)"
+  exit 75
+fi
+
+PHASE="sync"
 sync_clone
 cd "$CLONE_DIR"
-SHA="$(git rev-parse --short HEAD)"
+SHA="$(git rev-parse HEAD)"
 log "testing $SHA"
 
+PHASE="docker"
 if [ "${NEEDS_DOCKER:-0}" = 1 ] && ! ensure_docker; then
-  echo "Docker is required by this project and is not available." > "$LOG_DIR/guard-$RUN_ID-docker.log"
-  report_failure docker "$SHA" "$LOG_DIR/guard-$RUN_ID-docker.log"
-  record_nightly red docker skipped skipped "$SHA" "$RUN_ID" "$RUN_LOG"
-  log "guard end: status=1"
+  FAILED="docker"
+  FAILED_LOG="$LOG_DIR/guard-$RUN_ID-docker.log"
+  echo "Docker is required by this project and is not available." > "$FAILED_LOG"
+  VERDICT="red"
   exit 1
 fi
 
-status=0; failed=""
-for entry in "${GUARD_STEPS[@]}"; do
+verdict="green"
+for entry in ${GUARD_STEPS[@]+"${GUARD_STEPS[@]}"}; do
   name="${entry%%|*}"; cmd="${entry#*|}"
-  if [ -n "${GUARD_ONLY:-}" ] && [[ ",$GUARD_ONLY," != *",$name,"* ]]; then continue; fi
+  if [ -n "$TRIAL" ] && [[ ",$TRIAL," != *",$name,"* ]]; then continue; fi
   step_log="$LOG_DIR/guard-$RUN_ID-$name.log"
+  PHASE="$name"
+  STARTED=1
   log "step $name"
   if ! bash -c "$cmd" > "$step_log" 2>&1; then
     log "step $name FAILED (log $step_log)"
-    [ -z "${GUARD_ONLY:-}" ] && report_failure "$name" "$SHA" "$step_log"
-    status=1; failed="$name"; break
+    verdict="red"; FAILED="$name"; FAILED_LOG="$step_log"
+    break
   fi
 done
-
-cleanup="none"
-if [ -n "${CLEANUP_CMD:-}" ]; then
-  if bash -c "$CLEANUP_CMD" > "$LOG_DIR/guard-$RUN_ID-cleanup.log" 2>&1; then
-    cleanup="ok"
-  else
-    cleanup="failed"
-    log "cleanup FAILED: something the guard started may still be running (log $LOG_DIR/guard-$RUN_ID-cleanup.log)"
-  fi
-fi
-
-metrics="none"
-if [ -n "${METRICS_CMD:-}" ] && [ -z "${GUARD_ONLY:-}" ]; then
-  snapshot="$HISTORY_DIR/$RUN_ID-$SHA.json"
-  if bash -c "$METRICS_CMD" > "$snapshot" 2> "$LOG_DIR/guard-$RUN_ID-metrics.log"; then
-    python3 - "$snapshot" "$HISTORY_DIR/history.jsonl" "$SHA" "$RUN_ID" "$status" <<'PY'
-import json, sys
-snapshot, history, sha, run_id, status = sys.argv[1:]
-data = json.load(open(snapshot))
-open(history, "a").write(json.dumps({"sha": sha, "run_id": run_id, "guard_green": status == "0", "metrics": data}) + "\n")
-PY
-    metrics="ok"
-    log "metrics recorded"
-  else
-    metrics="failed"
-    log "metrics FAILED: no snapshot for this run (log $LOG_DIR/guard-$RUN_ID-metrics.log)"
-  fi
-fi
-
-if [ -n "${GUARD_ONLY:-}" ]; then
-  log "trial run (GUARD_ONLY=$GUARD_ONLY): not recorded in the nightly history, issue left as is"
-elif [ "$status" = 0 ]; then
-  record_nightly green "" "$cleanup" "$metrics" "$SHA" "$RUN_ID" "$RUN_LOG"
-  report_green "$SHA"
-else
-  record_nightly red "$failed" "$cleanup" "$metrics" "$SHA" "$RUN_ID" "$RUN_LOG"
-fi
-find "$LOG_DIR" -name 'guard-*' -mtime +30 -delete
-log "guard end: status=$status"
-exit "$status"
+VERDICT="$verdict"
