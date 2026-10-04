@@ -2,6 +2,7 @@ import datetime
 import fcntl
 import json
 import os
+import shutil
 import signal
 import subprocess
 import tempfile
@@ -62,6 +63,21 @@ class AutomationFixture(unittest.TestCase):
         full_env = {**clean_env(), "KITCHEN_CONFIG": str(self.config), "KITCHEN_STATE": str(self.state),
                     "KITCHEN_REAL_GH": str(self.bin / "gh"), "CALLS": str(self.calls), "DOCKER_WAIT_TRIES": "1", "DOCKER_WAIT_SECONDS": "0", **env}
         return subprocess.run(["bash", str(AUTOMATION / "bin" / job), *args], env=full_env, capture_output=True, text=True)
+
+    def job_env(self, **env):
+        return {**clean_env(), "KITCHEN_CONFIG": str(self.config), "KITCHEN_STATE": str(self.state),
+                "KITCHEN_REAL_GH": str(self.bin / "gh"), "CALLS": str(self.calls), **env}
+
+    def start_job(self, job, *args, **env):
+        return subprocess.Popen(["bash", str(AUTOMATION / "bin" / job), *args], env=self.job_env(**env),
+                                start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def wait_for(self, path, seconds=10):
+        end = time.monotonic() + seconds
+        while not (path.exists() and path.read_text().strip()) and time.monotonic() < end:
+            time.sleep(0.05)
+        self.assertTrue(path.exists(), f"{path} never appeared")
+        return path.read_text().strip()
 
     def nightly(self, project="shop"):
         return [json.loads(line) for line in (self.state / "nightly" / f"{project}.jsonl").read_text().splitlines()]
@@ -180,8 +196,9 @@ class NightlyGuardTests(AutomationFixture):
         self.assertEqual(self.nightly()[-1]["sha"], self.git(self.origin, "rev-parse", "HEAD"))
 
     def test_issue_body_is_redacted(self):
-        token = "ghp_" + "a" * 30
-        self.configure([f"leak|echo password=hunter2hunter2; echo {token}; exit 1"])
+        token = "ghp_" + "a" * 30  # built at runtime: the repo never holds a credential shape
+        assignment = "pass" + "word=" + "hunter2" * 2
+        self.configure([f"leak|echo {assignment}; echo {token}; exit 1"])
 
         self.run_job("nightly-guard", "shop")
 
@@ -208,11 +225,13 @@ class NightlyGuardTests(AutomationFixture):
         self.assertIn("kitchen-ok", self.origin_branches())
         self.assertNotIn("main", self.origin_branches())
 
-    def test_hooks_path_set_by_the_project_is_kept_on_the_next_sync(self):
+    def test_hooks_path_set_by_the_project_survives_repeated_installs(self):
         marks = Path(self.tmp.name)
         self.commit_to_origin({"scripts/hooks/pre-commit": (f"#!/bin/sh\ntouch {marks}/pre-commit-ran\n", 0o755)})
         self.configure(["setup|git config core.hooksPath scripts/hooks"])
         self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
+        self.configure(["noop|true"])
+        self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")  # a second install must keep the project's hooks
         self.configure(["commit|git commit -q --allow-empty -m x"])
 
         result = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
@@ -270,29 +289,129 @@ class NightlyGuardTests(AutomationFixture):
         self.assertNotIn("gh issue", self.calls_log())
 
 
-    def test_lock_of_a_killed_job_is_released(self):
-        started = Path(self.tmp.name) / "started"
-        self.configure([f"slow|touch {started}; sleep 30"])
-        env = {**clean_env(), "KITCHEN_CONFIG": str(self.config), "KITCHEN_STATE": str(self.state),
-               "KITCHEN_REAL_GH": str(self.bin / "gh"), "CALLS": str(self.calls), "GUARD_NO_REPORT": "1"}
-        first = subprocess.Popen(["bash", str(AUTOMATION / "bin" / "nightly-guard"), "shop"], env=env, start_new_session=True,
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    def background_worker_step(self):
+        """A step whose shell records its job's pid and leaves a worker appending to a file."""
+        tmp = Path(self.tmp.name)
+        files = {"job": tmp / "job.pid", "worker": tmp / "worker.pid", "out": tmp / "worker.out"}
+        step = (f"slow|echo \\$PPID > {files['job']}; (while :; do date >> {files['out']}; sleep 0.1; done) & "
+                f"echo \\$! > {files['worker']}; sleep 30")
+        return step, files
+
+    def assert_dead(self, pid):
+        end = time.monotonic() + 5
+        while time.monotonic() < end:
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                return
+            time.sleep(0.05)
+        self.fail(f"process {pid} is still running")
+
+    def test_killing_the_job_stops_its_workers_before_the_lock_is_released(self):
+        step, files = self.background_worker_step()
+        self.configure([step])
+        first = self.start_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
         try:
-            for _ in range(100):
-                if started.exists():
-                    break
-                time.sleep(0.1)
-            self.assertTrue(started.exists())
-            first.kill()
-            first.wait()
+            job, worker = int(self.wait_for(files["job"])), int(self.wait_for(files["worker"]))
+            os.kill(job, signal.SIGKILL)  # only the job's main process, as a crash would
             self.configure(["ok|true"])
 
-            result = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1", LOCK_WAIT_SECONDS="10", LOCK_POLL_SECONDS="0.1")
+            result = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1", LOCK_WAIT_SECONDS="30", LOCK_POLL_SECONDS="0.1")
+            first.wait(timeout=30)
+            self.assert_dead(worker)  # before the cleanup below, which would kill it anyway
+            size = files["out"].stat().st_size
+            time.sleep(0.3)
+            self.assertEqual(files["out"].stat().st_size, size)
         finally:
-            os.killpg(first.pid, signal.SIGKILL)
+            for pid in (locals().get("job"), first.pid):
+                try:
+                    os.killpg(pid, signal.SIGKILL) if pid else None
+                except (ProcessLookupError, PermissionError):
+                    pass
 
         self.assertEqual(result.returncode, 0, result.stdout)
-        self.assertEqual(self.nightly()[-1]["status"], "green")
+        self.assertEqual([r["status"] for r in self.nightly()], ["incomplete", "green"])
+
+    def test_worker_outliving_a_killed_supervisor_keeps_the_project_busy(self):
+        step, files = self.background_worker_step()
+        self.configure([step])
+        first = self.start_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
+        try:
+            job = int(self.wait_for(files["job"]))
+            first.kill()  # the supervisor itself: its job keeps running in its own group
+            first.wait()
+            self.configure(["ok|true"])
+            busy = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1", LOCK_WAIT_SECONDS="1", LOCK_POLL_SECONDS="0.1")
+        finally:
+            try:
+                os.killpg(job, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError, UnboundLocalError):
+                pass
+        self.assert_dead(job)
+
+        free = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1", LOCK_WAIT_SECONDS="10", LOCK_POLL_SECONDS="0.1")
+
+        self.assertEqual(busy.returncode, 75, busy.stdout)
+        self.assertEqual(free.returncode, 0, free.stdout)
+        self.assertEqual([r["status"] for r in self.nightly()], ["incomplete", "skipped: busy", "green"])
+
+    def test_runs_started_in_the_same_second_keep_their_own_records(self):
+        self.fake("date", '[ "$2" = "+%Y%m%dT%H%M%SZ" ] && { echo 20260101T000000Z; exit 0; }; exec /bin/date "$@"')
+        self.configure(["ok|true"])
+
+        self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
+        self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
+
+        runs = self.nightly()
+        self.assertEqual([r["status"] for r in runs], ["green", "green"])
+        self.assertNotEqual(runs[0]["run_id"], runs[1]["run_id"])
+
+    def test_running_record_is_written_first_and_replaced_at_the_end(self):
+        copy = Path(self.tmp.name) / "during.jsonl"
+        self.configure([f"peek|cp {self.state}/nightly/shop.jsonl {copy}"])
+
+        self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
+
+        during = [json.loads(line) for line in copy.read_text().splitlines()]
+        after = self.nightly()
+        self.assertEqual([r["status"] for r in during], ["running"])
+        self.assertEqual([r["status"] for r in after], ["green"])
+        self.assertEqual(during[0]["run_id"], after[0]["run_id"])
+
+    def test_running_record_left_by_a_killed_run_is_closed_as_incomplete(self):
+        (self.state / "nightly").mkdir(parents=True)
+        (self.state / "nightly" / "shop.jsonl").write_text(json.dumps({"status": "running", "run_id": "20000101T000000Z"}) + "\n")
+        self.configure(["ok|true"])
+
+        self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
+
+        old, new = self.nightly()
+        self.assertEqual((old["status"], old["failed_step"]), ("incomplete", "killed"))
+        self.assertIn("killed before it could finish its record", old["warnings"])
+        self.assertEqual(new["status"], "green")
+
+    def test_hung_gh_call_times_out_and_the_run_still_records(self):
+        self.fake("gh", 'echo "gh $*" >> "$CALLS"; exec sleep 20')
+        self.configure(["bad|false"])
+
+        started = time.monotonic()
+        result = self.run_job("nightly-guard", "shop", GH_TIMEOUT_SECONDS="1")
+
+        self.assertLess(time.monotonic() - started, 12, result.stdout)
+        run = self.nightly()[-1]
+        self.assertEqual((run["status"], run["warnings"]), ("red", ["issue report failed"]))
+
+    def test_hung_fetch_times_out_and_is_recorded_incomplete(self):
+        self.configure(["ok|true"])
+        self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")  # the clone exists; the next sync fetches
+        self.fake("git", f'[ "$3" = fetch ] && exec sleep 20; exec {shutil.which("git")} "$@"')
+
+        started = time.monotonic()
+        result = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1", NET_TIMEOUT_SECONDS="1")
+
+        self.assertLess(time.monotonic() - started, 12, result.stdout)
+        run = self.nightly()[-1]
+        self.assertEqual((run["status"], run["failed_step"]), ("incomplete", "sync"))
 
 class GardenerTests(AutomationFixture):
     def test_claude_failure_is_the_job_status_and_cleanup_still_runs(self):
@@ -378,6 +497,25 @@ class GardenerPublicationTests(AutomationFixture):
         self.assertNotIn("push=0", lines)
         self.assertNotIn("sneaky", self.origin_branches())
 
+    def test_agent_bash_runs_in_the_os_sandbox_without_credential_reads(self):
+        args = Path(self.tmp.name) / "args"
+        self.configure([], extra='GARDENER_SANDBOX_DOMAINS=("nuget.org")\nGARDENER_SANDBOX_WRITE=("$HOME/.nuget")')
+        self.agent(f'printf "%s\\n" "$@" > {args}')
+
+        result = self.run_job("weekly-gardener", "shop")
+
+        argv = args.read_text().splitlines()
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("--strict-mcp-config", argv)
+        settings = json.loads(Path(argv[argv.index("--settings") + 1]).read_text())
+        sandbox = settings["sandbox"]
+        self.assertEqual((sandbox["enabled"], sandbox["failIfUnavailable"], sandbox["allowUnsandboxedCommands"]), (True, True, False))
+        for path in ("~/.ssh", "~/Library/Keychains", "~/.config/gh", "~/.git-credentials", "~/.netrc", "~/.aws"):
+            self.assertIn(path, sandbox["filesystem"]["denyRead"])
+        self.assertIn("Read(~/.ssh/**)", settings["permissions"]["deny"])
+        self.assertEqual(sandbox["network"]["allowedDomains"], ["nuget.org"])
+        self.assertIn(f"{os.environ['HOME']}/.nuget", sandbox["filesystem"]["allowWrite"])
+
     def test_job_publishes_the_agents_branch_with_the_label_and_summary(self):
         branch = f"gardener/{datetime.datetime.now(datetime.timezone.utc):%Y-%m-%d}-tidy"
         self.configure([])
@@ -393,6 +531,28 @@ class GardenerPublicationTests(AutomationFixture):
         self.assertIn("--label gardener", pr_create[0])
         self.assertIn("--title Tidy the notes", pr_create[0])
         self.assertIn("GARDENER-RESULT: https://example.test/pull/1", result.stdout)
+
+    def test_only_the_validated_final_tree_is_published_as_one_commit(self):
+        branch = f"gardener/{datetime.datetime.now(datetime.timezone.utc):%Y-%m-%d}-tidy"
+        self.configure([])
+        self.agent(textwrap.dedent("""\
+            git checkout -q -b "${GARDENER_BRANCH_PREFIX}tidy"
+            mkdir -p .github/workflows && echo "on: push" > .github/workflows/test.yml && echo leaked-value > leaked.txt
+            git add -A && git commit -q -m "Add then remove"
+            git rm -q .github/workflows/test.yml leaked.txt && seq 1 3 > notes.txt && git add notes.txt
+            git commit -q -m "Tidy notes"
+            printf '# Tidy the notes\\n\\nWhy.\\n' > "$GARDENER_SUMMARY_FILE"
+            """))
+
+        result = self.run_job("weekly-gardener", "shop")
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.git(self.origin, "rev-list", "--count", f"dev..{branch}"), "1")
+        self.assertEqual(self.git(self.origin, "rev-parse", f"{branch}^"), self.git(self.origin, "rev-parse", "dev"))
+        self.assertEqual(self.git(self.origin, "ls-tree", "--name-only", branch).splitlines(), ["notes.txt"])
+        published = self.git(self.origin, "rev-list", "--objects", "--all")
+        self.assertNotIn("leaked.txt", published)
+        self.assertNotIn("test.yml", published)
 
     def assert_refused(self, result, reason):
         self.assertEqual(result.returncode, 1, result.stdout)

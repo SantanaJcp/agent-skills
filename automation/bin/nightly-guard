@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
 # Nightly guard: build, test and prove the tip of the project's branch.
 # Opens (or comments on) one GitHub issue when a step fails and closes it when the branch is green.
-# Every run lands exactly once in the nightly history read by `kitchen status`, however it ends:
+# Every run is exactly one line in the nightly history read by `kitchen status`: "running" from the start,
+# replaced when the run ends, however it ends:
 #   green / red          the steps' verdict; problems around it (cleanup, metrics, issue report) go to "warnings"
-#   incomplete           interrupted or aborted before a verdict; failed_step names the phase
+#   incomplete           interrupted or aborted before a verdict; failed_step names the phase. A "running" line
+#                        left by a run killed with SIGKILL is closed as incomplete by the next run.
 #   skipped: busy        another job of this project held the clone for LOCK_WAIT_SECONDS
 # Usage: nightly-guard <project>
 # Trial run (neither recorded nor reported): GUARD_ONLY="build,fast-tests" nightly-guard <project>
 source "$(dirname "$0")/../lib/common.sh" "$1"
 
-RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
+STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%S+00:00)"
 RUN_LOG="$LOG_DIR/guard-$RUN_ID.log"
 exec > >(tee -a "$RUN_LOG") 2>&1
 
@@ -110,10 +113,9 @@ finish() {
       red) report_failure "$FAILED" "$SHA" "$FAILED_LOG" || warn "issue report failed" ;;
       green) report_green "$SHA" || warn "issue report failed" ;;
     esac
-    record_nightly "$VERDICT" "$FAILED" "$CLEANUP" "$METRICS" "$SHA" "$RUN_ID" "$RUN_LOG" ${WARNINGS[@]+"${WARNINGS[@]}"} ||
+    record_nightly "$VERDICT" "$FAILED" "$CLEANUP" "$METRICS" "$SHA" "$RUN_ID" "$RUN_LOG" "$STARTED_AT" ${WARNINGS[@]+"${WARNINGS[@]}"} ||
       log "FAILED to write the nightly record $NIGHTLY_RECORD"
   fi
-  release_project_lock
   find "$LOG_DIR" -name 'guard-*' -mtime +30 -delete
   case "$VERDICT" in
     green) code=0 ;;
@@ -131,10 +133,14 @@ trap 'log "guard interrupted (SIGHUP)"; exit 129' HUP
 
 log "guard start: project=$PROJECT branch=$BRANCH"
 PHASE="lock"
-if ! acquire_project_lock; then
+if [ "$LOCK_STATE" = busy ]; then
   VERDICT="skipped: busy"
   log "guard skipped: busy (another job of $PROJECT held the clone for ${LOCK_WAIT_SECONDS:-3600}s)"
   exit 75
+fi
+if [ -z "$TRIAL" ]; then
+  close_stale_records "$RUN_ID"
+  record_nightly running "" "$CLEANUP" "$METRICS" "" "$RUN_ID" "$RUN_LOG" "$STARTED_AT"
 fi
 
 PHASE="sync"

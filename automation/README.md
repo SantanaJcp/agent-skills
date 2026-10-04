@@ -34,25 +34,34 @@ HOOKS_PATH="scripts/hooks"             # optional; the project's hooks folder, k
 LOCK_WAIT_SECONDS=3600                 # optional; how long a job waits for the other one before "skipped: busy"
 GARDENER_MAX_CHANGED_LINES=400         # optional; larger gardener diffs are not published
 GARDENER_PROTECTED_PATHS=(".github/*")  # optional; shell patterns the gardener may not touch
+GARDENER_SANDBOX_DOMAINS=("nuget.org") # optional; domains the gardener's Bash may reach (default: none)
+GARDENER_SANDBOX_WRITE=("$HOME/.nuget") # optional; paths outside the clone its Bash may write (tool caches)
+GARDENER_SANDBOX_UNIX_SOCKETS=()       # optional; e.g. the Docker socket. Docker can mount any host path, so
+                                       # allowing it reopens what the sandbox closes
+GH_TIMEOUT_SECONDS=120                 # optional; deadline for every gh call
+NET_TIMEOUT_SECONDS=600                # optional; deadline for clone, fetch and push
 ```
 
 ## Nightly record
 
-One JSON line per run: `ts`, `sha` (full 40 characters), `status`, `failed_step`, `cleanup`, `metrics`, `warnings`, `run_id`, `log`.
+One JSON line per run: `ts`, `started`, `sha` (full 40 characters), `status`, `failed_step`, `cleanup`, `metrics`, `warnings`, `run_id`, `log`. The line is written as `running` when the run starts and replaced when it ends.
 
 | `status` | Meaning |
 |---|---|
 | `green` / `red` | The steps' verdict. Problems around it (`cleanup failed`, `metrics failed`, `issue report failed`) go to `warnings` and never change the verdict. |
-| `incomplete` | Interrupted or aborted before a verdict; `failed_step` names the phase (a step, `sync`, `lock`). |
+| `running` | The run is in progress. |
+| `incomplete` | Interrupted, aborted or timed out before a verdict; `failed_step` names the phase (a step, `sync`, `lock`). A `running` line left by a run killed with SIGKILL is closed as `incomplete` (`failed_step: killed`) by the next run. |
 | `skipped: busy` | The other job of the project held the clone for `LOCK_WAIT_SECONDS`. |
 
-Trial runs (`GUARD_ONLY=...`) are neither recorded nor reported. A run killed with SIGKILL cannot write its record.
+Trial runs (`GUARD_ONLY=...`) are neither recorded nor reported.
 
 ## Guarantees
 
-- Jobs work in their own clone; your checkout is never touched. One job at a time per project: the guard and the gardener take a lock before touching the clone, released when the job exits, however it exits.
+- Jobs work in their own clone; your checkout is never touched. One job at a time per project: each job runs under `lib/supervise.py`, which holds the project lock and runs the job in its own process group. When the job ends, however it ends, the whole group is stopped before the lock is released. A worker that outlives a killed supervisor keeps the project busy until it exits.
+- Every gh call and every clone, fetch and push has a deadline, so a hung network call cannot hold a run or its record.
 - A pre-push hook in the clone refuses pushes to `dev`, `main`, `master` and `$BRANCH`. The project's own hooks (`HOOKS_PATH`, or the hooks path the project configured in the clone) keep running next to it.
-- The gardener's agent runs sealed: no `gh` (a shim refuses every call), no GitHub tokens, no SSH agent, `GIT_SSH_COMMAND` and askpass refuse, git credential helpers cleared, `origin`'s push URL refused. It commits on `gardener/<date>-<slug>` and writes a PR summary. The job then pushes that branch and opens the PR with the gardener label only when it is the only gardener branch, starts from `origin/$BRANCH`, has commits, stays within `GARDENER_MAX_CHANGED_LINES` and touches none of `GARDENER_PROTECTED_PATHS`. Otherwise it logs one `GARDENER-RESULT: refused - <reason>` line and exits 1.
-- The seal is environment-level, not an OS sandbox: it stops the agent's ordinary tools from publishing, but a process running as you could still reach your keychain or SSH keys on purpose.
+- The gardener's agent runs sealed: no `gh` (a shim refuses every call), no GitHub tokens, no SSH agent, `GIT_SSH_COMMAND` and askpass refuse, git credential helpers cleared, `origin`'s push URL refused, no MCP servers.
+- Its Bash runs in Claude Code's OS sandbox (`lib/sandbox_settings.py`, Seatbelt on macOS, `failIfUnavailable`, no unsandboxed escape): no reads of `~/.ssh`, `~/Library/Keychains`, `~/.config/gh`, cloud CLI configs, `~/.git-credentials`, `~/.netrc` and similar; writes only to the clone, the run's work dir and `GARDENER_SANDBOX_WRITE`; network only to `GARDENER_SANDBOX_DOMAINS`. Read, Edit, Grep and Glob are denied the same paths by permission rules (enforced by Claude Code, not the OS). The claude process itself stays outside, so its login and the model API work.
+- It commits on `gardener/<date>-<slug>` and writes a PR summary. The job validates the branch's final tree (the only gardener branch, starts from `origin/$BRANCH`, has commits, within `GARDENER_MAX_CHANGED_LINES`, none of `GARDENER_PROTECTED_PATHS`) and publishes exactly that tree as ONE new commit on `origin/$BRANCH`, never the agent's history. Otherwise it logs one `GARDENER-RESULT: refused - <reason>` line and exits 1.
 - Log lines posted to GitHub issues and the gardener's PR text are redacted with the same secret patterns as `kitchen retro`.
 - Nothing degrades silently: missing Docker fails the run, and a failed cleanup, metrics step or issue report is logged and recorded as a warning.

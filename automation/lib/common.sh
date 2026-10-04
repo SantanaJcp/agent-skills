@@ -28,7 +28,22 @@ TOOL_PATH="${EXTRA_PATH:-}:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/us
 export KITCHEN_REAL_GH="${KITCHEN_REAL_GH:-$(PATH="$TOOL_PATH" command -v gh || true)}"
 export PATH="$KITCHEN_AUTOMATION/shims:$TOOL_PATH"
 
+# Every job runs under lib/supervise.py: one job at a time per project (the guard and the gardener share
+# the clone that sync_clone resets), in its own process group that is stopped as a whole before the lock
+# is released. The supervisor re-runs this script with KITCHEN_LOCK_STATE=held, or =busy when the lock
+# stayed taken for LOCK_WAIT_SECONDS (default 3600); the job then records the skip.
+if [ -z "${KITCHEN_LOCK_STATE:-}" ]; then
+  exec python3 "$KITCHEN_AUTOMATION/lib/supervise.py" "$STATE_DIR/job.lock" "${LOCK_WAIT_SECONDS:-3600}" "${LOCK_POLL_SECONDS:-5}" \
+    -- "$BASH" "$0" "$PROJECT"
+fi
+LOCK_STATE="$KITCHEN_LOCK_STATE"
+unset KITCHEN_LOCK_STATE
+
 log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
+
+# A deadline for anything that waits on the network (gh goes through the bounded gh shim).
+bounded() { python3 "$KITCHEN_AUTOMATION/lib/bounded.py" "$@"; }
+NET_TIMEOUT="${NET_TIMEOUT_SECONDS:-600}"
 
 # Problems that did not change the verdict but must not hide: logged now, recorded with the run.
 WARNINGS=()
@@ -37,39 +52,13 @@ warn() { WARNINGS+=("$1"); log "WARNING: $1"; }
 # Secrets out of anything that leaves the machine (stdin to stdout).
 redact() { python3 "$KITCHEN_AUTOMATION/lib/redact.py"; }
 
-# One job at a time per project: the guard and the gardener share the clone that sync_clone resets.
-# Waits up to LOCK_WAIT_SECONDS (default 3600) and returns 1 when the lock stays busy.
-# The lock lives in a helper process, so it is released when the job exits, however it exits.
-LOCK_HOLDER_PID=""
-acquire_project_lock() {
-  local answer="$STATE_DIR/.lock-answer.$$" word=""
-  rm -f "$answer"
-  python3 "$KITCHEN_AUTOMATION/lib/lock.py" "$STATE_DIR/job.lock" "${LOCK_WAIT_SECONDS:-3600}" "${LOCK_POLL_SECONDS:-5}" "$answer" \
-    </dev/null >/dev/null 2>&1 &
-  LOCK_HOLDER_PID=$!
-  while [ ! -s "$answer" ] && kill -0 "$LOCK_HOLDER_PID" 2>/dev/null; do sleep 0.2; done
-  if [ -s "$answer" ]; then word="$(cat "$answer")"; fi
-  rm -f "$answer"
-  [ "$word" = acquired ] && return 0
-  wait "$LOCK_HOLDER_PID" 2>/dev/null || true
-  LOCK_HOLDER_PID=""
-  return 1
-}
-
-release_project_lock() {
-  [ -n "$LOCK_HOLDER_PID" ] || return 0
-  kill "$LOCK_HOLDER_PID" 2>/dev/null || true
-  wait "$LOCK_HOLDER_PID" 2>/dev/null || true
-  LOCK_HOLDER_PID=""
-}
-
 # A dedicated clone at the tip of $BRANCH; the developer's checkout is never touched.
 # Destructive (reset and clean): call it only while holding the project lock.
 sync_clone() {
   if [ ! -d "$CLONE_DIR/.git" ]; then
-    git clone --quiet "$REPO_URL" "$CLONE_DIR"
+    bounded "$NET_TIMEOUT" git clone --quiet "$REPO_URL" "$CLONE_DIR"
   fi
-  git -C "$CLONE_DIR" fetch --quiet --prune origin
+  bounded "$NET_TIMEOUT" git -C "$CLONE_DIR" fetch --quiet --prune origin
   git -C "$CLONE_DIR" checkout --quiet --detach "origin/$BRANCH"
   git -C "$CLONE_DIR" reset --quiet --hard "origin/$BRANCH"
   git -C "$CLONE_DIR" clean --quiet -fdx -e node_modules
@@ -77,9 +66,10 @@ sync_clone() {
 }
 
 # Automation may push its own branches, never the shared ones. The project's own hooks keep working:
-# core.hooksPath points at a kitchen folder that forwards every hook of the project's hooks folder
-# (HOOKS_PATH in the config, else the clone's previous core.hooksPath, else .git/hooks) and puts the
-# pre-push guard in front of the project's own pre-push.
+# core.hooksPath points at a kitchen folder that forwards every hook of the project's hooks folder and
+# puts the pre-push guard in front of the project's own pre-push. The project's folder is HOOKS_PATH in
+# the config, else a hooks path the project set in the clone since the last install, else the one
+# remembered by an earlier install (kitchen.projectHooksPath), else .git/hooks. Installing twice is a no-op.
 install_push_guard() {
   local git_dir hooks_dir current project_hooks hook name
   git_dir="$(git -C "$CLONE_DIR" rev-parse --absolute-git-dir)"
@@ -90,8 +80,10 @@ install_push_guard() {
   elif [ -n "$current" ] && [ "$current" != "$hooks_dir" ]; then
     project_hooks="$current"
   else
-    project_hooks="$git_dir/hooks"
+    project_hooks="$(git -C "$CLONE_DIR" config --get kitchen.projectHooksPath || true)"
+    [ -n "$project_hooks" ] || project_hooks="$git_dir/hooks"
   fi
+  git -C "$CLONE_DIR" config kitchen.projectHooksPath "$project_hooks"
   case "$project_hooks" in /*) ;; *) project_hooks="$CLONE_DIR/$project_hooks" ;; esac
   rm -rf "$hooks_dir"
   mkdir -p "$hooks_dir"
@@ -132,15 +124,10 @@ ensure_docker() {
   return 1
 }
 
-# Appends one run to the nightly history that `kitchen status` reads.
-record_nightly() { # status failed_step cleanup metrics sha run_id log [warning...]
-  python3 - "$NIGHTLY_RECORD" "$@" <<'PY'
-import datetime, json, sys
-record, status, failed, cleanup, metrics, sha, run_id, log, *warnings = sys.argv[1:]
-entry = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"), "sha": sha or None,
-         "status": status, "failed_step": failed or None, "cleanup": cleanup, "metrics": metrics,
-         "warnings": warnings, "run_id": run_id, "log": log}
-with open(record, "a") as handle:
-    handle.write(json.dumps(entry) + "\n")
-PY
+# The nightly history that `kitchen status` reads: one line per run, replaced in place by run_id.
+record_nightly() { # status failed_step cleanup metrics sha run_id log started [warning...]
+  python3 "$KITCHEN_AUTOMATION/lib/record.py" "$NIGHTLY_RECORD" write "$@"
 }
+
+# Closes "running" lines left by runs that were killed; only called while holding the project lock.
+close_stale_records() { python3 "$KITCHEN_AUTOMATION/lib/record.py" "$NIGHTLY_RECORD" close-stale "$1"; }

@@ -2,15 +2,19 @@
 # Weekly gardener: one unattended Claude Code run that opens at most one small, verified PR.
 # Skips while a previous gardener PR is still open, so reviews never pile up.
 # Generation and publication are separate:
-#   1. Claude runs sealed: no gh, no tokens, no SSH, no git credentials, push URL refused.
-#      It may only commit on a local branch gardener/<date>-<slug> and write a PR summary file.
-#   2. After Claude exits, this script publishes that branch and opens the PR, but only when it is the
-#      only gardener branch, is ahead of origin/$BRANCH, changes at most GARDENER_MAX_CHANGED_LINES
-#      lines (default 400) and touches none of GARDENER_PROTECTED_PATHS (default: .github/*).
+#   1. Claude runs sealed: no gh, no tokens, no SSH, no git credentials, push URL refused; its Bash runs in
+#      Claude Code's OS sandbox (no reads of credential locations, writes and network only where configured,
+#      see lib/sandbox_settings.py). It may only commit on a local branch gardener/<date>-<slug> and write a
+#      PR summary file.
+#   2. After Claude exits, this script validates the branch's final tree against origin/$BRANCH: the only
+#      gardener branch, 1+ commits, at most GARDENER_MAX_CHANGED_LINES changed lines (default 400), none of
+#      GARDENER_PROTECTED_PATHS (default: .github/*). It then publishes ONE new commit holding exactly that
+#      validated tree on top of origin/$BRANCH, never the agent's history (a file added and removed again
+#      there would otherwise be published), and opens the PR.
 # Usage: weekly-gardener <project>
 source "$(dirname "$0")/../lib/common.sh" "$1"
 
-RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
 RUN_DATE="$(date -u +%Y-%m-%d)"
 RUN_LOG="$LOG_DIR/gardener-$RUN_ID.log"
 WORK_DIR="$STATE_DIR/gardener/$RUN_ID"
@@ -19,6 +23,10 @@ exec > >(tee -a "$RUN_LOG") 2>&1
 
 MAX_CHANGED_LINES="${GARDENER_MAX_CHANGED_LINES:-400}"
 declare -p GARDENER_PROTECTED_PATHS >/dev/null 2>&1 || GARDENER_PROTECTED_PATHS=(".github/*")
+declare -p GARDENER_SANDBOX_DOMAINS >/dev/null 2>&1 || GARDENER_SANDBOX_DOMAINS=()
+declare -p GARDENER_SANDBOX_WRITE >/dev/null 2>&1 || GARDENER_SANDBOX_WRITE=()
+declare -p GARDENER_SANDBOX_UNIX_SOCKETS >/dev/null 2>&1 || GARDENER_SANDBOX_UNIX_SOCKETS=()
+PROMPT_FILE="${GARDENER_PROMPT_FILE:-$KITCHEN_AUTOMATION/prompts/gardener.md}"  # override only for canary probes
 STARTED=0
 
 finish() {
@@ -29,7 +37,6 @@ finish() {
     ! (cd "$CLONE_DIR" && bash -c "$CLEANUP_CMD") > "$LOG_DIR/gardener-$RUN_ID-cleanup.log" 2>&1; then
     log "cleanup FAILED: something the gardener started may still be running (log $LOG_DIR/gardener-$RUN_ID-cleanup.log)"
   fi
-  release_project_lock
   find "$LOG_DIR" -name 'gardener-*' -mtime +90 -delete
   find "$STATE_DIR/gardener" -mindepth 1 -maxdepth 1 -mtime +90 -exec rm -rf {} + 2>/dev/null
   log "gardener end: status=$rc"
@@ -84,17 +91,28 @@ publish() {
   [ -s "$SUMMARY_FILE" ] || refuse "no PR summary at $SUMMARY_FILE" || return 1
   title="$(grep -m1 -v '^[[:space:]]*$' "$SUMMARY_FILE" | sed -E 's/^#+[[:space:]]*//' | cut -c1-120 | redact)" || refuse "could not read the PR title" || return 1
   [ -n "$title" ] || refuse "empty PR title in $SUMMARY_FILE" || return 1
-  redact < "$SUMMARY_FILE" > "$WORK_DIR/body.md" || refuse "could not redact the PR summary" || return 1
+  awk 'seen { print; next } /[^[:space:]]/ { seen = 1 }' "$SUMMARY_FILE" | redact > "$WORK_DIR/body.md" ||
+    refuse "could not redact the PR summary" || return 1
+
+  # One commit: the validated tree, on origin/$BRANCH, with the agent's messages (redacted) and author.
+  local commit
+  if [ "$ahead" = 1 ]; then
+    git log -1 --format=%B "$br" | redact > "$WORK_DIR/message.txt"
+  else
+    { printf '%s\n\n' "$title"; git log --reverse --format='* %B' "origin/$BRANCH..$br"; } | redact > "$WORK_DIR/message.txt"
+  fi || refuse "could not build the commit message" || return 1
+  commit="$(GIT_AUTHOR_NAME="$(git log -1 --format=%an "$br")" GIT_AUTHOR_EMAIL="$(git log -1 --format=%ae "$br")" \
+    git commit-tree "$br^{tree}" -p "origin/$BRANCH" -F "$WORK_DIR/message.txt")" || refuse "could not build the commit" || return 1
 
   install_push_guard
-  git push --quiet origin "refs/heads/$br:refs/heads/$br" || refuse "push of $br failed" || return 1
+  bounded "$NET_TIMEOUT" git push --quiet origin "$commit:refs/heads/$br" || refuse "push of $br failed" || return 1
   local url
   url="$(gh pr create -R "$GH_REPO" --base "$BRANCH" --head "$br" --label "$GARDENER_LABEL" \
     --title "$title" --body-file "$WORK_DIR/body.md")" || refuse "gh pr create failed for pushed branch $br" || return 1
-  log "GARDENER-RESULT: $url ($changed changed lines, $ahead commits)"
+  log "GARDENER-RESULT: $url ($changed changed lines in one commit, squashed from $ahead)"
 }
 
-if ! acquire_project_lock; then
+if [ "$LOCK_STATE" = busy ]; then
   log "gardener skipped: busy (another job of $PROJECT held the clone for ${LOCK_WAIT_SECONDS:-3600}s)"
   exit 75
 fi
@@ -116,7 +134,12 @@ if [ "${NEEDS_DOCKER:-0}" = 1 ] && ! ensure_docker; then
   exit 1
 fi
 
-PROMPT="$(cat "$KITCHEN_AUTOMATION/prompts/gardener.md")
+python3 "$KITCHEN_AUTOMATION/lib/sandbox_settings.py" "$WORK_DIR" \
+  "$(printf '%s\n' ${GARDENER_SANDBOX_WRITE[@]+"${GARDENER_SANDBOX_WRITE[@]}"})" \
+  ${GARDENER_SANDBOX_DOMAINS[@]+"${GARDENER_SANDBOX_DOMAINS[@]}"} -- \
+  ${GARDENER_SANDBOX_UNIX_SOCKETS[@]+"${GARDENER_SANDBOX_UNIX_SOCKETS[@]}"} > "$WORK_DIR/settings.json"
+
+PROMPT="$(cat "$PROMPT_FILE")
 
 Project facts:
 - base branch: $BRANCH
@@ -132,11 +155,12 @@ Project facts:
 STARTED=1
 status=0
 run_sealed claude -p "$PROMPT" \
+  --settings "$WORK_DIR/settings.json" --strict-mcp-config \
   --permission-mode acceptEdits \
   --allowedTools "Bash" "Read" "Edit" "Write" "Grep" "Glob" \
   --disallowedTools "Bash(gh:*)" "Bash(git push:*)" \
   --add-dir "$HISTORY_DIR" "$WORK_DIR" \
-  --output-format text || status=$?
+  --output-format text </dev/null || status=$?
 if [ "$status" != 0 ]; then
   log "GARDENER-RESULT: none - claude exited $status; nothing published"
   exit "$status"
