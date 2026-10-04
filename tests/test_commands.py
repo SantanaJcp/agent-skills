@@ -324,7 +324,7 @@ class RetroTests(ProjectFixture):
         ])
         self.write_claude([
             {"type": "queue-operation", "operation": "enqueue", "timestamp": "2099-01-01T10:00:00Z", "content": launched},
-            self.claude_event(launched, entrypoint="sdk-ts", origin=None),
+            self.claude_event(launched, entrypoint="sdk-ts", origin=None, cwd="/tmp"),
         ], session="probe", folder="-tmp")
         self.write_claude([
             {"type": "assistant", "timestamp": "2099-01-01T09:59:00Z", "message": {"content": [
@@ -335,7 +335,7 @@ class RetroTests(ProjectFixture):
 
         self.assertEqual(self.texts("--tool", "claude"), ["dale, sigue"])
         self.assertEqual(result.stdout.splitlines()[-1],
-                         "1 prompts included · 5 excluded (notification 2, agent-launched 1, non-interactive 1, replayed 1)")
+                         "1 prompts included · 5 excluded (notification 2, agent-launched 1, non-interactive 1, replayed 1) · 0 unknown provenance")
 
     def test_codex_unwraps_requests_and_drops_delegated_and_guardian_sessions(self):
         self.write_codex("human", "vscode", ["## Context:\nfiles\n## My request for Codex:\nsube a dev", "Act as the review sub-agent for this task. Review it"])
@@ -352,7 +352,7 @@ class RetroTests(ProjectFixture):
         result = self.kitchen("retro", "--since", "1d", "--tool", "codex", cwd=self.home)
 
         self.assertEqual(self.texts("--tool", "codex"), ["pon un monitor cada 5 min", "ya le di a restore"])
-        self.assertTrue(result.stdout.endswith("2 prompts included · 3 excluded (subagent 1, automation 1, non-interactive 1)\n"), result.stdout)
+        self.assertTrue(result.stdout.endswith("2 prompts included · 3 excluded (subagent 1, automation 1, non-interactive 1) · 0 unknown provenance\n"), result.stdout)
 
     def test_include_automated_shows_excluded_messages_with_their_reason(self):
         heartbeat = "<heartbeat>\n  <automation_id>phone-progress</automation_id>\n</heartbeat>"
@@ -368,7 +368,7 @@ class RetroTests(ProjectFixture):
         result = self.retro()
 
         self.assertEqual(json.loads(result.stdout)[0]["text"], "dale")
-        self.assertIn("1 prompts included · 0 excluded (none)", result.stderr)
+        self.assertIn("1 prompts included · 0 excluded (none) · 0 unknown provenance", result.stderr)
 
     def test_secrets_are_redacted(self):
         self.write_claude([self.claude_event("use token=abc123 please")])
