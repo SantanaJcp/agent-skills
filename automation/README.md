@@ -13,6 +13,7 @@ Schedule them with `bin/install-schedule <project>` and `bin/install-schedule --
 On Linux the gardener needs:
 
 - **A private `/tmp`.** .NET's named mutexes and MSBuild create directories straight in `/tmp`, so the sandboxes must write it. The job refuses to start unless `/tmp` is its own: its systemd unit sets `PrivateTmp=yes`. For a manual run, use `systemd-run --user -p PrivateTmp=yes --wait --pipe bin/weekly-gardener <project>`.
+- **An HTTPS `REPO_URL`.** In a user unit, `PrivateTmp` implies a user namespace where root-owned files show as `nobody`, and ssh then refuses its own config ("Bad owner or permissions"). Use an HTTPS URL with a git credential helper such as `gh auth setup-git`.
 - **Lingering.** `loginctl enable-linger $USER` keeps the timers running after logout.
 - **Single-node MSBuild.** The sandbox blocks Unix sockets, which MSBuild's worker nodes need, so .NET steps take `-m:1`.
 
