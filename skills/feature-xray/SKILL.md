@@ -11,6 +11,8 @@ Explain how something works today, from evidence, and hand me the decisions. The
 
 No edits, commits, branch changes, installs, migrations, deploys or deletions. Run only commands that read: `git log`, `grep`, builds and tests that touch no shared state, the project's verify skill in its read-only commands. If answering needs a mutating step, stop and ask.
 
+Temporary fixtures are allowed when you own them alone: a scratch file, a temp directory or a throwaway local database you create, use and remove before you reply; say what you created and that it is gone. Never touch shared resources: shared databases, queues, caches, remote environments, other people's branches or worktrees, or the user's own config.
+
 ## Steps
 
 1. **Scope.** State the area, the question it answers, and what is out of scope.

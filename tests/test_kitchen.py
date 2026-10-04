@@ -55,8 +55,8 @@ class KitchenFixture(unittest.TestCase):
         rules.write_text("# Rules\n")
         return rules
 
-    def kitchen(self, *args, denylist=None, cwd=None):
-        env = {**os.environ, "HOME": str(self.home), "KITCHEN_REPO": str(self.repo)}
+    def kitchen(self, *args, denylist=None, cwd=None, env_extra=None):
+        env = {**os.environ, "HOME": str(self.home), "KITCHEN_REPO": str(self.repo), **(env_extra or {})}
         env["KITCHEN_DENYLIST"] = str(denylist or self.home / "no-denylist.txt")
         env["KITCHEN_STATE"] = str(self.home / "state")
         env["KITCHEN_CONFIG"] = str(self.home / "config")
@@ -230,6 +230,26 @@ class LintTests(KitchenFixture):
         self.assertIn("broken link reference.md", self.lint().stdout)
 
 
+class CheckRunsTestsHermeticallyTests(KitchenFixture):
+    def test_tests_never_inherit_the_git_variables_a_hook_exports(self):
+        (self.repo / "tests").mkdir()
+        (self.repo / "tests" / "__init__.py").write_text("")
+        (self.repo / "tests" / "test_env.py").write_text(textwrap.dedent("""\
+            import os
+            import unittest
+
+
+            class Env(unittest.TestCase):
+                def test_no_git_variables(self):
+                    self.assertEqual([k for k in os.environ if k.startswith("GIT_")], [])
+            """))
+        hook_env = {"GIT_INDEX_FILE": str(self.repo / ".git" / "index"), "GIT_DIR": str(self.repo / ".git")}
+
+        result = self.kitchen("check", env_extra=hook_env)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+
 class InvocationParityTests(KitchenFixture):
     MANUAL = VALID_SKILL.replace('description:', 'disable-model-invocation: true\ndescription:')
 
@@ -288,6 +308,54 @@ class PublicSafetyTests(KitchenFixture):
 
     def test_term_inside_a_longer_word_is_not_flagged(self):
         result = self.denylisted(["novus"], "a novusual word\n")
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def staged(self, name, content):
+        path = self.repo / name
+        path.write_text(content)
+        subprocess.run(["git", "-C", str(self.repo), "add", "--", name], check=True)
+        return path
+
+    def test_secret_staged_then_removed_from_the_working_file_fails(self):
+        token = "gh" + "p_" + "A1b2C3d4" * 5
+        notes = self.staged("café notes.md", f"key {token}\n")
+        notes.write_text("clean now\n")
+
+        result = self.lint()
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("café notes.md (staged):1: GitHub token", result.stdout)
+
+    def test_staged_blob_equal_to_the_working_file_is_reported_once(self):
+        self.staged("notes.md", "see /" + "Users/someone/project\n")
+
+        result = self.lint()
+
+        self.assertEqual(result.stdout.count("personal path"), 1, result.stdout)
+
+    def test_each_credential_shape_fails(self):
+        samples = {
+            "GitHub token": "gh" + "s_" + "x" * 36,
+            "Slack token": "xo" + "xb-" + "1234567890-abcdef",
+            "AWS access key": "AK" + "IA" + "ABCDEFGHIJKLMNOP",
+            "API key": "s" + "k-proj-" + "q" * 32,
+            "JWT": ".".join(["ey" + "J" + "h" * 16, "ey" + "J" + "p" * 16, "s" * 20]),
+            "private key": "-----BEGIN " + "OPENSSH PRIVATE" + " KEY-----",
+            "credential assignment": "pass" + 'word = "' + "hunter2hunter" + '"',
+        }
+        for label, sample in samples.items():
+            with self.subTest(label):
+                (self.repo / "notes.md").write_text(f"x {sample}\n")
+
+                result = self.lint()
+
+                self.assertIn(f"notes.md:1: {label} in a public repo", result.stdout)
+
+    def test_placeholders_and_lookups_are_not_credentials(self):
+        (self.repo / "notes.md").write_text("pass" + "word: <redacted>\napi_key = $API_KEY\nsecret = os.environ[\"X\"]\n")
+
+        result = self.lint()
 
         self.assertEqual(result.returncode, 0, result.stdout)
 

@@ -7,9 +7,10 @@ import subprocess
 from pathlib import Path
 
 from . import journal
-from .common import git_out, parse_ts, state_dir
+from .common import git, git_common_dir, git_out, state_dir
 
 OWED_DECISION = re.compile(r"^\s*- \[ \]", re.MULTILINE)
+UNKNOWN = "unknown"  # a git read failed: never shown as zero or none
 
 
 def nightly(name: str) -> dict | None:
@@ -41,6 +42,36 @@ def pull_requests(repo: Path) -> dict:
     return {"open": json.loads(result.stdout or "[]")}
 
 
+def upstream(repo: Path, branch: str | None) -> dict | str | None:
+    """None when the branch has no upstream; UNKNOWN when git could not say."""
+    if branch is None:
+        return UNKNOWN
+    if branch == "HEAD":
+        return None  # detached
+    tracked = git(repo, "for-each-ref", "--format=%(upstream:short)", f"refs/heads/{branch}")
+    if tracked.returncode != 0:
+        return UNKNOWN
+    if not tracked.stdout.strip():
+        return None
+    counts = git_out(repo, "rev-list", "--left-right", "--count", f"{tracked.stdout.strip()}...HEAD")
+    if not counts:
+        return UNKNOWN
+    behind, ahead = (int(n) for n in counts.split())
+    return {"ahead": ahead, "behind": behind, "sha": git_out(repo, "rev-parse", f"{tracked.stdout.strip()}^{{commit}}")}
+
+
+def nightly_match(run: dict | None, head: str | None, up) -> str | None:
+    """Which local commit the nightly run tested, compared by full SHA; short SHAs are never matched."""
+    sha = (run or {}).get("sha") or ""
+    if len(sha) != 40:
+        return None
+    if sha == head:
+        return "HEAD"
+    if isinstance(up, dict) and sha == up.get("sha"):
+        return "upstream"
+    return None
+
+
 def project(repo: Path, since) -> dict:
     name = repo.name
     if not repo.is_dir():
@@ -49,25 +80,28 @@ def project(repo: Path, since) -> dict:
     if not toplevel:
         return {"name": name, "path": str(repo), "error": "not a git repository"}
 
-    counts = git_out(repo, "rev-list", "--left-right", "--count", "@{u}...HEAD")
-    behind, ahead = (int(n) for n in counts.split()) if counts else (None, None)
-    porcelain = git_out(repo, "status", "--porcelain") or ""
-    blocks = [b for b in (git_out(repo, "worktree", "list", "--porcelain") or "").split("\n\n") if b.strip()][1:]
-    prunable = sum(1 for b in blocks if "\nprunable" in b)
+    branch = git_out(repo, "rev-parse", "--abbrev-ref", "HEAD")
+    head = git_out(repo, "rev-parse", "HEAD")
+    status = git(repo, "status", "--porcelain")
+    listing = git(repo, "worktree", "list", "--porcelain")
+    blocks = [b for b in listing.stdout.split("\n\n") if b.strip()][1:] if listing.returncode == 0 else None
+    prunable = sum(1 for b in blocks if "\nprunable" in b) if blocks is not None else UNKNOWN
+    up = upstream(repo, branch)
+    run = nightly(name)
     decisions_file = repo / "decisions.md"
 
     return {
         "name": name,
         "path": toplevel,
-        "branch": git_out(repo, "rev-parse", "--abbrev-ref", "HEAD"),
-        "sha": git_out(repo, "rev-parse", "--short", "HEAD"),
-        "dirty": len([line for line in porcelain.splitlines() if line]),
-        "upstream": {"ahead": ahead, "behind": behind} if counts else None,
-        "extra_worktrees": len(blocks) - prunable,
+        "branch": branch or UNKNOWN,
+        "sha": head or UNKNOWN,
+        "dirty": len([line for line in status.stdout.splitlines() if line]) if status.returncode == 0 else UNKNOWN,
+        "upstream": up,
+        "extra_worktrees": len(blocks) - prunable if blocks is not None else UNKNOWN,
         "prunable_worktrees": prunable,
         "pull_requests": pull_requests(repo),
-        "nightly": nightly(name),
-        "journal": journal.read(since=since, repo=toplevel),
+        "nightly": {**run, "matches": nightly_match(run, head, up)} if run else None,
+        "journal": journal.read(since=since, project=git_common_dir(repo), repo=toplevel),
         "owed_decisions": len(OWED_DECISION.findall(decisions_file.read_text(encoding="utf-8"))) if decisions_file.is_file() else None,
     }
 
@@ -79,9 +113,10 @@ def render(report: list[dict], window: str) -> str:
         if "error" in p:
             out.append(f"{p['name']}  ✗ {p['error']} ({p['path']})")
             continue
-        upstream = "no upstream" if p["upstream"] is None else f"↑{p['upstream']['ahead']} ↓{p['upstream']['behind']}"
-        out.append(f"{p['name']}  {p['branch']} @ {p['sha']}  {upstream}  dirty: {p['dirty']}  extra worktrees: {p['extra_worktrees']}"
-                   + (f" (+{p['prunable_worktrees']} prunable)" if p["prunable_worktrees"] else ""))
+        up = p["upstream"]
+        upstream_text = "no upstream" if up is None else (f"upstream {UNKNOWN}" if up == UNKNOWN else f"↑{up['ahead']} ↓{up['behind']}")
+        out.append(f"{p['name']}  {p['branch']} @ {p['sha'][:8]}  {upstream_text}  dirty: {p['dirty']}  extra worktrees: {p['extra_worktrees']}"
+                   + (f" (+{p['prunable_worktrees']} prunable)" if p["prunable_worktrees"] not in (0, UNKNOWN) else ""))
 
         run = p["nightly"]
         if run is None:
@@ -89,7 +124,10 @@ def render(report: list[dict], window: str) -> str:
         else:
             mark = "✓" if run.get("status") == "green" else "✗"
             failed = f" (failed: {run['failed_step']})" if run.get("failed_step") else ""
-            out.append(f"  nightly    {mark} {run.get('status')} at {run.get('ts')} on {run.get('sha')}{failed} · green streak {run['green_streak']}")
+            matches = f" (= {run['matches']})" if run.get("matches") else ""
+            warnings = f" · warnings: {'; '.join(map(str, run['warnings']))}" if run.get("warnings") else ""
+            out.append(f"  nightly    {mark} {run.get('status')} at {run.get('ts')} on {str(run.get('sha'))[:8]}{matches}{failed}"
+                       f" · green streak {run['green_streak']}{warnings}")
 
         prs = p["pull_requests"]
         if "error" in prs:

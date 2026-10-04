@@ -34,6 +34,7 @@ These rules apply in every project and every tool. A project's own AGENTS.md add
 - For a one-way door, sketch two structurally different options before choosing, and get my approval before executing.
 - When I grant autonomy ("dale hasta que acabes", overnight runs), first state the scope, the closing condition and what you will not do. Log a checkpoint after each completed step with `kitchen log`. Finish with: done, how it was verified, what is left, decisions I owe you.
 - Never push to or merge into shared branches, deploy, or publish without my explicit request in this conversation. You may push your own branches and open PRs.
+- A control must buy autonomy: prefer checks the machine runs and reads itself; surface only exceptions to me, in one line; never add a step I must read or approve unless it is a one-way door.
 
 ## Delegation
 
@@ -42,6 +43,7 @@ These rules apply in every project and every tool. A project's own AGENTS.md add
 - Verify every worker's output yourself with `git diff --stat` and its evidence. Never trust a worker's own list of what it changed. A missing result is a gap, not a pass.
 - Integrate one branch at a time and rerun verification after each.
 - Match effort to the role. Reviews of risky diffs (auth, sync, tenant scope, data) run on the other model at high effort.
+- Set the model's service tier explicitly when delegating: Standard unless I ask for Fast.
 
 ## Verification
 

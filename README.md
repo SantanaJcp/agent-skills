@@ -39,6 +39,8 @@ kitchen inventory           # skills, rule files and Codex automations the agent
 kitchen retro --since 7d    # my prompts from Claude Code and Codex, for the retro skill
 ```
 
+`status` shows `unknown` whenever a git read fails, never a zero; it groups `kitchen log` checkpoints by repository, so a checkpoint logged from a worktree shows under its repo. `retro` keeps only messages I typed: it classifies each one by provenance (Claude `origin`, `promptSource`, `entrypoint`, synthetic replays and agent-launched `claude -p` sessions; Codex `originator`, `source`, `thread_source` and heartbeat automations), ends with one coverage line of included and excluded counts by reason, and `--include-automated` shows the excluded ones tagged with their reason.
+
 Per-machine config lives outside the repo, in `~/.config/kitchen/`: `projects.txt` (one project path per line) and `denylist.txt`. State (journal, nightly history, retro reports) lives in `~/.local/state/kitchen/`.
 
 ## Skills
@@ -62,7 +64,7 @@ Manual skills are invoked with `/name` in Claude Code and `$name` in Codex; `kit
 bin/kitchen check     # lint skills, scan for private data, run the tests
 ```
 
-The pre-commit hook runs the same command. Because this repo is public, `check` rejects personal absolute paths and any term listed in `~/.config/kitchen/denylist.txt` (one term per line, kept outside the repo).
+The pre-commit hook runs the same command. Because this repo is public, `check` rejects personal absolute paths, credential shapes (GitHub, Slack, AWS and OpenAI-style tokens, JWTs, private key blocks, literal password or secret assignments) and any term listed in `~/.config/kitchen/denylist.txt` (one term per line, kept outside the repo). It scans the working tree and the exact staged blobs, so a secret staged and then deleted from the working file still fails.
 
 ## License
 

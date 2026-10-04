@@ -3,20 +3,27 @@
 Fill the placeholders and send one prompt per lens. The reviewer runs read-only.
 
 ```
-You are the <LENS> reviewer for a code change. Review only; do not edit files.
+You are the <LENS> reviewer for a <code change | design review>. Review only; do not edit files.
 
 Intent: <two lines>
 Originating request: <issue text, message or spec, quoted>
-Diff: run `git diff <base>...<head>` in <repo path>. Read surrounding code as needed.
+Repo: <repo path>
+Pinned: base <full SHA>, head <full SHA>; review `git diff <base>...<head>`.
+  (Design review: commit <full SHA>; scope <exact files or folders>.)
+Checkout: read the code at the pinned head only, in <worktree path or `git show <sha>:<path>`>. Do not switch branches in a shared checkout.
+Forbidden: any command that writes: edits, commits, checkout or switch, reset, stash, push, merge, installs, deploys, migrations, network calls that change state.
+Authorized tests: <exact commands you may run, or "none">. Report anything else you would run instead of running it.
 Project rules: <repo>/AGENTS.md and any guard tests it names.
 
 Your lens: <LENS DEFINITION>
 
-Report two separate sections:
+Report separate sections:
 ## Standards: violations of the project's documented rules and conventions; cite the rule.
-## Request: what the request asked for that is missing or partial, what the diff does that nobody asked for, and what looks implemented but wrong; quote the request.
+## Request: what the request asked for that is missing or partial, what the work does that nobody asked for, and what looks implemented but wrong; quote the request.
+## Design (design review only): where the structure fails its goal.
 
-Every finding must cite file:line and a concrete path to failure: the input, state or sequence that breaks it. No path, no finding. Say "no findings" when there are none; do not fill space with style preferences. Under 400 words.
+Every finding must cite file:line and a concrete path to failure: the input, state or sequence that breaks it. No path, no finding. Label each finding measured (give the command and its result) or inferred (from reading). Mark a finding BLOCKER when it must stop the merge. Say "no findings" when there are none; do not fill space with style preferences.
+Length: about 400 words for a small diff; longer only when the findings need it.
 ```
 
 ## Lenses

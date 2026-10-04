@@ -5,7 +5,7 @@ import json
 import os
 from pathlib import Path
 
-from .common import git_out, now, parse_ts, state_dir
+from .common import git_common_dir, git_out, now, parse_ts, state_dir
 
 STATUSES = ("note", "done", "blocked", "decision")
 
@@ -29,6 +29,7 @@ def write(message: str, status: str, cwd: Path) -> dict:
     entry = {
         "ts": now().isoformat(timespec="seconds"),
         "repo": repo or str(cwd.resolve()),
+        "project": git_common_dir(cwd) if repo else None,  # worktrees of one repo share it
         "branch": git_out(cwd, "rev-parse", "--abbrev-ref", "HEAD") if repo else None,
         "sha": git_out(cwd, "rev-parse", "--short", "HEAD") if repo else None,
         "agent": detect_agent(),
@@ -42,7 +43,15 @@ def write(message: str, status: str, cwd: Path) -> dict:
     return entry
 
 
-def read(since=None, repo: str | None = None) -> list[dict]:
+def belongs(entry: dict, project: str | None, repo: str | None) -> bool:
+    """An entry belongs to a repo by git common dir, so checkpoints logged from a worktree roll up.
+    Entries written before the common dir was recorded fall back to their toplevel path."""
+    if entry.get("project"):
+        return entry["project"] == project
+    return entry.get("repo") == repo
+
+
+def read(since=None, project: str | None = None, repo: str | None = None) -> list[dict]:
     if not journal_path().is_file():
         return []
     entries = []
@@ -56,7 +65,7 @@ def read(since=None, repo: str | None = None) -> list[dict]:
         ts = parse_ts(entry.get("ts", ""))
         if since and (ts is None or ts < since):
             continue
-        if repo and entry.get("repo") != repo:
+        if (project or repo) and not belongs(entry, project, repo):
             continue
         entries.append(entry)
     return entries

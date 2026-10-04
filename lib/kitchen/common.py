@@ -38,6 +38,12 @@ def git_out(repo: Path, *args: str) -> str | None:
     return result.stdout.strip() if result.returncode == 0 else None
 
 
+def git_common_dir(path: Path) -> str | None:
+    """The repo a path belongs to, shared by all its worktrees: the resolved git common dir."""
+    out = git_out(path, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    return str(Path(out).resolve()) if out else None
+
+
 def now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
 

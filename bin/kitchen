@@ -21,7 +21,7 @@ from pathlib import Path
 REPO = Path(os.environ.get("KITCHEN_REPO") or Path(__file__).resolve().parent.parent).resolve()
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
 
-from kitchen import common, inventory, journal, status, transcripts  # noqa: E402
+from kitchen import common, credentials, inventory, journal, status, transcripts  # noqa: E402
 MAX_SKILL_LINES = 150
 MAX_DESCRIPTION_CHARS = 1024
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -247,18 +247,43 @@ def denylist_path() -> Path:
     return Path(os.environ.get("KITCHEN_DENYLIST") or home() / ".config" / "kitchen" / "denylist.txt")
 
 
-def publishable_files() -> list[Path]:
-    listed = subprocess.run(
-        ["git", "-C", str(REPO), "ls-files", "-co", "--exclude-standard"], capture_output=True, text=True
-    )
-    if listed.returncode != 0:
-        raise RuntimeError(f"cannot list repo files: {listed.stderr.strip()}")
-    return [REPO / line for line in listed.stdout.splitlines() if (REPO / line).is_file()]
+def git_bytes(*args: str) -> bytes:
+    result = subprocess.run(["git", "-C", str(REPO), *args], capture_output=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"git {' '.join(args)} failed: {result.stderr.decode(errors='replace').strip()}")
+    return result.stdout
+
+
+def publishable_texts() -> list[tuple[str, str]]:
+    """(label, text) for every file the next commit or push can publish.
+
+    The working tree and the index can differ: a secret staged and then removed from the working
+    file would still be committed. So the exact staged blobs are scanned too, read NUL-safe.
+    """
+    working: dict[str, bytes] = {}
+    for raw in git_bytes("ls-files", "-z", "-co", "--exclude-standard").split(b"\0"):
+        name = os.fsdecode(raw)
+        if raw and (REPO / name).is_file():
+            working[name] = (REPO / name).read_bytes()
+    texts = list(working.items())
+    for raw in git_bytes("diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR").split(b"\0"):
+        name = os.fsdecode(raw)
+        blob = git_bytes("cat-file", "blob", f":{name}") if raw else None
+        if blob is not None and blob != working.get(name):
+            texts.append((f"{name} (staged)", blob))
+    decoded = []
+    for label, data in texts:
+        try:
+            decoded.append((label, data.decode("utf-8")))
+        except UnicodeDecodeError:
+            continue
+    return decoded
 
 
 def public_safety() -> tuple[list[str], list[str]]:
-    """The repo is public: no personal absolute paths, no private terms."""
+    """The repo is public: no personal absolute paths, no private terms, no credentials."""
     patterns = [("personal path", re.compile(r"/(?:Users|home)/[A-Za-z0-9._-]+/"))]
+    patterns += [(label, pattern) for label, pattern in credentials.CREDENTIALS]
     warnings: list[str] = []
     if denylist_path().is_file():
         terms = [
@@ -274,15 +299,13 @@ def public_safety() -> tuple[list[str], list[str]]:
         warnings.append(f"private-term scan skipped: {denylist_path()} does not exist")
 
     problems: list[str] = []
-    for path in publishable_files():
-        try:
-            text = path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            continue
+    for label_path, text in publishable_texts():
         for number, line in enumerate(text.splitlines(), start=1):
             for label, pattern in patterns:
                 if pattern.search(line):
-                    problems.append(f"{path.relative_to(REPO)}:{number}: {label} in a public repo")
+                    problem = f"{label_path}:{number}: {label} in a public repo"
+                    if problem not in problems:
+                        problems.append(problem)
     return problems, warnings
 
 
@@ -301,7 +324,10 @@ def cmd_check(args: argparse.Namespace) -> int:
         return 1
     if args.lint_only:
         return 0
-    tests = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-t", "."], cwd=REPO)
+    # A git hook exports GIT_DIR, GIT_INDEX_FILE and friends. Tests build throwaway repos; inheriting those
+    # variables would point their git commands at this repo (in a worktree: commits, branches, core.bare).
+    test_env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    tests = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-t", "."], cwd=REPO, env=test_env)
     return tests.returncode
 
 
@@ -330,8 +356,12 @@ def cmd_inventory(args: argparse.Namespace) -> int:
 
 
 def cmd_retro(args: argparse.Namespace) -> int:
-    prompts = transcripts.collect(common.parse_since(args.since), args.tool, args.match)
-    print(json.dumps(prompts, indent=2, ensure_ascii=False) if args.json else transcripts.render(prompts, args.full))
+    prompts, coverage = transcripts.collect(common.parse_since(args.since), args.tool, args.match, args.include_automated)
+    if args.json:
+        print(json.dumps(prompts, indent=2, ensure_ascii=False))
+        print(transcripts.coverage_line(coverage), file=sys.stderr)  # keeps stdout parseable
+    else:
+        print(transcripts.render(prompts, args.full, coverage))
     return 0
 
 
@@ -371,6 +401,8 @@ def main() -> int:
     retro.add_argument("--tool", choices=("all", "claude", "codex"), default="all")
     retro.add_argument("--match", help="only prompts matching this regex (case-insensitive)")
     retro.add_argument("--full", action="store_true", help="do not truncate prompts")
+    retro.add_argument("--include-automated", action="store_true",
+                       help="also show messages excluded by provenance (automations, notifications, subagents, agent-launched runs), tagged with the reason")
     retro.add_argument("--json", action="store_true")
     retro.set_defaults(func=cmd_retro)
 

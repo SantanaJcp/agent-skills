@@ -11,6 +11,7 @@ You are improving the environment the agents work in, not judging one session.
 ## Steps
 
 1. **Extract.** `kitchen retro --since 7d` prints my prompts from both tools with project, session and time. Widen the window when I ask.
+   - **Validate provenance.** Its last line is the coverage: prompts included, and excluded by reason (notifications, subagents, automations, agent-launched and non-interactive runs, replayed history). Copy that line into the report. Before counting anything, skim `kitchen retro --since 7d --include-automated` for a non-human message that slipped through (a heartbeat, a delegation notice, a probe) or a human one that was excluded; name each one and leave it out of the counts. A count built on automated messages is a fake count.
 2. **Find** what cost me attention: corrections ("no", "otra vez", "te dije", "eso está mal", "outdated"), instructions repeated across sessions, the same question asked twice, agents rebuilding the same script, and mistakes with real damage.
 3. **Group** by root cause, not by wording. Keep a group with two or more occurrences, or one with real damage.
 4. **Pick the strongest layer** that would have prevented it:
@@ -27,7 +28,9 @@ You are improving the environment the agents work in, not judging one session.
 
 ## Output
 
-Write the report to `~/.local/state/kitchen/retro/<yyyy-mm-dd>.md` and summarize it in the reply.
+Write the report to `~/.local/state/kitchen/retro/<yyyy-mm-dd>.md` and summarize it in the reply. When I said read-only (or the run cannot write there), print the full report in the reply instead and write nothing.
+
+Start the report with the coverage line and any provenance corrections.
 
 | # | Problem | Evidence (count, one quote, session) | Layer | Concrete change (file and text or test) | Cost |
 |---|---|---|---|---|---|
