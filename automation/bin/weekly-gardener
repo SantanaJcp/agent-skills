@@ -1,12 +1,156 @@
 #!/usr/bin/env bash
 # Weekly gardener: one unattended Claude Code run that opens at most one small, verified PR.
 # Skips while a previous gardener PR is still open, so reviews never pile up.
+# Generation and publication are separate:
+#   1. Claude runs sealed: no gh, no tokens, no SSH, no git credentials, push URL refused; its Bash runs in
+#      Claude Code's OS sandbox (no reads of credential locations, writes and network only where configured,
+#      see lib/sandbox_settings.py). It may only commit on a local branch gardener/<date>-<slug> and write a
+#      PR summary file.
+#   2. After Claude exits, this script validates the branch's final tree against origin/$BRANCH: the only
+#      gardener branch, 1+ commits, at most GARDENER_MAX_CHANGED_LINES changed lines (default 400), none of
+#      GARDENER_PROTECTED_PATHS (default: .github/*), no credential-looking content in the added lines
+#      (lib/scan_diff.py). It then publishes ONE new commit holding exactly that
+#      validated tree on top of origin/$BRANCH, never the agent's history (a file added and removed again
+#      there would otherwise be published), and opens the PR.
 # Usage: weekly-gardener <project>
 source "$(dirname "$0")/../lib/common.sh" "$1"
 
-RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)"
+RUN_DATE="$(date -u +%Y-%m-%d)"
 RUN_LOG="$LOG_DIR/gardener-$RUN_ID.log"
+WORK_DIR="$STATE_DIR/gardener/$RUN_ID"
+SUMMARY_FILE="$WORK_DIR/summary.md"
 exec > >(tee -a "$RUN_LOG") 2>&1
+
+MAX_CHANGED_LINES="${GARDENER_MAX_CHANGED_LINES:-400}"
+declare -p GARDENER_PROTECTED_PATHS >/dev/null 2>&1 || GARDENER_PROTECTED_PATHS=(".github/*")
+declare -p GARDENER_SANDBOX_DOMAINS >/dev/null 2>&1 || GARDENER_SANDBOX_DOMAINS=()
+declare -p GARDENER_SANDBOX_WRITE >/dev/null 2>&1 || GARDENER_SANDBOX_WRITE=()
+declare -p GARDENER_SANDBOX_READ >/dev/null 2>&1 || GARDENER_SANDBOX_READ=()
+declare -p GARDENER_ENV_PASS >/dev/null 2>&1 || GARDENER_ENV_PASS=()  # extra variable names the build needs
+declare -p GARDENER_SANDBOX_UNIX_SOCKETS >/dev/null 2>&1 || GARDENER_SANDBOX_UNIX_SOCKETS=()
+PROMPT_FILE="${GARDENER_PROMPT_FILE:-$KITCHEN_AUTOMATION/prompts/gardener.md}"  # override only for canary probes
+STARTED=0
+
+finish() {
+  local rc=$?
+  trap - EXIT INT TERM HUP
+  set +e
+  if [ "$STARTED" = 1 ]; then
+    # Nothing the agent wrote runs unsealed: the tree goes back to the pinned base and every untracked file,
+    # node_modules included, is removed before the project's cleanup command runs, all with hooks off.
+    if git -C "$CLONE_DIR" -c core.hooksPath=/dev/null checkout --quiet --force --detach "$BASE_SHA" &&
+      git -C "$CLONE_DIR" -c core.hooksPath=/dev/null clean --quiet -ffdx; then
+      if [ -n "${CLEANUP_CMD:-}" ] &&
+        ! (cd "$CLONE_DIR" && bash -c "$CLEANUP_CMD") > "$LOG_DIR/gardener-$RUN_ID-cleanup.log" 2>&1; then
+        log "cleanup FAILED: something the gardener started may still be running (log $LOG_DIR/gardener-$RUN_ID-cleanup.log)"
+      fi
+    else
+      log "FAILED to restore the clone to $BASE_SHA; cleanup not run from a tree the agent wrote"
+    fi
+  fi
+  find "$LOG_DIR" -name 'gardener-*' -mtime +90 -delete
+  find "$STATE_DIR/gardener" -mindepth 1 -maxdepth 1 -mtime +90 -exec rm -rf {} + 2>/dev/null
+  log "gardener end: status=$rc"
+  exit "$rc"
+}
+trap finish EXIT
+trap 'log "gardener interrupted (SIGINT)"; exit 130' INT
+trap 'log "gardener interrupted (SIGTERM)"; exit 143' TERM
+trap 'log "gardener interrupted (SIGHUP)"; exit 129' HUP
+
+# Claude's environment: everything it needs to edit, build, test and commit; nothing to publish with.
+run_sealed() {
+  local sealed="$KITCHEN_AUTOMATION/shims/sealed" name keep=()
+  mkdir -p "$WORK_DIR/gh-config"
+  # The environment is an allowlist: nothing inherited reaches Claude unless named here. HOME and USER let
+  # claude read its own login from the macOS keychain; the two auth variables pass only when set (an
+  # account that logs in with a token instead), and are then visible to the agent's Bash too.
+  # Claude Code re-applies the user's shell startup files to every Bash command (a shell snapshot taken
+  # outside the sandbox), which would bring back their exports, functions and aliases, tokens included.
+  # So the agent's shell is zsh with an empty ZDOTDIR: no user startup file is read.
+  mkdir -p "$WORK_DIR/zdotdir"
+  for name in HOME USER LOGNAME TMPDIR LANG TERM ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN \
+    ${GARDENER_ENV_PASS[@]+"${GARDENER_ENV_PASS[@]}"} $(compgen -e | grep '^LC_' || true); do
+    if [ -n "${!name+x}" ]; then keep+=("$name=${!name}"); fi
+  done
+  env -i "${keep[@]}" \
+    SHELL=/bin/zsh ZDOTDIR="$WORK_DIR/zdotdir" \
+    PATH="$sealed:$TOOL_PATH" \
+    GH_CONFIG_DIR="$WORK_DIR/gh-config" \
+    GIT_SSH_COMMAND="$sealed/refuse" GIT_ASKPASS="$sealed/refuse" SSH_ASKPASS="$sealed/refuse" GIT_TERMINAL_PROMPT=0 \
+    GIT_CONFIG_GLOBAL="$WORK_DIR/gitconfig" \
+    GIT_CONFIG_COUNT=2 \
+    GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0= \
+    GIT_CONFIG_KEY_1=remote.origin.pushurl GIT_CONFIG_VALUE_1="kitchen-sealed://the-gardener-job-publishes" \
+    GARDENER_BRANCH_PREFIX="gardener/$RUN_DATE-" GARDENER_SUMMARY_FILE="$SUMMARY_FILE" \
+    "$@"
+}
+
+refuse() { log "GARDENER-RESULT: refused - $1"; return 1; }
+
+# Deterministic publication of what the agent committed. Returns 1 when it refuses or fails.
+# Every check and the published commit use SHAs pinned once (BASE_SHA before Claude ran, the branch's
+# commit and tree right here), never ref names: a leftover agent process could move a ref mid-publish.
+# Git runs with hooks off: the working tree (where project hooks live) was writable by the agent.
+publish() {
+  local listing br head tree ahead added deleted path pattern changed=0 title
+  listing="$(git for-each-ref --format='%(objectname) %(refname:short)' refs/heads/gardener/)"
+  if [ -z "$listing" ]; then
+    log "GARDENER-RESULT: none - no gardener branch was committed"
+    return 0
+  fi
+  [ "$(printf '%s\n' "$listing" | wc -l | tr -d ' ')" = 1 ] || refuse "more than one gardener branch: $(echo $listing)" || return 1
+  head="${listing%% *}"
+  br="${listing#* }"
+  tree="$(git rev-parse --verify --quiet "$head^{tree}")" || refuse "cannot read the tree of $br" || return 1
+  local name_re="^gardener/${RUN_DATE}-[a-z0-9][a-z0-9-]*$"
+  [[ "$br" =~ $name_re ]] || refuse "branch $br is not named gardener/$RUN_DATE-<slug>" || return 1
+  git merge-base --is-ancestor "$BASE_SHA" "$head" || refuse "$br does not start from origin/$BRANCH" || return 1
+  ahead="$(git rev-list --count "$BASE_SHA..$head")"
+  [ "$ahead" -ge 1 ] || refuse "$br has no commits ahead of origin/$BRANCH" || return 1
+  while IFS=$'\t' read -r -d '' added deleted path; do
+    [ "$added" = - ] && { refuse "binary change in $path"; return 1; }
+    changed=$((changed + added + deleted))
+    for pattern in ${GARDENER_PROTECTED_PATHS[@]+"${GARDENER_PROTECTED_PATHS[@]}"}; do
+      # shellcheck disable=SC2254
+      case "$path" in $pattern) refuse "$br touches protected path $path ($pattern)"; return 1 ;; esac
+    done
+  done < <(git diff --no-renames --numstat -z "$BASE_SHA" "$tree")
+  [ "$changed" -le "$MAX_CHANGED_LINES" ] || refuse "$br changes $changed lines; the bound is $MAX_CHANGED_LINES" || return 1
+  # Second layer, independent of the sandbox: no credential-looking content in what would be published.
+  local secrets
+  secrets="$(git diff -U0 --no-color "$BASE_SHA" "$tree" | python3 "$KITCHEN_AUTOMATION/lib/scan_diff.py")" ||
+    { refuse "possible secret in the diff: $(printf '%s' "$secrets" | tr '\n' ';' | cut -c1-300)"; return 1; }
+  [ -s "$SUMMARY_FILE" ] || refuse "no PR summary at $SUMMARY_FILE" || return 1
+  title="$(grep -m1 -v '^[[:space:]]*$' "$SUMMARY_FILE" | sed -E 's/^#+[[:space:]]*//' | cut -c1-120 | redact)" || refuse "could not read the PR title" || return 1
+  [ -n "$title" ] || refuse "empty PR title in $SUMMARY_FILE" || return 1
+  awk 'seen { print; next } /[^[:space:]]/ { seen = 1 }' "$SUMMARY_FILE" | redact > "$WORK_DIR/body.md" ||
+    refuse "could not redact the PR summary" || return 1
+
+  # One commit: the validated tree, on the pinned base, with the agent's messages (redacted) and author.
+  local commit
+  if [ "$ahead" = 1 ]; then
+    git log -1 --format=%B "$head" | redact > "$WORK_DIR/message.txt"
+  else
+    { printf '%s\n\n' "$title"; git log --reverse --format='* %B' "$BASE_SHA..$head"; } | redact > "$WORK_DIR/message.txt"
+  fi || refuse "could not build the commit message" || return 1
+  commit="$(GIT_AUTHOR_NAME="$(git log -1 --format=%an "$head")" GIT_AUTHOR_EMAIL="$(git log -1 --format=%ae "$head")" \
+    git commit-tree "$tree" -p "$BASE_SHA" -F "$WORK_DIR/message.txt")" || refuse "could not build the commit" || return 1
+  [ "$(git rev-parse "$commit^{tree}")" = "$tree" ] || refuse "the built commit does not hold the validated tree" || return 1
+
+  # The refspec is built here and can only name refs/heads/gardener/...; no hook from the tree runs.
+  bounded "$NET_TIMEOUT" git -c core.hooksPath=/dev/null push --quiet origin "$commit:refs/heads/$br" ||
+    refuse "push of $br failed" || return 1
+  local url
+  url="$(gh pr create -R "$GH_REPO" --base "$BRANCH" --head "$br" --label "$GARDENER_LABEL" \
+    --title "$title" --body-file "$WORK_DIR/body.md")" || refuse "gh pr create failed for pushed branch $br" || return 1
+  log "GARDENER-RESULT: $url ($changed changed lines in one commit, squashed from $ahead)"
+}
+
+if [ "$LOCK_STATE" = busy ]; then
+  log "gardener skipped: busy (another job of $PROJECT held the clone for ${LOCK_WAIT_SECONDS:-3600}s)"
+  exit 75
+fi
 
 gh label create "$GARDENER_LABEL" -R "$GH_REPO" --color 0E8A16 --description "Weekly gardener PR" >/dev/null 2>&1 || true
 pending="$(gh pr list -R "$GH_REPO" --label "$GARDENER_LABEL" --state open --json number --jq 'length')"
@@ -17,32 +161,50 @@ fi
 log "gardener start: project=$PROJECT"
 sync_clone
 cd "$CLONE_DIR"
+BASE_SHA="$(git rev-parse --verify "origin/$BRANCH^{commit}")"  # pinned before the agent can touch refs
+# Branches left by earlier runs were published (they live on origin) or refused; start from none.
+git for-each-ref --format='%(refname)' refs/heads/gardener/ | while read -r ref; do git update-ref -d "$ref"; done
+mkdir -p "$WORK_DIR"
 if [ "${NEEDS_DOCKER:-0}" = 1 ] && ! ensure_docker; then
   log "gardener end: status=1 (Docker is required and not available; the gardener could not verify its change)"
   exit 1
 fi
 
-PROMPT="$(cat "$KITCHEN_AUTOMATION/prompts/gardener.md")
+# Reads are an allowlist: the clone, the run's work dir, the metrics history and the project's tool paths.
+sandbox_args=(--read "$CLONE_DIR" --read "$WORK_DIR" --read "$HISTORY_DIR" --write "$WORK_DIR")
+for path in ${GARDENER_SANDBOX_READ[@]+"${GARDENER_SANDBOX_READ[@]}"}; do sandbox_args+=(--read "$path"); done
+for path in ${GARDENER_SANDBOX_WRITE[@]+"${GARDENER_SANDBOX_WRITE[@]}"}; do sandbox_args+=(--read "$path" --write "$path"); done
+for name in ${GARDENER_SANDBOX_DOMAINS[@]+"${GARDENER_SANDBOX_DOMAINS[@]}"}; do sandbox_args+=(--domain "$name"); done
+for path in ${GARDENER_SANDBOX_UNIX_SOCKETS[@]+"${GARDENER_SANDBOX_UNIX_SOCKETS[@]}"}; do sandbox_args+=(--socket "$path"); done
+python3 "$KITCHEN_AUTOMATION/lib/sandbox_settings.py" "${sandbox_args[@]}" > "$WORK_DIR/settings.json"
+# ~/.gitconfig is outside the allowlist: the agent's git gets only the identity.
+git config --file "$WORK_DIR/gitconfig" user.name "$(git config user.name || echo kitchen-gardener)"
+git config --file "$WORK_DIR/gitconfig" user.email "$(git config user.email || echo kitchen-gardener@localhost)"
+
+PROMPT="$(cat "$PROMPT_FILE")
 
 Project facts:
 - base branch: $BRANCH
-- gardener label: $GARDENER_LABEL
+- your branch name: gardener/$RUN_DATE-<slug> (exactly one branch)
+- PR summary file: $SUMMARY_FILE
+- largest diff the job will publish: $MAX_CHANGED_LINES changed lines
+- paths the job refuses to publish: ${GARDENER_PROTECTED_PATHS[*]:-none}
 - quality metrics command: ${QUALITY_CMD:-none configured}
 - committed baseline: ${BASELINE_FILE:-none configured}
 - metrics history (one JSON object per nightly run): $HISTORY_DIR/history.jsonl
 - run id: $RUN_ID"
 
+STARTED=1
 status=0
-claude -p "$PROMPT" \
+run_sealed claude -p "$PROMPT" \
+  --settings "$WORK_DIR/settings.json" --strict-mcp-config \
   --permission-mode acceptEdits \
   --allowedTools "Bash" "Read" "Edit" "Write" "Grep" "Glob" \
-  --disallowedTools "Bash(gh pr merge:*)" "Bash(git push --force:*)" "Bash(git push -f:*)" \
-  --add-dir "$HISTORY_DIR" \
-  --output-format text || status=$?
-
-if [ -n "${CLEANUP_CMD:-}" ] && ! bash -c "$CLEANUP_CMD" > "$LOG_DIR/gardener-$RUN_ID-cleanup.log" 2>&1; then
-  log "cleanup FAILED: something the gardener started may still be running (log $LOG_DIR/gardener-$RUN_ID-cleanup.log)"
+  --disallowedTools "Bash(gh:*)" "Bash(git push:*)" \
+  --add-dir "$HISTORY_DIR" "$WORK_DIR" \
+  --output-format text </dev/null || status=$?
+if [ "$status" != 0 ]; then
+  log "GARDENER-RESULT: none - claude exited $status; nothing published"
+  exit "$status"
 fi
-find "$LOG_DIR" -name 'gardener-*' -mtime +90 -delete
-log "gardener end: status=$status"
-exit "$status"
+publish

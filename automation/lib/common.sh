@@ -3,6 +3,8 @@
 # Config: ${KITCHEN_CONFIG:-~/.config/kitchen}/automation/<project>.env (private, never in this repo)
 # State:  ${KITCHEN_STATE:-~/.local/state/kitchen}/automation/<project>/ and nightly/<project>.jsonl
 set -euo pipefail
+# Jobs only ever work on their own clone; a GIT_DIR inherited from a git hook would redirect them.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_PREFIX GIT_NAMESPACE
 
 KITCHEN_AUTOMATION="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT="${1:?usage: <job> <project>}"
@@ -26,35 +28,93 @@ TOOL_PATH="${EXTRA_PATH:-}:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/us
 export KITCHEN_REAL_GH="${KITCHEN_REAL_GH:-$(PATH="$TOOL_PATH" command -v gh || true)}"
 export PATH="$KITCHEN_AUTOMATION/shims:$TOOL_PATH"
 
+# Every job runs under lib/supervise.py: one job at a time per project (the guard and the gardener share
+# the clone that sync_clone resets), in its own process group that is stopped as a whole before the lock
+# is released. The supervisor re-runs this script with KITCHEN_LOCK_STATE=held, or =busy when the lock
+# stayed taken for LOCK_WAIT_SECONDS (default 3600); the job then records the skip.
+# The supervisor also refuses to release the project while any process still has files open in the clone
+# or the gardener's work dirs (see lib/supervise.py); such survivors mark this run's record incomplete.
+if [ -z "${KITCHEN_LOCK_STATE:-}" ]; then
+  export KITCHEN_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
+  exec python3 "$KITCHEN_AUTOMATION/lib/supervise.py" "$STATE_DIR/job.lock" "${LOCK_WAIT_SECONDS:-3600}" "${LOCK_POLL_SECONDS:-5}" \
+    --watch "$CLONE_DIR" --watch "$STATE_DIR/gardener" --record "$NIGHTLY_RECORD" --run-id "$KITCHEN_RUN_ID" \
+    -- "$BASH" "$0" "$PROJECT"
+fi
+LOCK_STATE="$KITCHEN_LOCK_STATE"
+RUN_ID="$KITCHEN_RUN_ID"
+unset KITCHEN_LOCK_STATE KITCHEN_RUN_ID
+
 log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
 
+# A deadline for anything that waits on the network (gh goes through the bounded gh shim).
+bounded() { python3 "$KITCHEN_AUTOMATION/lib/bounded.py" "$@"; }
+NET_TIMEOUT="${NET_TIMEOUT_SECONDS:-600}"
+
+# Problems that did not change the verdict but must not hide: logged now, recorded with the run.
+WARNINGS=()
+warn() { WARNINGS+=("$1"); log "WARNING: $1"; }
+
+# Secrets out of anything that leaves the machine (stdin to stdout).
+redact() { python3 "$KITCHEN_AUTOMATION/lib/redact.py"; }
+
 # A dedicated clone at the tip of $BRANCH; the developer's checkout is never touched.
+# Destructive (reset and clean): call it only while holding the project lock. Hooks stay off until the
+# tree is back at origin/$BRANCH: the gardener's agent could write files in the previous working tree.
 sync_clone() {
   if [ ! -d "$CLONE_DIR/.git" ]; then
-    git clone --quiet "$REPO_URL" "$CLONE_DIR"
+    bounded "$NET_TIMEOUT" git clone --quiet "$REPO_URL" "$CLONE_DIR"
   fi
-  git -C "$CLONE_DIR" fetch --quiet --prune origin
-  git -C "$CLONE_DIR" checkout --quiet --detach "origin/$BRANCH"
-  git -C "$CLONE_DIR" reset --quiet --hard "origin/$BRANCH"
-  git -C "$CLONE_DIR" clean --quiet -fdx -e node_modules
+  bounded "$NET_TIMEOUT" git -C "$CLONE_DIR" -c core.hooksPath=/dev/null fetch --quiet --prune origin
+  git -C "$CLONE_DIR" -c core.hooksPath=/dev/null checkout --quiet --force --detach "origin/$BRANCH"
+  git -C "$CLONE_DIR" -c core.hooksPath=/dev/null reset --quiet --hard "origin/$BRANCH"
+  git -C "$CLONE_DIR" -c core.hooksPath=/dev/null clean --quiet -fdx -e node_modules
   install_push_guard
 }
 
-# Automation may push its own branches, never the shared ones.
+# Automation may push its own branches, never the shared ones. The project's own hooks keep working:
+# core.hooksPath points at a kitchen folder that forwards every hook of the project's hooks folder and
+# puts the pre-push guard in front of the project's own pre-push. The project's folder is HOOKS_PATH in
+# the config, else a hooks path the project set in the clone since the last install, else the one
+# remembered by an earlier install (kitchen.projectHooksPath), else .git/hooks. Installing twice is a no-op.
 install_push_guard() {
-  local hook="$CLONE_DIR/.git/hooks/pre-push"
-  cat > "$hook" <<HOOK
+  local git_dir hooks_dir current project_hooks hook name
+  git_dir="$(git -C "$CLONE_DIR" rev-parse --absolute-git-dir)"
+  hooks_dir="$git_dir/kitchen-hooks"
+  current="$(git -C "$CLONE_DIR" config --get core.hooksPath || true)"
+  if [ -n "${HOOKS_PATH:-}" ]; then
+    project_hooks="$HOOKS_PATH"
+  elif [ -n "$current" ] && [ "$current" != "$hooks_dir" ]; then
+    project_hooks="$current"
+  else
+    project_hooks="$(git -C "$CLONE_DIR" config --get kitchen.projectHooksPath || true)"
+    [ -n "$project_hooks" ] || project_hooks="$git_dir/hooks"
+  fi
+  git -C "$CLONE_DIR" config kitchen.projectHooksPath "$project_hooks"
+  case "$project_hooks" in /*) ;; *) project_hooks="$CLONE_DIR/$project_hooks" ;; esac
+  rm -rf "$hooks_dir"
+  mkdir -p "$hooks_dir"
+  for hook in "$project_hooks"/*; do
+    [ -f "$hook" ] || continue
+    name="$(basename "$hook")"
+    case "$name" in *.sample|pre-push) continue ;; esac
+    printf '#!/usr/bin/env bash\nhook=%q\n[ -x "$hook" ] || exit 0\nexec "$hook" "$@"\n' "$hook" > "$hooks_dir/$name"
+    chmod +x "$hooks_dir/$name"
+  done
+  cat > "$hooks_dir/pre-push" <<HOOK
 #!/usr/bin/env bash
+input="\$(cat)"
 while read -r local_ref local_sha remote_ref remote_sha; do
   case "\$remote_ref" in
-    refs/heads/dev|refs/heads/main|refs/heads/master)
+    refs/heads/dev|refs/heads/main|refs/heads/master|$(printf %q "refs/heads/$BRANCH"))
       echo "kitchen automation: refusing to push to \$remote_ref" >&2; exit 1 ;;
   esac
-done
-exit 0
+done <<< "\$input"
+hook=$(printf %q "$project_hooks/pre-push")
+[ -x "\$hook" ] || exit 0
+if [ -n "\$input" ]; then printf '%s\n' "\$input"; fi | "\$hook" "\$@"
 HOOK
-  chmod +x "$hook"
-  git -C "$CLONE_DIR" config core.hooksPath .git/hooks
+  chmod +x "$hooks_dir/pre-push"
+  git -C "$CLONE_DIR" config core.hooksPath "$hooks_dir"
 }
 
 # Starts Docker Desktop on macOS when needed. Never pretends: returns 1 when Docker is not usable.
@@ -70,14 +130,10 @@ ensure_docker() {
   return 1
 }
 
-# Appends one run to the nightly history that `kitchen status` reads.
-record_nightly() { # status failed_step cleanup metrics sha run_id log
-  python3 - "$NIGHTLY_RECORD" "$@" <<'PY'
-import datetime, json, sys
-record, status, failed, cleanup, metrics, sha, run_id, log = sys.argv[1:]
-entry = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"), "sha": sha,
-         "status": status, "failed_step": failed or None, "cleanup": cleanup, "metrics": metrics,
-         "run_id": run_id, "log": log}
-open(record, "a").write(json.dumps(entry) + "\n")
-PY
+# The nightly history that `kitchen status` reads: one line per run, replaced in place by run_id.
+record_nightly() { # status failed_step cleanup metrics sha run_id log started [warning...]
+  python3 "$KITCHEN_AUTOMATION/lib/record.py" "$NIGHTLY_RECORD" write "$@"
 }
+
+# Closes "running" lines left by runs that were killed; only called while holding the project lock.
+close_stale_records() { python3 "$KITCHEN_AUTOMATION/lib/record.py" "$NIGHTLY_RECORD" close-stale "$1"; }
