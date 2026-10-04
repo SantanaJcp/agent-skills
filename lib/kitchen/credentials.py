@@ -22,10 +22,11 @@ TOKENS = [
 _NAME = r"[\w-]*?(?:password|passwd|pwd|secret|token|api[_-]?key|private[_-]?key)"
 _KEY = rf"(?:\"{_NAME}\"|'{_NAME}'|\b{_NAME}\b)"
 
-# A secret key assigned a literal value: quoted (6+ chars), or a bare run of 8+ token characters.
+# A secret key assigned a literal value: quoted (6+ chars), or a bare run of 8+ token characters (`~` included:
+# Entra client secrets contain it).
 # Variables, empty strings, placeholders (<...>, ${...}, {0}, $(...)), paths and lookups (os.environ[...], get_key()) are not literals.
 ASSIGNMENT = re.compile(
-    rf"(?i){_KEY}\s*[=:]\s*(?:([\"'])[^\"'\s$<{{]{{6,}}\1|(?![\"'$<{{(\[/])[A-Za-z0-9_+/.=-]{{8,}}(?![\w(\[]))"
+    rf"(?i){_KEY}\s*[=:]\s*(?:([\"'])[^\"'\s$<{{]{{6,}}\1|(?![\"'$<{{(\[/])[A-Za-z0-9_+/.=~-]{{8,}}(?![\w(\[]))"
 )
 
 CREDENTIALS = [(label, re.compile(pattern)) for label, pattern in TOKENS] + [("credential assignment", ASSIGNMENT)]
