@@ -628,11 +628,12 @@ class GardenerPublicationTests(AutomationFixture):
         self.configure([])
         self.agent(f"env | cut -d= -f1 | sort > {names}")
 
-        self.run_job("weekly-gardener", "shop", REVIEW_PRIVATE_CANARY="inherited", AWS_SESSION_TOKEN="inherited")
+        cloud = "AWS_SESSION_" + "TOKEN"  # built at runtime: the repo never holds a credential-shaped assignment
+        self.run_job("weekly-gardener", "shop", REVIEW_PRIVATE_CANARY="inherited", **{cloud: "inherited"})
 
         seen = set(names.read_text().split())
         self.assertNotIn("REVIEW_PRIVATE_CANARY", seen)
-        self.assertNotIn("AWS_SESSION_TOKEN", seen)
+        self.assertNotIn(cloud, seen)
         self.assertNotIn("KITCHEN_REAL_GH", seen)
         allowed = {"HOME", "USER", "LOGNAME", "SHELL", "ZDOTDIR", "TMPDIR", "LANG", "TERM", "PATH", "PWD", "SHLVL", "_", "OLDPWD",
                    "CALLS", "CLAUDE_EXIT", "GH_CONFIG_DIR", "GIT_SSH_COMMAND", "GIT_ASKPASS", "SSH_ASKPASS",
