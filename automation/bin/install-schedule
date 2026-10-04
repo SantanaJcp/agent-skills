@@ -1,24 +1,34 @@
 #!/usr/bin/env bash
-# Schedules the kitchen jobs with launchd (macOS).
+# Schedules the kitchen jobs: launchd on macOS, systemd user timers on Linux.
 # Usage:
 #   install-schedule <project> [guard-hour] [gardener-weekday] [gardener-hour]   defaults: 02:00 daily, Monday 06:00
+#   install-schedule --gardener <project> [weekday] [hour]                       the gardener alone; default Monday 06:00
 #   install-schedule --retro [weekday] [hour]                                    default: Monday 07:00
+# Weekdays are numbered as launchd does: 0 or 7 Sunday, 1 Monday ... 6 Saturday.
 set -euo pipefail
-
-if [ "$(uname)" != Darwin ]; then
-  echo "install-schedule supports launchd (macOS) only; on Linux, add systemd user timers for automation/bin/* by hand." >&2
-  exit 2
-fi
 
 AUTOMATION="$(cd "$(dirname "$0")/.." && pwd)"
 STATE_ROOT="${KITCHEN_STATE:-$HOME/.local/state/kitchen}"
-AGENTS="$HOME/Library/LaunchAgents"
+PLATFORM="$(uname)"
+case "$PLATFORM" in
+  Darwin) AGENTS="$HOME/Library/LaunchAgents" ;;
+  Linux)
+    AGENTS="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+    # User timers stop with the user's last session unless lingering is on.
+    if [ "$(loginctl show-user "$(id -un)" -p Linger --value 2>/dev/null)" != yes ]; then
+      echo "lingering is off for $(id -un): timers would stop at logout. Run: loginctl enable-linger $(id -un)" >&2
+      exit 2
+    fi ;;
+  *) echo "install-schedule supports macOS (launchd) and Linux (systemd) only" >&2; exit 2 ;;
+esac
 mkdir -p "$AGENTS"
 
-write_plist() { # label log-dir calendar-xml program-args...
-  local label="$1" log_dir="$2" calendar="$3"; shift 3
-  local plist="$AGENTS/$label.plist" args=""
+write_plist() { # label log-dir weekday-or-empty hour program-args...
+  local label="$1" log_dir="$2" weekday="$3" hour="$4"; shift 4
+  local plist="$AGENTS/$label.plist" args="" calendar="<dict>"
   for arg in "$@"; do args="$args<string>$arg</string>"; done
+  [ -z "$weekday" ] || calendar="$calendar<key>Weekday</key><integer>$weekday</integer>"
+  calendar="$calendar<key>Hour</key><integer>$hour</integer><key>Minute</key><integer>0</integer></dict>"
   mkdir -p "$log_dir"
   cat > "$plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -40,26 +50,74 @@ PLIST
   echo "scheduled $label"
 }
 
-calendar() { # [weekday] hour
-  if [ $# = 2 ]; then
-    echo "<dict><key>Weekday</key><integer>$1</integer><key>Hour</key><integer>$2</integer><key>Minute</key><integer>0</integer></dict>"
-  else
-    echo "<dict><key>Hour</key><integer>$1</integer><key>Minute</key><integer>0</integer></dict>"
-  fi
+# PrivateTmp=yes gives each run a /tmp of its own: the gardener's sandboxes need to write /tmp on Linux and
+# refuse to run without it.
+write_units() { # label log-dir weekday-or-empty hour program-args...
+  local label="$1" log_dir="$2" weekday="$3" hour="$4"; shift 4
+  local days=(Sun Mon Tue Wed Thu Fri Sat Sun) exec_line="" arg on_calendar
+  for arg in "$@"; do
+    # systemd has its own quoting and % specifiers: refuse what would need either rather than half-escape it
+    [[ "$arg" =~ ^[A-Za-z0-9_./@+-]+$ ]] || { echo "install-schedule: cannot pass '$arg' to systemd unquoted; move kitchen to a plain path" >&2; exit 2; }
+    exec_line="$exec_line $arg"
+  done
+  on_calendar="*-*-* $(printf '%02d' "$hour"):00:00"
+  [ -z "$weekday" ] || on_calendar="${days[$weekday]} $on_calendar"
+  mkdir -p "$log_dir"
+  cat > "$AGENTS/$label.service" <<UNIT
+[Unit]
+Description=kitchen $label
+
+[Service]
+Type=oneshot
+ExecStart=${exec_line# }
+PrivateTmp=yes
+StandardOutput=append:$log_dir/systemd.log
+StandardError=append:$log_dir/systemd.log
+UNIT
+  cat > "$AGENTS/$label.timer" <<UNIT
+[Unit]
+Description=kitchen $label
+
+[Timer]
+OnCalendar=$on_calendar
+
+[Install]
+WantedBy=timers.target
+UNIT
+  systemctl --user daemon-reload
+  systemctl --user enable --now "$label.timer" >/dev/null
+  echo "scheduled $label ($on_calendar)"
 }
 
-if [ "${1:-}" = "--retro" ]; then
-  write_plist "com.kitchen.retro" "$STATE_ROOT/retro/logs" "$(calendar "${2:-1}" "${3:-7}")" \
-    /bin/bash "$AUTOMATION/bin/weekly-retro"
-  exit 0
-fi
+schedule() {
+  if [ "$PLATFORM" = Darwin ]; then write_plist "com.kitchen.$1" "${@:2}"; else write_units "kitchen-${1//./-}" "${@:2}"; fi
+}
 
-PROJECT="${1:?usage: install-schedule <project> | --retro}"
-[ -f "${KITCHEN_CONFIG:-$HOME/.config/kitchen}/automation/$PROJECT.env" ] || { echo "no config for $PROJECT" >&2; exit 2; }
-# The gardener reruns its checks under srt, pinned with its integrity hashes in package-lock.json.
-npm ci --ignore-scripts --no-audit --no-fund --prefix "$AUTOMATION" >/dev/null
-echo "installed srt $("$AUTOMATION/node_modules/.bin/srt" --version)"
-write_plist "com.kitchen.$PROJECT.nightly-guard" "$STATE_ROOT/automation/$PROJECT/logs" "$(calendar "${2:-2}")" \
-  /bin/bash "$AUTOMATION/bin/nightly-guard" "$PROJECT"
-write_plist "com.kitchen.$PROJECT.weekly-gardener" "$STATE_ROOT/automation/$PROJECT/logs" "$(calendar "${3:-1}" "${4:-6}")" \
-  /bin/bash "$AUTOMATION/bin/weekly-gardener" "$PROJECT"
+needs_config() {
+  [ -f "${KITCHEN_CONFIG:-$HOME/.config/kitchen}/automation/$1.env" ] || { echo "no config for $1" >&2; exit 2; }
+}
+
+install_srt() {
+  # The gardener reruns its checks under srt, pinned with its integrity hashes in package-lock.json.
+  npm ci --ignore-scripts --no-audit --no-fund --prefix "$AUTOMATION" >/dev/null
+  echo "installed srt $("$AUTOMATION/node_modules/.bin/srt" --version)"
+}
+
+case "${1:-}" in
+  --retro)
+    schedule retro "$STATE_ROOT/retro/logs" "${2:-1}" "${3:-7}" /bin/bash "$AUTOMATION/bin/weekly-retro" ;;
+  --gardener)
+    PROJECT="${2:?usage: install-schedule --gardener <project> [weekday] [hour]}"
+    needs_config "$PROJECT"
+    install_srt
+    schedule "$PROJECT.weekly-gardener" "$STATE_ROOT/automation/$PROJECT/logs" "${3:-1}" "${4:-6}" \
+      /bin/bash "$AUTOMATION/bin/weekly-gardener" "$PROJECT" ;;
+  *)
+    PROJECT="${1:?usage: install-schedule <project> | --gardener <project> | --retro}"
+    needs_config "$PROJECT"
+    install_srt
+    schedule "$PROJECT.nightly-guard" "$STATE_ROOT/automation/$PROJECT/logs" "" "${2:-2}" \
+      /bin/bash "$AUTOMATION/bin/nightly-guard" "$PROJECT"
+    schedule "$PROJECT.weekly-gardener" "$STATE_ROOT/automation/$PROJECT/logs" "${3:-1}" "${4:-6}" \
+      /bin/bash "$AUTOMATION/bin/weekly-gardener" "$PROJECT" ;;
+esac

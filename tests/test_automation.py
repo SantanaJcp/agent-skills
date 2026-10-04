@@ -2,6 +2,7 @@ import datetime
 import fcntl
 import json
 import os
+import platform
 import random
 import shutil
 import string
@@ -642,6 +643,7 @@ class GardenerPublicationTests(AutomationFixture):
                    "GIT_CONFIG_KEY_1", "GIT_CONFIG_VALUE_1", "GARDENER_BRANCH_PREFIX", "GARDENER_SUMMARY_FILE"}
         self.assertEqual({n for n in seen if not n.startswith("LC_")} - allowed, set())
 
+    @unittest.skipUnless(platform.system() == "Darwin", "zsh with an empty ZDOTDIR is the macOS shell")
     def test_agent_shell_reads_no_user_startup_file(self):
         values = Path(self.tmp.name) / "shell"
         self.configure([])
@@ -653,6 +655,16 @@ class GardenerPublicationTests(AutomationFixture):
         self.assertEqual(shell, "/bin/zsh")
         self.assertTrue(zdotdir.startswith(str(self.state)), zdotdir)
         self.assertEqual(entries, "0")
+
+    @unittest.skipUnless(platform.system() == "Linux", "the owner chose bash for the Linux host")
+    def test_agent_shell_on_linux_is_bash(self):
+        values = Path(self.tmp.name) / "shell"
+        self.configure([])
+        self.agent(f'echo "$SHELL ${{ZDOTDIR:-unset}}" > {values}')
+
+        self.run_job("weekly-gardener", "shop")
+
+        self.assertEqual(values.read_text().split(), ["/bin/bash", "unset"])
 
     def test_job_publishes_the_agents_branch_with_the_label_and_summary(self):
         branch = f"gardener/{datetime.datetime.now(datetime.timezone.utc):%Y-%m-%d}-tidy"
@@ -781,7 +793,13 @@ git commit -q -am "More notes"
     def test_job_reruns_the_verify_steps_on_the_exported_tree_and_lists_them_in_the_pr(self):
         out = Path(self.tmp.name) / "verify-out"
         out.mkdir()
-        self.verify_config(f'"notes|grep -qx 3 notes.txt" "export|[ ! -e .git ] && pwd > {out}/cwd"', f'GARDENER_SANDBOX_WRITE=("{out}")')
+        # a tracked file that matches an ignore rule must still be part of the checkout
+        (self.origin / ".gitignore").write_text("*.log\n")
+        (self.origin / "keep.log").write_text("tracked anyway\n")
+        self.git(self.origin, "add", "-f", ".gitignore", "keep.log")
+        self.git(self.origin, "commit", "-q", "-m", "ignored but tracked")
+        checkout = f"git rev-parse HEAD^{{tree}} > {out}/tree && git status --porcelain > {out}/status && pwd > {out}/cwd"
+        self.verify_config(f'"notes|grep -qx 3 notes.txt" "checkout|{checkout}"', f'GARDENER_SANDBOX_WRITE=("{out}")')
         self.agent(self.commit_script())
 
         result = self.run_job("weekly-gardener", "shop")
@@ -789,9 +807,40 @@ git commit -q -am "More notes"
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn("verify: notes", result.stdout)
         self.assertTrue((out / "cwd").read_text().strip().endswith("/verify"))
+        branch = f"gardener/{datetime.datetime.now(datetime.timezone.utc):%Y-%m-%d}-tidy"
+        self.assertEqual((out / "tree").read_text().strip(), self.git(self.origin, "rev-parse", f"{branch}^{{tree}}"))
+        self.assertEqual((out / "status").read_text(), "")
         body = self.pr_body()
         self.assertIn("Job verification: the job reran these steps on exactly this tree, sandboxed by srt", body)
-        self.assertIn("- notes: passed\n- export: passed", body)
+        self.assertIn("- notes: passed\n- checkout: passed", body)
+
+    def test_tree_attributes_cannot_make_the_verify_checkout_fail(self):
+        # working-tree-encoding converts on add: re-adding the exported (stored) bytes must not apply it again
+        (self.origin / ".gitattributes").write_text("*.ps1 text working-tree-encoding=UTF-16\n")
+        (self.origin / "run.ps1").write_bytes("Write-Output 'hi'\n".encode("utf-16"))
+        self.git(self.origin, "add", ".gitattributes", "run.ps1")
+        self.git(self.origin, "commit", "-q", "-m", "utf-16 script")
+        self.verify_config('"build|true"')
+        self.agent(self.commit_script())
+
+        result = self.run_job("weekly-gardener", "shop")
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("- build: passed", self.pr_body())
+
+    @unittest.skipUnless(platform.system() == "Linux", "the sandboxes mask absent dangerous files only on Linux")
+    def test_git_and_gitmodules_readers_work_despite_the_sandbox_masks(self):
+        seen = Path(self.tmp.name) / "agent-gitmodules"
+        self.verify_config("'gitmodules|cat .gitmodules && git add -A --dry-run && git status --porcelain | wc -l | grep -qx 0'")
+        self.agent(f'cat .gitmodules && git status --porcelain > {seen}\n' + self.commit_script())
+
+        result = self.run_job("weekly-gardener", "shop")
+
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(seen.read_text(), "")
+        self.assertIn("- gitmodules: passed", self.pr_body())
+        self.assertNotIn(".gitmodules", self.git(self.origin, "ls-tree", "-r", "--name-only",
+                                                 f"gardener/{datetime.datetime.now(datetime.timezone.utc):%Y-%m-%d}-tidy"))
 
     def test_failing_verify_step_publishes_nothing(self):
         self.verify_config('"build|true" "tests|exit 3"')
@@ -800,13 +849,18 @@ git commit -q -am "More notes"
         self.assert_refused(self.run_job("weekly-gardener", "shop"), "job verification step tests failed (srt exit 0, step exit 3;")
 
     def test_verify_steps_cannot_read_home_write_outside_or_reach_the_network(self):
-        home = Path(self.tmp.name) / "home"
+        # outside /tmp: on Linux the sandboxes write the run's private /tmp
+        (Path.home() / ".cache").mkdir(exist_ok=True)
+        home_root = tempfile.TemporaryDirectory(dir=Path.home() / ".cache")
+        self.addCleanup(home_root.cleanup)
+        home = Path(home_root.name) / "home"
         (home / ".ssh").mkdir(parents=True)
         (home / "private.txt").write_text("canary")
         (home / ".ssh" / "id_test").write_text("canary")
         probe = (  # each escape that works fails the step with its own exit code
             'if cat "$HOME/private.txt"; then exit 10; fi; if cat "$HOME/.ssh/id_test"; then exit 11; fi; '
-            'if touch "$HOME/planted"; then exit 12; fi; if curl -s -m 5 https://example.com; then exit 13; fi; exit 0')
+            'touch "$HOME/planted" 2>/dev/null || true; if curl -s -m 5 https://example.com; then exit 13; fi; exit 0')
+        # a write into home must not reach the real one (on Linux it lands in the sandbox's own empty home)
         self.verify_config(f"'probe|{probe}'")
         self.agent(self.commit_script())
 
@@ -938,6 +992,64 @@ git commit -q -am "More notes"
         self.agent(self.commit_script() + 'rm "$GARDENER_SUMMARY_FILE"\n')
 
         self.assert_refused(self.run_job("weekly-gardener", "shop"), "no PR summary")
+
+
+@unittest.skipUnless(platform.system() == "Linux", "systemd user timers are the Linux schedule")
+class LinuxScheduleTests(AutomationFixture):
+    def install(self, *args, linger="yes"):
+        self.fake("loginctl", f'echo "loginctl $*" >> "$CALLS"; echo {linger}')
+        self.fake("systemctl", 'echo "systemctl $*" >> "$CALLS"')
+        self.fake("npm", 'echo "npm $*" >> "$CALLS"')
+        home = Path(self.tmp.name) / "home"
+        env = {**self.job_env(), "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"),
+               "PATH": f"{self.bin}:{os.environ['PATH']}"}
+        result = subprocess.run(["bash", str(AUTOMATION / "bin" / "install-schedule"), *args], env=env,
+                                capture_output=True, text=True)
+        return result, home / ".config" / "systemd" / "user"
+
+    def test_gardener_alone_gets_a_weekly_timer_and_a_private_tmp(self):
+        self.configure([])
+
+        result, units = self.install("--gardener", "shop", "1", "6")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(sorted(p.name for p in units.iterdir()),
+                         ["kitchen-shop-weekly-gardener.service", "kitchen-shop-weekly-gardener.timer"])
+        service = (units / "kitchen-shop-weekly-gardener.service").read_text()
+        self.assertIn("PrivateTmp=yes", service)
+        self.assertIn(f"ExecStart=/bin/bash {AUTOMATION}/bin/weekly-gardener shop", service)
+        self.assertIn("OnCalendar=Mon *-*-* 06:00:00", (units / "kitchen-shop-weekly-gardener.timer").read_text())
+        self.assertIn("systemctl --user enable --now kitchen-shop-weekly-gardener.timer", self.calls_log())
+
+    def test_refuses_a_path_systemd_would_read_differently(self):
+        self.configure([])
+        odd = Path(self.tmp.name) / "kitchen 100%"
+        shutil.copytree(AUTOMATION, odd / "automation", ignore=shutil.ignore_patterns("node_modules"))
+        self.fake("loginctl", "echo yes")
+        self.fake("systemctl", 'echo "systemctl $*" >> "$CALLS"')
+        self.fake("npm", "true")
+        (odd / "automation" / "node_modules" / ".bin").mkdir(parents=True)
+        (odd / "automation" / "node_modules" / ".bin" / "srt").write_text("#!/bin/sh\necho 0.0.78\n")
+        (odd / "automation" / "node_modules" / ".bin" / "srt").chmod(0o755)
+        home = Path(self.tmp.name) / "home"
+        env = {**self.job_env(), "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"),
+               "PATH": f"{self.bin}:{os.environ['PATH']}"}
+
+        result = subprocess.run(["bash", str(odd / "automation" / "bin" / "install-schedule"), "--gardener", "shop"],
+                                env=env, capture_output=True, text=True)
+
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("cannot pass", result.stderr)
+        self.assertNotIn("enable", self.calls_log())
+
+    def test_refuses_without_lingering(self):
+        self.configure([])
+
+        result, units = self.install("--gardener", "shop", linger="no")
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("loginctl enable-linger", result.stderr)
+        self.assertFalse(units.exists())
 
 
 class ShimTests(AutomationFixture):
