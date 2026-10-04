@@ -61,7 +61,7 @@ finish() {
       fi
     fi
   fi
-  rm -rf "$AGENT_CLONE" "$JOB_DIR/cleanup" "$JOB_DIR/verify" "$JOB_DIR/publish.git"
+  rm -rf "$AGENT_CLONE" "$JOB_DIR/prepare" "$JOB_DIR/cleanup" "$JOB_DIR/verify" "$JOB_DIR/publish.git"
   find "$LOG_DIR" -name 'gardener-*' -mtime +90 -delete
   find "$STATE_DIR/gardener" "$STATE_DIR/gardener-job" -mindepth 1 -maxdepth 1 -mtime +90 -exec rm -rf {} + 2>/dev/null
   log "gardener end: status=$rc"
@@ -317,6 +317,20 @@ case "$(uname)" in
     exit 1 ;;
 esac
 prepare_linux_checkout "$AGENT_CLONE"
+# Optional: refresh what the sandboxes read offline (package caches) before the agent runs. It runs
+# unsandboxed, with the network, on reviewed code only: a fresh export of the pinned base, never the agent's
+# tree. A failure stops the run, since the job's verification would then fail on the stale caches anyway.
+if [ -n "${GARDENER_PREPARE_CMD:-}" ]; then
+  log "prepare: $GARDENER_PREPARE_CMD"
+  python3 "$KITCHEN_AUTOMATION/lib/export_tree.py" "$CLONE_DIR" "$BASE_SHA^{tree}" "$JOB_DIR/prepare" >/dev/null || {
+    log "gardener end: status=1 (could not export $BASE_SHA to run GARDENER_PREPARE_CMD)"; exit 1; }
+  if ! (cd "$JOB_DIR/prepare" && bounded "$NET_TIMEOUT" bash -e -o pipefail -c "$GARDENER_PREPARE_CMD") \
+    > "$LOG_DIR/gardener-$RUN_ID-prepare.log" 2>&1; then
+    log "gardener end: status=1 (GARDENER_PREPARE_CMD failed; log $LOG_DIR/gardener-$RUN_ID-prepare.log)"
+    exit 1
+  fi
+  rm -rf "$JOB_DIR/prepare"
+fi
 
 # Reads are an allowlist: the clone, the run's work dir, the metrics history and the project's tool paths.
 sandbox_args=(--read "$AGENT_CLONE" --read "$WORK_DIR" --read "$HISTORY_DIR" --write "$WORK_DIR")

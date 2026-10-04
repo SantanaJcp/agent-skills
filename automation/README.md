@@ -53,6 +53,9 @@ GARDENER_VERIFY_STEPS=(                # optional; name|command the job reruns o
   "tests|make unit-test"
 )
 GARDENER_VERIFY_TIMEOUT_SECONDS=3600   # optional; deadline for each verify step
+GARDENER_PREPARE_CMD="make restore"   # optional; refreshes the caches the sandbox reads offline, before the agent.
+                                       # Runs unsandboxed with the network, in a fresh export of the pinned base (reviewed
+                                       # code, as the nightly runs), never on the agent's tree; a failure stops the run
 GARDENER_SANDBOX_UNIX_SOCKETS=()       # optional; e.g. the Docker socket. Docker can mount any host path, so
                                        # allowing it reopens what the sandbox closes
 GH_TIMEOUT_SECONDS=120                 # optional; deadline for every gh call
