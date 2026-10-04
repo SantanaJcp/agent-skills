@@ -63,18 +63,38 @@ class PublicSafetyCorpus(KitchenFixture):
 
 
 class RedactionCorpus(KitchenFixture):
+    """kitchen.transcripts.scrub, in process, with the corpus denylist (or none) instead of the real one."""
+
+    def run_corpus(self, detector):
+        corpus = load(detector)
+        denylist = self.home / "denylist.txt"
+        if "denylist" in corpus:
+            denylist.write_text("\n".join(corpus["denylist"]) + "\n")
+        previous = os.environ.get("KITCHEN_DENYLIST")
+        os.environ["KITCHEN_DENYLIST"] = str(denylist)
+        try:
+            for case in corpus["cases"]:
+                if "redact" not in case:
+                    continue
+                text = joined(case["text"])
+                with self.subTest(case["id"], kind=case["kind"]):
+                    scrubbed = scrub(text)
+                    if case["redact"] == "keeps":
+                        self.assertEqual(scrubbed, text)
+                    else:
+                        for secret in case["secret"]:
+                            self.assertNotIn(secret, scrubbed)
+        finally:
+            if previous is None:
+                os.environ.pop("KITCHEN_DENYLIST")
+            else:
+                os.environ["KITCHEN_DENYLIST"] = previous
+
     def test_credentials_corpus_redaction(self):
-        for case in load("credentials")["cases"]:
-            if "redact" not in case:
-                continue
-            text = joined(case["text"])
-            with self.subTest(case["id"], kind=case["kind"]):
-                scrubbed = scrub(text)
-                if case["redact"] == "keeps":
-                    self.assertEqual(scrubbed, text)
-                else:
-                    for secret in case["secret"]:
-                        self.assertNotIn(secret, scrubbed)
+        self.run_corpus("credentials")
+
+    def test_private_terms_corpus_redaction(self):
+        self.run_corpus("private-terms")
 
 
 class ProvenanceCorpus(KitchenFixture):

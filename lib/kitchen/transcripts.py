@@ -17,7 +17,7 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from .common import home, parse_ts
+from .common import home, parse_ts, private_terms
 from .credentials import redact
 
 T3_CONTEXT = re.compile(r"<t3_context.*?</t3_context>", re.S)
@@ -41,7 +41,11 @@ REASONS = ("notification", "harness", "subagent", "automation", "agent-launched"
 
 
 def scrub(text: str) -> str:
-    return redact(text)
+    """Credentials out, then the private terms from the denylist (when there is one)."""
+    text = redact(text)
+    for pattern in private_terms() or []:
+        text = pattern.sub("[PRIVATE]", text)
+    return text
 
 
 def prefix_key(text: str) -> str:

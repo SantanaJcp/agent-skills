@@ -20,6 +20,20 @@ def config_dir() -> Path:
     return Path(os.environ.get("KITCHEN_CONFIG") or home() / ".config" / "kitchen")
 
 
+def denylist_path() -> Path:
+    return Path(os.environ.get("KITCHEN_DENYLIST") or home() / ".config" / "kitchen" / "denylist.txt")
+
+
+def private_terms() -> list[re.Pattern] | None:
+    """Patterns for the private terms in the denylist; None when there is no denylist.
+    Smart case, whole words: the name "Acme" must not match "the acme of design"."""
+    path = denylist_path()
+    if not path.is_file():
+        return None
+    terms = [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip() and not line.startswith("#")]
+    return [re.compile(rf"\b{re.escape(term)}\b", 0 if term != term.lower() else re.IGNORECASE) for term in terms]
+
+
 def projects() -> list[Path]:
     """Projects listed one absolute path per line in ~/.config/kitchen/projects.txt."""
     listing = config_dir() / "projects.txt"

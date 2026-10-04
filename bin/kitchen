@@ -243,10 +243,6 @@ def invocation_parity(skill: Path, fields: dict[str, str]) -> list[str]:
     return []
 
 
-def denylist_path() -> Path:
-    return Path(os.environ.get("KITCHEN_DENYLIST") or home() / ".config" / "kitchen" / "denylist.txt")
-
-
 def git_bytes(*args: str) -> bytes:
     result = subprocess.run(["git", "-C", str(REPO), *args], capture_output=True)
     if result.returncode != 0:
@@ -285,18 +281,11 @@ def public_safety() -> tuple[list[str], list[str]]:
     patterns = [("personal path", re.compile(r"/(?:Users|home)/[A-Za-z0-9._-]+/"))]
     patterns += [(label, pattern) for label, pattern in credentials.CREDENTIALS]
     warnings: list[str] = []
-    if denylist_path().is_file():
-        terms = [
-            line.strip() for line in denylist_path().read_text(encoding="utf-8").splitlines()
-            if line.strip() and not line.startswith("#")
-        ]
-        # Smart case, whole words: the name "Acme" must not flag "the acme of design".
-        patterns += [
-            ("private term", re.compile(rf"\b{re.escape(term)}\b", 0 if term != term.lower() else re.IGNORECASE))
-            for term in terms
-        ]
+    terms = common.private_terms()
+    if terms is not None:
+        patterns += [("private term", pattern) for pattern in terms]
     else:
-        warnings.append(f"private-term scan skipped: {denylist_path()} does not exist")
+        warnings.append(f"private-term scan skipped: {common.denylist_path()} does not exist")
 
     problems: list[str] = []
     for label_path, text in publishable_texts():

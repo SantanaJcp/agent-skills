@@ -11,17 +11,21 @@ TOKENS = [
     ("API key", r"\bsk-[A-Za-z0-9_-]{16,}"),  # OpenAI and Anthropic style
     ("JWT", r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"),
     ("private key", r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----"),
+    # A URL with userinfo (user, a colon, a password, then @host) for postgres, mysql, mongodb+srv, redis, amqp, https...: a literal password, not ${VAR}
+    ("URL credentials", r"\b[a-z][a-z0-9+.-]*://[^\s:/@]*:(?![$<{*])[^\s:/@]{3,}@"),
+    # Azure storage AccountKey / Service Bus and Event Hub SharedAccessKey (base64), SAS signatures (URL-encoded)
+    ("Azure key", r"\b(?i:AccountKey|SharedAccessKey)=[A-Za-z0-9+/]{20,}={0,2}|[?&]sig=[A-Za-z0-9%+/]{20,}"),
 ]
 
-# Key names that hold a secret, bare or quoted as in JSON and YAML: password, client_secret, apiKey,
+# Key names that hold a secret, bare or quoted as in JSON and YAML: password, Pwd, client_secret, apiKey,
 # api_key, token, github_token, access_token... A prefix is allowed; a suffix is not (password_hash, max_tokens).
-_NAME = r"[\w-]*?(?:password|passwd|secret|token|api[_-]?key|private[_-]?key)"
+_NAME = r"[\w-]*?(?:password|passwd|pwd|secret|token|api[_-]?key|private[_-]?key)"
 _KEY = rf"(?:\"{_NAME}\"|'{_NAME}'|\b{_NAME}\b)"
 
 # A secret key assigned a literal value: quoted (6+ chars), or a bare run of 8+ token characters.
-# Variables, empty strings, placeholders (<...>, ${...}) and lookups (os.environ[...], get_key()) are not literals.
+# Variables, empty strings, placeholders (<...>, ${...}, {0}, $(...)), paths and lookups (os.environ[...], get_key()) are not literals.
 ASSIGNMENT = re.compile(
-    rf"(?i){_KEY}\s*[=:]\s*(?:([\"'])[^\"'\s$<{{]{{6,}}\1|(?![\"'$<{{(\[])[A-Za-z0-9_+/.=-]{{8,}}(?![\w(\[]))"
+    rf"(?i){_KEY}\s*[=:]\s*(?:([\"'])[^\"'\s$<{{]{{6,}}\1|(?![\"'$<{{(\[/])[A-Za-z0-9_+/.=-]{{8,}}(?![\w(\[]))"
 )
 
 CREDENTIALS = [(label, re.compile(pattern)) for label, pattern in TOKENS] + [("credential assignment", ASSIGNMENT)]
