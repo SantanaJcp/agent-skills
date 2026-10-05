@@ -4,6 +4,7 @@
 One source of truth for Claude Code and Codex:
   skills/<name>/      -> ~/.claude/skills/<name> and ~/.agents/skills/<name>
   global/AGENTS.md    -> ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md
+  hooks/<guard>       -> PreToolUse hooks in ~/.claude/settings.json and ~/.codex/hooks.json (merged)
 Every installed path is an absolute symlink back into this repo.
 """
 from __future__ import annotations
@@ -12,6 +13,7 @@ import argparse
 import datetime
 import json
 import os
+import platform
 import re
 import shutil
 import subprocess
@@ -22,11 +24,21 @@ REPO = Path(os.environ.get("KITCHEN_REPO") or Path(__file__).resolve().parent.pa
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib"))
 
 from kitchen import common, credentials, integrate, inventory, journal, status, transcripts  # noqa: E402
+from kitchen import agent_hooks, checkplan, environment  # noqa: E402
 MAX_SKILL_LINES = 150
 MAX_DESCRIPTION_CHARS = 1024
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 LINK_RE = re.compile(r"\]\(([^)\s]+)\)")
 BLOCK_SCALARS = {">", "|", ">-", "|-", ">+", "|+"}
+EXAMPLES = """examples:
+  kitchen install             link skills, rules and hooks; then run `kitchen doctor`
+  kitchen doctor              prove links, hooks, agent CLIs and schedules on this machine
+  kitchen check --fast        what the pre-commit hook runs: lint, safety scan, tests for the staged paths
+  kitchen check               everything, as integrate does
+  kitchen status --since 7d   where every project stands
+  kitchen integrate fix/a fix/b --base origin/dev
+
+run `kitchen <command> --help` for a command's options."""
 
 
 def home() -> Path:
@@ -91,15 +103,20 @@ def cmd_install(args: argparse.Namespace) -> int:
     h = home()
     plan = planned_links(h)
     conflicts = [link for link, _ in plan if (link.exists() or link.is_symlink()) and not owned(link)]
-    if conflicts and not args.backup:
+    hook_changes = agent_hooks.plan(h, REPO)
+    hook_conflicts = [change.problem for change in hook_changes if change.problem]
+    if (conflicts or hook_conflicts) and not args.backup:
         print("Refusing to install: these paths exist and are not managed by kitchen.")
         for link in conflicts:
             print(f"  {link}")
-        print("Inspect them, then rerun with --backup to move them to ~/.kitchen-backups/.")
+        for problem in hook_conflicts:
+            print(f"  {problem}; the kitchen hooks cannot be merged into it")
+        print("Inspect them, then rerun with --backup to move them to ~/.kitchen-backups/"
+              + (" (a hook file is replaced by one with only the kitchen hooks)." if hook_conflicts else "."))
         return 1
 
+    backup_root = h / ".kitchen-backups" / datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
     if conflicts:
-        backup_root = h / ".kitchen-backups" / datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
         for link in conflicts:
             dest = backup_root / link.relative_to(h)
             dest.parent.mkdir(parents=True, exist_ok=True)
@@ -121,8 +138,13 @@ def cmd_install(args: argparse.Namespace) -> int:
         link.symlink_to(source, target_is_directory=source.is_dir())
         print(f"linked     {link} -> {source}")
 
+    for line in agent_hooks.apply(hook_changes, h, backup_root):
+        print(line)
+
     set_hooks_path()
-    print(f"installed  {len(repo_skills())} skills, global rules: {'yes' if global_rules().is_file() else 'not in repo yet'}")
+    print(f"installed  {len(repo_skills())} skills, global rules: {'yes' if global_rules().is_file() else 'not in repo yet'}, "
+          f"agent hooks: {len(agent_hooks.guards(REPO))}")
+    print("next:      kitchen doctor")
     return 0
 
 
@@ -155,6 +177,11 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     if hooks.stdout.strip() != ".githooks":
         failures.append("pre-commit hook inactive: run `bin/kitchen install` (sets core.hooksPath=.githooks)")
 
+    infos: list[str] = []
+    for level, line in agent_hooks.doctor(h, REPO) + environment.tools(REPO, common.config_dir()) \
+            + environment.schedules(platform.system(), h):
+        {"FAIL": failures, "WARN": warnings, "INFO": infos}[level].append(line)
+
     unmanaged = sorted(
         str(d / entry)
         for d in skill_target_dirs(h) if d.is_dir()
@@ -166,9 +193,13 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         print(f"FAIL  {line}")
     for line in warnings:
         print(f"WARN  {line}")
+    for line in infos:
+        print(f"INFO  {line}")
     for path in unmanaged:
         print(f"INFO  not managed by kitchen: {path}")
     print(f"{'FAIL' if failures else 'OK'}    {len(repo_skills())} skills, {len(failures)} failures, {len(warnings)} warnings")
+    if failures:
+        print("next:  fix each FAIL line above; most are fixed by `bin/kitchen install`")
     return 1 if failures else 0
 
 
@@ -313,10 +344,23 @@ def cmd_check(args: argparse.Namespace) -> int:
         return 1
     if args.lint_only:
         return 0
+    modules = checkplan.test_modules(REPO)
+    run, skipped = checkplan.select(modules, checkplan.staged_paths(REPO)) if args.fast else (modules, [])
+    for module, why in skipped:
+        print(f"SKIP  {module}: {why} (`bin/kitchen check` runs it)")
+    if checkplan.AUTOMATION_SUITE in run:
+        problem = environment.automation_tools_problem(REPO)
+        if problem:
+            print(f"FAIL  {problem}")
+            return 1
+    if args.fast and not run:
+        print("OK    tests: none needed for the staged paths")
+        return 0
     # A git hook exports GIT_DIR, GIT_INDEX_FILE and friends. Tests build throwaway repos; inheriting those
     # variables would point their git commands at this repo (in a worktree: commits, branches, core.bare).
     test_env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
-    tests = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-t", "."], cwd=REPO, env=test_env)
+    selection = [checkplan.dotted(m) for m in run] if args.fast else ["discover", "-s", "tests", "-t", "."]
+    tests = subprocess.run([sys.executable, "-m", "unittest", *selection], cwd=REPO, env=test_env)
     return tests.returncode
 
 
@@ -368,18 +412,20 @@ def cmd_integrate(args: argparse.Namespace) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="kitchen", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(prog="kitchen", description=__doc__, epilog=EXAMPLES,
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    install = sub.add_parser("install", help="link skills and global rules into Claude Code and Codex")
+    install = sub.add_parser("install", help="link skills, global rules and agent hooks into Claude Code and Codex")
     install.add_argument("--backup", action="store_true", help="move conflicting unmanaged paths to ~/.kitchen-backups/")
     install.set_defaults(func=cmd_install)
 
-    doctor = sub.add_parser("doctor", help="verify the installed links and repo hooks")
+    doctor = sub.add_parser("doctor", help="verify links, agent hooks, agent CLIs, automation tools and schedules")
     doctor.set_defaults(func=cmd_doctor)
 
     check = sub.add_parser("check", help="lint skills and run the repo tests")
     check.add_argument("--lint-only", action="store_true")
+    check.add_argument("--fast", action="store_true", help="run only the test modules the staged paths need (the pre-commit hook)")
     check.add_argument("--skills-dir", help="lint this directory instead of the repo skills")
     check.set_defaults(func=cmd_check)
 

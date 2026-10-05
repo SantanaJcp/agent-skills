@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+"""PreToolUse guard: deny git commands that skip the repo's hooks (--no-verify, commit -n, a core.hooksPath override)."""
+import os
+import sys
+
+sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import shellparse  # noqa: E402
+
+GUARD = "deny-no-verify"
+HOOKED = {"commit", "merge", "push", "am", "rebase", "cherry-pick", "revert"}
+# Short options of `git commit` that take a value: in `-mn` the n is the message, in `-nm msg` it is --no-verify.
+COMMIT_SHORT_WITH_VALUE = set("mFcCt")
+COMMIT_SHORT_OPTIONAL_ATTACHED = set("Su")
+COMMIT_LONG_WITH_VALUE = {"--message", "--file", "--reuse-message", "--reedit-message", "--fixup", "--squash", "--author",
+                          "--date", "--template", "--cleanup", "--trailer", "--pathspec-from-file"}
+ADVICE = ("Run it without that option. If a hook fails, fix what it reports (in the kitchen, `bin/kitchen check` shows "
+          "the same failures); if the hook itself is broken, stop and tell the owner instead of skipping it.")
+
+
+def is_no_verify(value):
+    # git accepts unambiguous prefixes of long options: --no-veri is --no-verify (--no-ve could be --no-verbose).
+    return len(value) >= len("--no-veri") and "--no-verify".startswith(value)
+
+
+def commit_skips_hooks(args):
+    i = 0
+    while i < len(args):
+        value = args[i].value
+        if args[i].dynamic:
+            pass  # a variable can hold -n; listed as a known limit in the corpus
+        elif value == "--":
+            return False
+        elif value.startswith("--"):
+            if is_no_verify(value):
+                return True
+            if value in COMMIT_LONG_WITH_VALUE:
+                i += 1
+        elif value.startswith("-") and len(value) > 1:
+            for position, letter in enumerate(value[1:]):
+                if letter == "n":
+                    return True
+                if letter in COMMIT_SHORT_WITH_VALUE:
+                    if position == len(value) - 2:
+                        i += 1
+                    break
+                if letter in COMMIT_SHORT_OPTIONAL_ATTACHED:
+                    break
+        i += 1
+    return False
+
+
+def check(commands):
+    reasons = []
+    for cmd in commands:
+        call = shellparse.git_call(cmd)
+        if call is None or call.sub not in HOOKED:
+            continue
+        if any(key == "core.hookspath" for key, _ in call.config):
+            reasons.append(f"`git {call.sub}` with core.hooksPath overridden on the command line skips the repo's hooks. "
+                           + ADVICE)
+        elif call.sub == "commit" and commit_skips_hooks(call.args):
+            reasons.append("`git commit --no-verify` (or -n) skips the pre-commit and commit-msg hooks. " + ADVICE)
+        elif call.sub != "commit" and any(not a.dynamic and is_no_verify(a.value) for a in call.args):
+            reasons.append(f"`git {call.sub} --no-verify` skips the repo's hooks. " + ADVICE)
+    return reasons
+
+
+if __name__ == "__main__":
+    shellparse.main(GUARD, check)
