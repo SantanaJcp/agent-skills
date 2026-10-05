@@ -71,6 +71,13 @@ class ProjectFixture(KitchenFixture):
     def rev(self, project, ref):
         return subprocess.run(["git", "-C", str(project), "rev-parse", ref], capture_output=True, text=True, check=True).stdout.strip()
 
+    def configure_automation(self, project="shop", text='GUARD_STEPS=("tests|true")\nGARDENER_VERIFY_STEPS=("tests|true")\n'):
+        """The project's automation env: its existence configures the nightly, GARDENER_VERIFY_STEPS the gardener."""
+        folder = self.home / "config" / "automation"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / f"{project}.env").write_text(text)
+        return folder / f"{project}.env"
+
     def write_record(self, kind, runs, project="shop"):
         folder = self.home / "state" / kind
         folder.mkdir(parents=True, exist_ok=True)
@@ -105,6 +112,7 @@ class LogAndStatusTests(ProjectFixture):
 
     def test_status_reports_nightly_green_streak_and_failed_step(self):
         project = self.make_project("shop")
+        self.configure_automation()
         nightly = self.home / "state" / "nightly"
         nightly.mkdir(parents=True)
         t3 = ago(hours=2)
@@ -129,6 +137,7 @@ class LogAndStatusTests(ProjectFixture):
     def test_status_matches_nightly_by_full_sha_and_shows_its_warnings(self):
         project = self.make_project("shop")
         head = subprocess.run(["git", "-C", str(project), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+        self.configure_automation()
         nightly = self.home / "state" / "nightly"
         nightly.mkdir(parents=True)
         run = {"ts": "t1", "sha": head, "status": "green", "warnings": ["cleanup failed", "metrics skipped"]}
@@ -143,6 +152,7 @@ class LogAndStatusTests(ProjectFixture):
     def test_status_never_matches_a_short_nightly_sha(self):
         project = self.make_project("shop")
         head = subprocess.run(["git", "-C", str(project), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
+        self.configure_automation()
         nightly = self.home / "state" / "nightly"
         nightly.mkdir(parents=True)
         (nightly / "shop.jsonl").write_text(json.dumps({"ts": "t1", "sha": head[:8], "status": "green"}) + "\n")
@@ -195,13 +205,14 @@ class LogAndStatusTests(ProjectFixture):
 
         self.assertIn(f"decisions  2 owed by you (read from dev @ {dev[:8]})", out)
 
-    def test_status_without_a_base_reports_decisions_unknown_instead_of_reading_the_checkout(self):
+    def test_status_without_a_base_reports_decisions_not_configured_instead_of_reading_the_checkout(self):
         project = self.make_project("shop")
         (project / "decisions.md").write_text("- [ ] keep the old route?\n")
 
         out = self.kitchen("status", str(project)).stdout
 
-        self.assertIn("decisions  unknown: no base for 'shop'", out)
+        self.assertIn("decisions  not configured (no base for 'shop'", out)
+        self.assertNotIn("owed", out)
 
     def test_status_shows_how_far_the_nightly_sha_is_behind_the_base(self):
         project = self.make_project("shop")
@@ -209,6 +220,7 @@ class LogAndStatusTests(ProjectFixture):
         for number in range(3):
             self.commit(project, f"f{number}", "x\n")
         self.configure_base("main")
+        self.configure_automation()
         self.write_record("nightly", [{"ts": ago(hours=1), "sha": tested, "status": "green"}])
 
         out = self.kitchen("status", str(project)).stdout
@@ -246,6 +258,7 @@ class LogAndStatusTests(ProjectFixture):
                 {"ts": local_ts(3), "sha": "b", "status": "green"},
                 {"ts": local_ts(2, hour=3), "sha": "c", "status": "green"},
                 {"ts": local_ts(2, hour=5), "sha": "c", "status": "green"}]  # a rerun the same night
+        self.configure_automation()
         self.write_record("nightly", runs)
 
         out = self.kitchen("status", str(project)).stdout
@@ -256,19 +269,21 @@ class LogAndStatusTests(ProjectFixture):
 
     def test_status_shows_the_gardeners_last_result_and_its_age(self):
         project = self.make_project("shop")
+        self.configure_automation()
         before = self.kitchen("status", str(project)).stdout
         self.write_record("gardener", [{"ts": ago(days=8), "status": "published", "detail": "https://example.test/pull/1"},
                                        {"ts": ago(hours=2, minutes=5), "status": "refused", "detail": "no independent verification configured"}])
 
         after = self.kitchen("status", str(project)).stdout
 
-        self.assertIn("gardener   unknown: no local record", before)
+        self.assertIn("gardener   ✗ no record on this host (GARDENER_VERIFY_STEPS in", before)
         self.assertIn("gardener   ✗ refused: no independent verification configured · 2h 5m ago", after)
 
     def green_project(self):
         project = self.make_project("shop")
         self.fake("gh", "echo '[]'")
         self.configure_base("main")
+        self.configure_automation()
         self.write_record("nightly", [{"ts": ago(hours=1), "sha": self.rev(project, "HEAD"), "status": "green"}])
         self.write_record("gardener", [{"ts": ago(days=1), "status": "published", "detail": "https://example.test/pull/1"}])
         self.list_projects(project)
@@ -308,7 +323,7 @@ class LogAndStatusTests(ProjectFixture):
         self.assertEqual(malformed.returncode, 1, malformed.stdout)
         self.assertIn("shop  gardener   unknown: gardener = 'elsewhere'", malformed.stdout)
         self.assertEqual(local.returncode, 1, local.stdout)
-        self.assertIn("shop  gardener   unknown: no local record", local.stdout)
+        self.assertIn("shop  gardener   ✗ no record on this host", local.stdout)
 
     def test_a_nightly_whose_sha_is_not_in_the_repo_is_not_green(self):
         self.green_project()
@@ -344,6 +359,187 @@ class LogAndStatusTests(ProjectFixture):
         self.assertIn("shop  gardener   ✗ published: https://example.test/pull/1 · 8d 1h ago"
                       " · overdue: last record 8d 1h ago, cadence weekly plus a day", late.stdout)
         self.assertEqual((remote.returncode, remote.stdout), (0, ""), remote.stdout + remote.stderr)
+
+    def test_an_unconfigured_nightly_gardener_and_decisions_are_informational_never_green_and_never_exceptions(self):
+        project = self.make_project("shop")
+        self.fake("gh", "echo '[]'")
+        self.list_projects(project)
+
+        result = self.kitchen("status", "--exceptions")
+        out = self.kitchen("status").stdout
+
+        self.assertEqual((result.returncode, result.stdout), (0, ""), result.stdout + result.stderr)
+        automation = self.home / "config" / "automation"
+        self.assertIn(f"  nightly    not configured (no {automation / 'shop.env'})", out)
+        self.assertIn(f"  gardener   not configured (no {automation / 'shop.env'}"
+                      f" and no gardener in {self.home / 'config' / 'integrate.toml'})", out)
+        self.assertIn(f"  decisions  not configured (no base for 'shop' in {self.home / 'config' / 'integrate.toml'})", out)
+        self.assertNotIn("✓", out)
+
+    def test_a_configured_capability_without_its_evidence_stays_an_exception_next_to_an_unconfigured_project(self):
+        project = self.make_project("shop")
+        bare = self.make_project("lab")
+        self.fake("gh", "echo '[]'")
+        env = self.configure_automation()
+        self.configure_base("origin/nowhere")
+        self.list_projects(project, bare)
+
+        result = self.kitchen("status", "--exceptions")
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(result.stdout.splitlines(), [
+            f"shop  nightly    ✗ no record (GUARD_STEPS in {env})",
+            f"shop  gardener   ✗ no record on this host (GARDENER_VERIFY_STEPS in {env}; if it runs on another host,"
+            f" set gardener = \"remote:<host-label>\" in {self.home / 'config' / 'integrate.toml'})",
+            "shop  decisions  unknown: cannot resolve origin/nowhere in this repo",
+        ])
+
+    def test_records_without_config_are_not_configured_and_with_config_are_green(self):
+        self.green_project()
+        (self.home / "config" / "automation" / "shop.env").unlink()
+        (self.home / "config" / "integrate.toml").unlink()
+
+        unconfigured = self.kitchen("status").stdout
+        quiet = self.kitchen("status", "--exceptions")
+        self.configure_automation()
+        self.configure_base("main")
+        configured = self.kitchen("status").stdout
+
+        self.assertIn("  nightly    not configured", unconfigured)
+        self.assertIn("  gardener   not configured", unconfigured)
+        self.assertIn("  decisions  not configured", unconfigured)
+        self.assertNotIn("✓", unconfigured)
+        self.assertEqual((quiet.returncode, quiet.stdout), (0, ""), quiet.stdout + quiet.stderr)
+        self.assertIn("  nightly    ✓ green", configured)
+        self.assertIn("  gardener   ✓ published", configured)
+        self.assertIn("  decisions  no decisions.md at main", configured)
+
+    def test_an_empty_guard_steps_leaves_the_nightly_not_configured_on_a_gardener_only_host(self):
+        project = self.make_project("shop")
+        self.fake("gh", "echo '[]'")
+        self.configure_base("main")
+        env = self.configure_automation(text='GUARD_STEPS=()\nGARDENER_VERIFY_STEPS=("tests|true")\n')
+        self.list_projects(project)
+
+        result = self.kitchen("status", "--exceptions")
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(result.stdout.splitlines(), [
+            f"shop  gardener   ✗ no record on this host (GARDENER_VERIFY_STEPS in {env}; if it runs on another host,"
+            f" set gardener = \"remote:<host-label>\" in {self.home / 'config' / 'integrate.toml'})",
+        ])
+        self.assertIn(f"  nightly    not configured (GUARD_STEPS is empty or unset in {env})", self.kitchen("status").stdout)
+
+    # What each env leaves, measured with bash as the jobs source it (macOS /bin/bash 3.2, launchd's PATH):
+    # env -i HOME=$HOME PATH=/usr/bin:/bin bash --noprofile --norc -c 'set -euo pipefail; source "$1"; set +u;
+    #   printf "%s %s" "${#GUARD_STEPS[@]}" "${#GARDENER_VERIFY_STEPS[@]}"' _ <env>
+    NIGHTLY_CONFIGURED, NIGHTLY_ABSENT, NIGHTLY_UNKNOWN = ("  nightly    ✗ no record (GUARD_STEPS in",
+                                                         "  nightly    not configured (GUARD_STEPS is empty",
+                                                         "  nightly    unknown: cannot source")
+
+    def assert_nightly(self, cases):
+        project = self.make_project("shop")
+        self.list_projects(project)
+        for text, expected in cases.items():
+            with self.subTest(text=text):
+                self.configure_automation(text=text)
+                self.assertIn(expected, self.kitchen("status").stdout)
+
+    def test_the_nightly_is_configured_only_by_a_guard_steps_array_with_a_step_as_bash_reads_it(self):
+        configured, absent, unknown = self.NIGHTLY_CONFIGURED, self.NIGHTLY_ABSENT, self.NIGHTLY_UNKNOWN
+        self.assert_nightly({
+            "": absent,                                                                    # 0
+            "GUARD_LABEL=\"nightly-guard\"\n": absent,                                    # 0
+            '# GUARD_STEPS=("tests|true")\n': absent,                                       # 0
+            'GUARD_STEPS=(\n  # "tests|true"\n)\n': absent,                                # 0
+            'GUARD_STEPS=("tests|true")\nGUARD_STEPS=()\n': absent,                         # 0
+            'GUARD_STEPS=( \\\n)\n': absent,                                              # 0: a line continuation
+            "GUARD_STEPS=($(true))\n": absent,                                             # 0
+            'GUARD_STEPS=(   # name|command, run in order\n  "build|make build"  # first\n  "tests|make test"\n)\n': configured,  # 2
+            'GUARD_STEPS=()\nGUARD_STEPS+=("tests|true")\n': configured,                   # 1
+            'GUARD_STEPS=("tests|true")\nGUARD_STEPS+=()\n': configured,                   # 1: += appends
+            'export GUARD_STEPS=(\'tests|echo ")"\')\n': configured,                       # 1
+            'GUARD_STEPS=("$(printf tests)|true")\n': configured,                           # 1
+            'GUARD_STEPS=("tests|make test DIR=$HOME")\n': configured,                      # 1
+            "GUARD_STEPS=\n": configured,                                                  # 1: a scalar is one element
+            "GUARD_STEPS=(`printf x`)\n": configured,                                      # 1
+            'GUARD_STEPS=("${COMMON[@]}" "tests|true")\n': unknown,                         # exit 1: COMMON unbound under set -u
+            "GUARD_STEPS=($STEPS)\n": unknown,                                             # exit 1: STEPS unbound
+            'GUARD_STEPS=("${COMMON[@]}")\n': unknown,                                      # exit 1
+        })
+
+    def test_the_env_is_read_as_the_jobs_source_it_not_as_text(self):
+        shared = self.home / "config" / "shared.env"
+        (self.home / "config").mkdir(exist_ok=True)
+        shared.write_text('GUARD_STEPS=("tests|true")\nGARDENER_VERIFY_STEPS=("tests|true")\n')
+        configured = self.NIGHTLY_CONFIGURED
+        self.assert_nightly({
+            'GUARD_STEPS=(); GUARD_STEPS+=("tests|true")\n': configured,                    # 1
+            'declare -a GUARD_STEPS\nGUARD_STEPS[0]="tests|true"\n': configured,            # 1
+            f'source "{shared}"\n': configured,                                             # 1
+            'GUARD_STEPS=("tests|true")\nNOTE="a note\nGUARD_STEPS=()\n"\n': configured,    # 1
+            'GUARD_STEPS=("tests|true")\nif false; then\n  GUARD_STEPS=()\nfi\n': configured,  # 1
+        })
+        self.configure_automation(text=f'source "{shared}"\n')
+        self.assertIn("  gardener   ✗ no record on this host (GARDENER_VERIFY_STEPS in", self.kitchen("status").stdout)  # 1
+
+    def test_an_env_that_fails_to_source_is_unknown_never_not_configured(self):
+        project = self.make_project("shop")
+        self.list_projects(project)
+        for text in ('GUARD_STEPS=("tests|true")\nGARDENER_VERIFY_STEPS=("tests|true")\nexit 1\n',   # exit 1
+                     'GUARD_STEPS=("tests|true")\nGARDENER_VERIFY_STEPS=("tests|true")\nfalse\n',    # exit 1 under set -e
+                     'GARDENER_VERIFY_STEPS=("tests|true")\nGUARD_STEPS=(\n  "tests|true"\n'):      # exit 2: syntax error
+            with self.subTest(text=text):
+                env = self.configure_automation(text=text)
+
+                result = self.kitchen("status", "--exceptions")
+
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn(f"shop  nightly    unknown: cannot source {env}: bash exited", result.stdout)
+                self.assertIn(f"shop  gardener   unknown: cannot source {env}: bash exited", result.stdout)
+                self.assertNotIn("not configured", result.stdout)
+
+    def test_an_env_that_does_not_finish_sourcing_in_time_is_unknown_and_status_returns_promptly(self):
+        project = self.make_project("shop")
+        self.list_projects(project)
+        env = self.configure_automation(text='GUARD_STEPS=("tests|true")\nsleep 30\n')
+        started = datetime.datetime.now()
+
+        result = self.kitchen("status", "--exceptions", env_extra={"KITCHEN_ENV_TIMEOUT_SECONDS": "1"})
+
+        self.assertLess((datetime.datetime.now() - started).total_seconds(), 10)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(f"shop  nightly    unknown: sourcing {env} took longer than 1s", result.stdout)
+        self.assertIn(f"shop  gardener   unknown: sourcing {env} took longer than 1s", result.stdout)
+
+    def test_an_env_without_gardener_verify_steps_configures_the_nightly_but_not_the_gardener(self):
+        self.green_project()
+        (self.home / "state" / "gardener" / "shop.jsonl").unlink()
+        for text in ('GUARD_STEPS=("tests|true")\n# GARDENER_VERIFY_STEPS=("tests|true")\nGARDENER_LABEL="gardener"\n',  # 1 0
+                     'GUARD_STEPS=("tests|true")\nGARDENER_VERIFY_STEPS=()\n'):                                       # 1 0
+            with self.subTest(text=text):
+                self.configure_automation(text=text)
+
+                result = self.kitchen("status", "--exceptions")
+                out = self.kitchen("status").stdout
+
+                self.assertEqual((result.returncode, result.stdout), (0, ""), result.stdout + result.stderr)
+                self.assertIn("  nightly    ✓ green", out)
+                self.assertIn("  gardener   not configured (GARDENER_VERIFY_STEPS is empty or unset in", out)
+
+    @unittest.skipIf(os.geteuid() == 0, "root reads a file without permissions")
+    def test_an_unreadable_automation_env_makes_the_gardener_unknown_never_not_configured(self):
+        self.green_project()
+        env = self.home / "config" / "automation" / "shop.env"
+        env.chmod(0)
+        try:
+            result = self.kitchen("status", "--exceptions")
+        finally:
+            env.chmod(0o600)
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(f"shop  gardener   unknown: cannot read {env}:", result.stdout)
+        self.assertNotIn("not configured", result.stdout)
 
     def test_journal_entries_with_an_unreadable_time_are_counted_never_dropped(self):
         project = self.make_project("shop")
