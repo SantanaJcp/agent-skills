@@ -24,12 +24,15 @@
 # $STATE_ROOT/gardener/<project>.jsonl for `kitchen status`: published <url>, none <reason> (nothing to publish, or
 # skipped), refused <reason>, or incomplete <reason> (a prerequisite failed, claude failed, or the run was aborted,
 # interrupted or killed). A refused or incomplete run also shows a local notification (lib/kitchen/notify.py).
+# A run skipped as busy never held the lock: it only logs, and writes no record, so it can neither mask the result of
+# the run that held the lock nor race that run's own writes to the record.
 # Usage: weekly-gardener <project>
 source "$(dirname "$0")/../lib/common.sh" "$1"
 
 RUN_DATE="$(date -u +%Y-%m-%d)"
 STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%S+00:00)"
 RESULT=""         # published / none / refused / incomplete, set once by result()
+BUSY=0            # 1 when the lock stayed taken: such a run records nothing
 RESULT_DETAIL=""
 RUN_LOG="$LOG_DIR/gardener-$RUN_ID.log"
 WORK_DIR="$STATE_DIR/gardener/$RUN_ID"
@@ -76,12 +79,14 @@ finish() {
   rm -rf "$AGENT_CLONE" "$JOB_DIR/prepare" "$JOB_DIR/cleanup" "$JOB_DIR/verify" "$JOB_DIR/publish.git"
   find "$LOG_DIR" -name 'gardener-*' -mtime +90 -delete
   find "$STATE_DIR/gardener" "$STATE_DIR/gardener-job" -mindepth 1 -maxdepth 1 -mtime +90 -exec rm -rf {} + 2>/dev/null
-  [ -n "$RESULT" ] || result incomplete "aborted (exit $rc)"
-  case "$RESULT" in
-    refused|incomplete) notify "kitchen gardener: $PROJECT $RESULT" "$RESULT_DETAIL" || warn "not notified: see the log" ;;
-  esac
-  record_gardener "$RESULT" "$RESULT_DETAIL" "$RUN_ID" "$RUN_LOG" "$STARTED_AT" ${WARNINGS[@]+"${WARNINGS[@]}"} ||
-    log "FAILED to write the gardener record $GARDENER_RECORD"
+  if [ "$BUSY" = 0 ]; then
+    [ -n "$RESULT" ] || result incomplete "aborted (exit $rc)"
+    case "$RESULT" in
+      refused|incomplete) notify "kitchen gardener: $PROJECT $RESULT" "$RESULT_DETAIL" || warn "not notified: see the log" ;;
+    esac
+    record_gardener "$RESULT" "$RESULT_DETAIL" "$RUN_ID" "$RUN_LOG" "$STARTED_AT" ${WARNINGS[@]+"${WARNINGS[@]}"} ||
+      log "FAILED to write the gardener record $GARDENER_RECORD"
+  fi
   log "gardener end: status=$rc"
   exit "$rc"
 }
@@ -273,7 +278,8 @@ publish() {
 }
 
 if [ "$LOCK_STATE" = busy ]; then
-  result none "gardener skipped: busy (another job of $PROJECT held the clone for ${LOCK_WAIT_SECONDS:-3600}s)"
+  log "gardener skipped: busy (another job of $PROJECT held the clone for ${LOCK_WAIT_SECONDS:-3600}s); not recorded"
+  BUSY=1
   exit 75
 fi
 close_stale_records "$RUN_ID" "$GARDENER_RECORD"

@@ -114,7 +114,7 @@ class LogAndStatusTests(ProjectFixture):
 
         out = self.kitchen("status", str(project)).stdout
 
-        self.assertIn(f"✓ green at {t3} on c", out)
+        self.assertIn(f"green at {t3} on c", out)  # not ✓: short SHAs and no base leave the distance to the base unknown
         self.assertIn("green streak 2 nights", out)
         self.assertNotIn("overdue", out)
 
@@ -310,6 +310,37 @@ class LogAndStatusTests(ProjectFixture):
         self.assertEqual(local.returncode, 1, local.stdout)
         self.assertIn("shop  gardener   unknown: no local record", local.stdout)
 
+    def test_a_nightly_whose_sha_is_not_in_the_repo_is_not_green(self):
+        self.green_project()
+        self.write_record("nightly", [{"ts": ago(hours=1), "sha": "f" * 40, "status": "green"}])
+
+        result = self.kitchen("status", "--exceptions")
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("shop  nightly    ✗ green", result.stdout)
+        self.assertIn("behind base: unknown", result.stdout)
+
+    def test_a_gardener_record_with_an_unreadable_time_is_not_green(self):
+        self.green_project()
+        self.write_record("gardener", [{"ts": "yesterday", "status": "published", "detail": "https://example.test/pull/1"}])
+
+        result = self.kitchen("status", "--exceptions")
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("shop  gardener   ✗ published: https://example.test/pull/1 · unknown ago", result.stdout)
+
+    def test_journal_entries_with_an_unreadable_time_are_counted_never_dropped(self):
+        project = self.make_project("shop")
+        self.list_projects(project)
+        (self.home / "state").mkdir(exist_ok=True)
+        entry = {"ts": "not a time", "repo": str(self.home), "project": None, "agent": "claude", "status": "blocked", "message": "clock broke"}
+        (self.home / "state" / "log.jsonl").write_text(json.dumps(entry) + "\n")
+
+        out = self.kitchen("status").stdout
+
+        self.assertIn("unattached  1 entries, 1 blocked, 1 with unknown time", out)
+        self.assertIn("clock broke", out)
+
     def test_log_notifies_only_blocked_and_decision_checkpoints_redacted(self):
         project = self.make_project("shop")
         secret = "tok" + "en=" + "abcd1234efgh5678"
@@ -436,7 +467,7 @@ class IntegrateTests(ProjectFixture):
         restored = self.integrate("feature-a", "--recorded")
 
         self.assertEqual(changed.returncode, 1, changed.stdout)
-        self.assertIn("the configured checks changed", changed.stdout)
+        self.assertIn("the check configuration changed", changed.stdout)
         self.assertEqual(restored.returncode, 0, restored.stdout)
 
     def test_without_a_base_integrate_fails_instead_of_using_origin_main(self):
@@ -449,6 +480,25 @@ class IntegrateTests(ProjectFixture):
             self.assertEqual(result.returncode, 1, result.stdout)
             self.assertIn("no base for 'shop'", result.stdout)
         self.assertEqual(self.integrate("feature-a", "--base", "main").returncode, 0)
+
+    def test_a_recorded_pass_is_not_reused_once_the_configured_path_changes(self):
+        tools = {}
+        for name, code in (("good", 0), ("bad", 1)):
+            folder = self.home / name
+            folder.mkdir()
+            (folder / "shop-check").write_text(f"#!/bin/sh\nexit {code}\n")
+            (folder / "shop-check").chmod(0o755)
+            tools[name] = folder
+        self.configure(f'checks = ["shop-check"]\npath = ["{tools['good']}"]')
+        self.assertEqual(self.integrate("feature-a").returncode, 0)
+        self.configure(f'checks = ["shop-check"]\npath = ["{tools['bad']}"]')
+
+        recorded = self.integrate("feature-a", "--recorded")
+        real = self.integrate("feature-a")
+
+        self.assertEqual(real.returncode, 1, real.stdout)
+        self.assertEqual(recorded.returncode, 1, recorded.stdout)
+        self.assertIn("stale: the check configuration changed", recorded.stdout)
 
     def test_a_merge_conflict_fails_at_that_branch(self):
         for name in ("c1", "c2"):

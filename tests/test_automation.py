@@ -602,7 +602,22 @@ class GardenerTests(AutomationFixture):
         self.assertEqual(result.returncode, 75, result.stdout)
         self.assertIn("gardener skipped: busy", result.stdout)
         self.assertNotIn("claude", self.calls_log())
-        self.assertEqual([(r["status"], r["detail"][:21]) for r in self.gardener()], [("none", "gardener skipped: bus")])
+
+    def test_a_busy_skip_never_masks_the_latest_real_run(self):
+        self.configure_publishing()
+        record = self.state / "gardener" / "shop.jsonl"
+        record.parent.mkdir(parents=True)
+        refused = {"ts": "2026-10-05T06:10:00+00:00", "status": "refused", "detail": "possible secret in the diff", "run_id": "active"}
+        record.write_text(json.dumps(refused) + "\n")
+        lock = self.state / "automation" / "shop" / "job.lock"
+        lock.parent.mkdir(parents=True)
+
+        with open(lock, "w") as held:
+            fcntl.flock(held, fcntl.LOCK_EX)
+            result = self.run_job("weekly-gardener", "shop", LOCK_WAIT_SECONDS="1", LOCK_POLL_SECONDS="0.1")
+
+        self.assertEqual(result.returncode, 75, result.stdout)
+        self.assertEqual(self.gardener(), [refused])
 
 
 class GardenerPublicationTests(AutomationFixture):

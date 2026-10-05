@@ -78,12 +78,12 @@ Trial runs (`GUARD_ONLY=...`) are neither recorded nor reported.
 
 ## Gardener record
 
-One JSON line per run in `~/.local/state/kitchen/gardener/<project>.jsonl`: `ts`, `started`, `status`, `detail`, `warnings`, `run_id`, `log`, written as `running` when the run holds the lock and replaced when it ends. The same result is the run's one `GARDENER-RESULT` log line.
+One JSON line per run in `~/.local/state/kitchen/gardener/<project>.jsonl`: `ts`, `started`, `status`, `detail`, `warnings`, `run_id`, `log`, written as `running` when the run holds the lock and replaced when it ends. The same result is the run's one `GARDENER-RESULT` log line. A run skipped as busy never held the lock, so it only logs: it writes no record, and can neither mask the result of the run that held the lock nor race its writes.
 
 | `status` | `detail` |
 |---|---|
 | `published` | The PR's URL. |
-| `none` | Why nothing was published: no gardener branch, a gardener PR still open, or `gardener skipped: busy`. |
+| `none` | Why nothing was published: no gardener branch, or a gardener PR still open. |
 | `refused` | Why the job refused to publish, for example `no independent verification configured`. |
 | `incomplete` | A prerequisite failed (Docker, srt, node, a private `/tmp`, `GARDENER_PREPARE_CMD`), claude failed, or the run was aborted or interrupted. A `running` line left by a killed run is closed as `incomplete` by the next one. |
 

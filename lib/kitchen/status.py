@@ -281,7 +281,8 @@ def nightly_line(run: dict | None) -> str:
 
 
 def nightly_green(run: dict | None) -> bool:
-    return run is not None and run.get("status") == "green" and run["overdue"] is False
+    """Green only with every fact known: a green verdict, not overdue, and a known distance to the base."""
+    return run is not None and run.get("status") == "green" and run["overdue"] is False and run["behind"]["count"] != UNKNOWN
 
 
 def gardener_line(run: dict | None) -> str:
@@ -291,14 +292,15 @@ def gardener_line(run: dict | None) -> str:
         return f"gardener   {UNKNOWN}: {run['setting_error']}"
     if "remote" in run:
         return f"gardener   remote ({run['remote']}): not read here"
-    mark = "✓" if run.get("status") in GARDENER_GREEN else "✗"
+    mark = "✓" if gardener_green(run) else "✗"
     detail = f": {run['detail']}" if run.get("detail") else ""
     warnings = f" · warnings: {'; '.join(map(str, run['warnings']))}" if run.get("warnings") else ""
     return f"gardener   {mark} {run.get('status')}{detail} · {duration(run['age_seconds'])} ago{warnings}"
 
 
 def gardener_green(run: dict | None) -> bool:
-    return run is not None and run.get("status") in GARDENER_GREEN
+    """Green only for a good result whose time is known."""
+    return run is not None and run.get("status") in GARDENER_GREEN and run.get("age_seconds") is not None
 
 
 def gardener_exception(run: dict | None) -> bool:
@@ -327,12 +329,14 @@ def decisions_green(d: dict) -> bool:
 
 def entry_line(entry: dict, with_repo: bool = False) -> str:
     where = f"{entry.get('repo')}: " if with_repo else ""
-    return f"{entry['ts'][:16]} {entry['status']:<8} [{entry.get('agent')}] {where}{entry['message']}"
+    when = str(entry.get("ts"))[:16] if parse_ts(str(entry.get("ts", ""))) else f"time {UNKNOWN} ({entry.get('ts')!r})"
+    return f"{when} {entry['status']:<8} [{entry.get('agent')}] {where}{entry['message']}"
 
 
 def journal_lines(label: str, entries: list[dict], with_repo: bool = False) -> list[str]:
     blocked = [e for e in entries if e.get("status") == "blocked"]
-    lines = [f"{label}{len(entries)} entries, {len(blocked)} blocked"]
+    unknown_time = sum(1 for e in entries if parse_ts(str(e.get("ts", ""))) is None)
+    lines = [f"{label}{len(entries)} entries, {len(blocked)} blocked" + (f", {unknown_time} with unknown time" if unknown_time else "")]
     for entry in (blocked + [e for e in entries if e.get("status") != "blocked"])[:5]:
         lines.append(f"    {entry_line(entry, with_repo)}")
     return lines

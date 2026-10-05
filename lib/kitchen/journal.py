@@ -72,9 +72,9 @@ def read(since=None, project: str | None = None, repo: str | None = None) -> lis
             entry = json.loads(line)
         except json.JSONDecodeError as error:
             raise RuntimeError(f"{journal_path()}:{number} is not valid JSON: {error}") from error
-        ts = parse_ts(entry.get("ts", ""))
-        if since and (ts is None or ts < since):
-            continue
+        ts = parse_ts(str(entry.get("ts", "")))
+        if since and ts is not None and ts < since:
+            continue  # an entry whose time cannot be read cannot be placed outside the window: it is kept
         if (project or repo) and not belongs(entry, project, repo):
             continue
         entries.append(entry)
