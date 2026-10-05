@@ -130,7 +130,7 @@ class InitFixture(unittest.TestCase):
 
     def make_complete(self):
         files = complete_files()
-        repo = self.make_repo("complete", files, executable=("bin/check", ".githooks/pre-commit"),
+        repo = self.make_repo("complete", files, executable=("bin/check", ".githooks/pre-commit", *(f".kitchen/hooks/{g}" for g in GUARDS)),
                               origin="https://github.com/example/shop.git", hooks_path=".githooks")
         (repo / ".claude" / "skills").mkdir(parents=True)
         (repo / ".claude" / "skills" / "verify-shop").symlink_to("../../.agents/skills/verify-shop")
@@ -284,6 +284,35 @@ class ReadOnly(InitFixture):
 
 
 class MustHaves(InitFixture):
+    def agent_hooks_verdict(self, settings=None, executable=True):
+        files = {"README.md": "x\n", **vendored_hooks()}
+        if settings is not None:
+            files[".claude/settings.json"] = json.dumps(settings)
+        repo = self.make_repo("hooks", files, executable=tuple(f".kitchen/hooks/{g}" for g in GUARDS) if executable else ())
+        return next(m for m in self.report(repo)["must_haves"] if m["id"] == "agent-hooks")
+
+    def test_agent_hooks_pass_only_when_bash_runs_each_guard(self):
+        def group(matcher, command):
+            return {"hooks": {"PreToolUse": [{"matcher": matcher, "hooks": [{"type": "command", "command": command.format(g)} for g in GUARDS]}]}}
+
+        self.assertEqual(self.agent_hooks_verdict()["status"], "PASS")
+        cases = {
+            "another tool's matcher": group("Read", ".kitchen/hooks/{}"),
+            "a command that only names the path": group("Bash", "echo .kitchen/hooks/{}"),
+        }
+        for label, settings in cases.items():
+            with self.subTest(label):
+                verdict = self.agent_hooks_verdict(settings)
+                self.assertEqual(verdict["status"], "FAIL", verdict)
+                self.assertIn("does not run deny-no-verify", verdict["proof"])
+        self.assertEqual(self.agent_hooks_verdict(group("^Bash$", '"$CLAUDE_PROJECT_DIR"/.kitchen/hooks/{}'))["status"], "PASS")
+
+    def test_agent_hooks_fail_when_a_copy_is_not_executable(self):
+        verdict = self.agent_hooks_verdict(executable=False)
+
+        self.assertEqual(verdict["status"], "FAIL")
+        self.assertIn("not executable", verdict["proof"])
+
     def test_without_gh_branch_protection_is_unknown_never_pass(self):
         repo = self.make_complete()
 

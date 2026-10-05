@@ -25,8 +25,6 @@ Files on kitchen/init
        does: gitleaks on the staged changes (fails with the install command when gitleaks is missing), then `bin/check commit` unless only documentation is staged. Inactive until `git config core.hooksPath .githooks` in each clone.
        would block today: not run: needs --prove, which runs repository code
   written          .agents/skills/verify-calc/SKILL.md
-       does: Skeleton of the project's verify skill from templates/verify: placeholders to fill, no bin/verify yet.
-       would block today: nothing: a skeleton
   written          .agents/skills/verify-calc/features/README.md
        does: Skeleton of the project's verify skill from templates/verify: placeholders to fill, no bin/verify yet.
        would block today: nothing: a skeleton
@@ -34,17 +32,9 @@ Files on kitchen/init
        does: What --check measured, in measure-only mode: no gate reads it yet.
        would block today: nothing: measure-only
   written          .kitchen/hooks/deny-no-verify
-       does: The kitchen's agent guards, copied into the repo so teammates and cloud sessions run them without installing the kitchen; .claude/settings.json runs each one before every Bash command in Claude Code.
-       would block today: agent commands that push to a shared branch, skip the repo's hooks, or rm -r outside the temp dir, in Claude Code sessions started at the repo root
   written          .kitchen/hooks/deny-recursive-rm
-       does: The kitchen's agent guards, copied into the repo so teammates and cloud sessions run them without installing the kitchen; .claude/settings.json runs each one before every Bash command in Claude Code.
-       would block today: agent commands that push to a shared branch, skip the repo's hooks, or rm -r outside the temp dir, in Claude Code sessions started at the repo root
   written          .kitchen/hooks/deny-shared-push
-       does: The kitchen's agent guards, copied into the repo so teammates and cloud sessions run them without installing the kitchen; .claude/settings.json runs each one before every Bash command in Claude Code.
-       would block today: agent commands that push to a shared branch, skip the repo's hooks, or rm -r outside the temp dir, in Claude Code sessions started at the repo root
   written          .kitchen/hooks/shellparse.py
-       does: The kitchen's agent guards, copied into the repo so teammates and cloud sessions run them without installing the kitchen; .claude/settings.json runs each one before every Bash command in Claude Code.
-       would block today: agent commands that push to a shared branch, skip the repo's hooks, or rm -r outside the temp dir, in Claude Code sessions started at the repo root
   written          .claude/settings.json
        does: The kitchen's agent guards, copied into the repo so teammates and cloud sessions run them without installing the kitchen; .claude/settings.json runs each one before every Bash command in Claude Code.
        would block today: agent commands that push to a shared branch, skip the repo's hooks, or rm -r outside the temp dir, in Claude Code sessions started at the repo root

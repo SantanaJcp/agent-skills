@@ -835,8 +835,11 @@ def render(result: dict, markdown: bool = False) -> str:
     out.head(f"Files on {BRANCH}")
     if not result["files"]:
         out.item("none")
-    for f in result["files"]:
+    for i, f in enumerate(result["files"]):
         out.item(f"{f['state']:<16} {f['path']}")
+        following = result["files"][i + 1] if i + 1 < len(result["files"]) else None
+        if following and (following["piece"], following["state"], following["blocks"]) == (f["piece"], f["state"], f["blocks"]):
+            continue  # one piece, several files: say what it does once, under its last file
         out.sub(f"does: {f['does']}")
         if f["state"] in ("written", "unchanged"):
             out.sub(f"would block today: {f['blocks']}")

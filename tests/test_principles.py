@@ -1,8 +1,8 @@
 """Every control names the principle it enforces, and every name is a principle in PRINCIPLES.md.
 
-A control is a guard, a scheduled job, a CLI module that decides PASS, FAIL or unknown, a must-have of
-`kitchen init`, or a skill. The list below is written by hand: a new control must be added here, with its
-principles in its header, or this suite has nothing to hold it to.
+A control is a guard, a scheduled job, a CLI module, a must-have of `kitchen init`, or a skill. They are found by
+globbing, so a new one is held to this suite the moment it lands; a helper that enforces nothing is excused by name
+in NOT_CONTROLS, with the reason.
 """
 import re
 import sys
@@ -14,12 +14,18 @@ sys.path.insert(0, str(REPO / "lib"))
 
 from kitchen import repocheck, rules  # noqa: E402
 
-CONTROLS = sorted(
-    [*REPO.glob("hooks/deny-*"), *REPO.glob("skills/*/SKILL.md")]
-    + [REPO / "automation" / "bin" / name for name in ("nightly-guard", "weekly-gardener", "weekly-retro")]
-    + [REPO / "lib" / "kitchen" / f"{name}.py" for name in
-       ("agent_hooks", "credentials", "init", "integrate", "journal", "models", "propose", "repocheck", "rules", "status", "transcripts")]
-)
+NOT_CONTROLS = {
+    "hooks/shellparse.py": "the parser the guards share",
+    "automation/bin/install-schedule": "writes launchd and systemd units; the jobs it schedules are the controls",
+    "lib/kitchen/__init__.py": "package marker",
+    "lib/kitchen/checkplan.py": "picks which test modules a commit runs",
+    "lib/kitchen/common.py": "paths and git helpers",
+    "lib/kitchen/environment.py": "tool and schedule probes that doctor prints",
+    "lib/kitchen/inventory.py": "lists what the agents can see",
+    "lib/kitchen/notify.py": "sends a local notification for the controls that decide to",
+}
+CANDIDATES = [*REPO.glob("hooks/*"), *REPO.glob("skills/*/SKILL.md"), *REPO.glob("automation/bin/*"), *REPO.glob("lib/kitchen/*.py")]
+CONTROLS = sorted(p for p in CANDIDATES if p.is_file() and p.name != "README.md" and str(p.relative_to(REPO)) not in NOT_CONTROLS)
 DECLARATION = re.compile(r"Principles(?: \([^)]*\))?:\s*(.+)")
 NAME = re.compile(r"`([a-z][a-z-]*)`")
 
@@ -44,6 +50,9 @@ class Principles(unittest.TestCase):
                 names = declared(path)
                 self.assertTrue(names, "no `Principles:` line naming at least one principle")
                 self.assertEqual([n for n in names if n not in self.ids], [], "names a principle PRINCIPLES.md does not define")
+
+    def test_every_excused_helper_still_exists(self):
+        self.assertEqual([p for p in NOT_CONTROLS if not (REPO / p).is_file()], [], "drop a gone helper from NOT_CONTROLS")
 
     def test_every_must_have_names_a_known_principle(self):
         for key, _, principle in repocheck.MUST_HAVES:

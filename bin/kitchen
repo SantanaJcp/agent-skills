@@ -58,7 +58,7 @@ def skill_target_dirs(h: Path) -> list[Path]:
 
 
 def rules_targets(h: Path) -> list[Path]:
-    return [h / ".claude" / "CLAUDE.md", h / ".codex" / "AGENTS.md"]
+    return rules.targets(h)
 
 
 def repo_skills() -> list[Path]:
@@ -97,48 +97,6 @@ def rules_conflicts(h: Path) -> list[Path]:
     return [t for t in rules_targets(h) if (t.exists() or t.is_symlink()) and not owned(t) and not rules.generated(t)]
 
 
-def ask_rules(h: Path) -> str:
-    current = rules_targets(h)[0]
-    was_global = (owned(current) and link_target(current) == global_rules()) or (
-        rules.generated(current) and str(global_rules()) in current.read_text(encoding="utf-8").splitlines()[0])
-    recommended = "1" if was_global else "3"
-    print("\nWhose rules should every agent read, above the kitchen's principles?\n"
-          f"   [1] this kitchen's global/AGENTS.md (its owner's rules){' (recommended)' if recommended == '1' else ''}\n"
-          "   [2] a file of yours: type its absolute path\n"
-          f"   [3] none: the principles only{' (recommended)' if recommended == '3' else ''}")
-    while True:
-        reply = input("> ").strip() or recommended
-        if reply == "1":
-            return "global"
-        if reply == "3":
-            return "none"
-        if reply.startswith("/") or reply.startswith("~"):
-            return reply
-        if reply == "2":
-            print("   type the absolute path of your rules file")
-            continue
-        print("   answer 1 or 3, or type an absolute path")
-
-
-def ask_projects() -> list[Path]:
-    listed = [p for p in common.projects() if p.is_dir()]
-    print("\nSet up repos now with `kitchen init` (each one asks its own questions; nothing is pushed)?\n"
-          + (f"   [1] all {len(listed)} in your projects.txt\n" if listed else "")
-          + "   [2] one: type its path\n   [3] none (recommended): run `kitchen init <repo>` later, in the repos you choose")
-    while True:
-        reply = input("> ").strip() or "3"
-        if reply == "1" and listed:
-            return listed
-        if reply == "3":
-            return []
-        if reply == "2":
-            print("   type the repo's path")
-            continue
-        if reply.startswith(("/", "~", ".")):
-            return [Path(reply).expanduser()]
-        print("   answer " + ("1, " if listed else "") + "2 or 3, or type a path")
-
-
 def set_hooks_path() -> None:
     if (REPO / ".git").exists():
         subprocess.run(["git", "-C", str(REPO), "config", "core.hooksPath", ".githooks"], check=True)
@@ -150,7 +108,7 @@ def cmd_install(args: argparse.Namespace) -> int:
     try:
         choice = args.rules or rules.configured()
         if choice is None and interactive:
-            choice = ask_rules(h)
+            choice = rules.ask(rules_targets(h)[0], global_rules())
         rules_file = rules.resolve(choice, REPO)
     except rules.RulesError as error:
         print(f"FAIL  {error}")
@@ -219,7 +177,7 @@ def cmd_install(args: argparse.Namespace) -> int:
           f"agent hooks: {len(agent_hooks.guards(REPO))}")
     if interactive:
         from kitchen import init, propose, repocheck
-        for project in ask_projects():
+        for project in init.ask_projects():
             print(f"\n== kitchen init {project}")
             try:
                 init.run(project, None, False, False, False, None, False, interactive=True)

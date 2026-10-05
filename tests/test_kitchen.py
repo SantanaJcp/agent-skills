@@ -1,4 +1,6 @@
 import os
+import pty
+import select
 import shutil
 import subprocess
 import sys
@@ -138,6 +140,52 @@ class InstallTests(KitchenFixture):
         self.assertEqual(result.returncode, 1)
         self.assertIn("does not exist", result.stdout)
         self.assertFalse((self.home / ".claude" / "CLAUDE.md").exists())
+
+    def test_install_in_a_terminal_asks_whose_rules_and_which_repos(self):
+        self.add_global_rules()
+        self.add_principles()
+        env = {**os.environ, "HOME": str(self.home), "KITCHEN_REPO": str(self.repo), "KITCHEN_DENYLIST": str(self.home / "none.txt"),
+               "KITCHEN_STATE": str(self.home / "state"), "KITCHEN_CONFIG": str(self.home / "config")}
+        pid, fd = pty.fork()
+        if pid == 0:
+            os.execve(sys.executable, [sys.executable, str(KITCHEN), "install"], env)
+        output, replies = b"", ["3", "3"]  # rules: none; repos: none
+        while True:
+            ready, _, _ = select.select([fd], [], [], 60)
+            if not ready:
+                break
+            try:
+                data = os.read(fd, 4096)
+            except OSError:
+                break
+            if not data:
+                break
+            output += data
+            if output.rstrip(b" ").endswith(b">") and replies:
+                os.write(fd, (replies.pop(0) + "\n").encode())
+        _, status = os.waitpid(pid, 0)
+        text = output.decode(errors="replace")
+
+        self.assertEqual((os.waitstatus_to_exitcode(status), replies), (0, []), text)
+        self.assertIn("Whose rules should every agent read", text)
+        self.assertIn("[3] none (recommended)", text)
+        self.assertEqual((self.home / "config" / "rules.txt").read_text(), "none\n")
+        claude = (self.home / ".claude" / "CLAUDE.md").read_text()
+        self.assertNotIn("# Rules", claude)
+        self.assertIn("- `prove`:", claude)
+
+    def test_install_refuses_its_own_output_as_the_rules_source(self):
+        self.add_principles()
+        own = self.home / ".claude" / "CLAUDE.md"
+        own.parent.mkdir(parents=True)
+        own.write_text("# My current rules\n")
+
+        result = self.kitchen("install", "--backup", "--rules", str(own))
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("is where `kitchen install` writes its output", result.stdout)
+        self.assertEqual(own.read_text(), "# My current rules\n")
+        self.assertFalse((self.home / "config" / "rules.txt").exists())
 
     def test_install_replaces_the_old_link_to_global_rules(self):
         rules = self.add_global_rules()

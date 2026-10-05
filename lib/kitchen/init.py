@@ -101,6 +101,16 @@ def shown(path: Path) -> str:
     return "~" + str(path)[len(home):] if str(path).startswith(home + os.sep) else str(path)
 
 
+def append(path: Path, text: str, gap: bool = False) -> None:
+    """One O_APPEND write: two inits running at once each add their lines; neither rewrites the file from a stale read."""
+    with path.open("a+", encoding="utf-8") as handle:
+        handle.seek(0, os.SEEK_END)
+        if handle.tell():
+            handle.seek(handle.tell() - 1)
+            text = ("" if handle.read(1) == "\n" else "\n") + ("\n" if gap else "") + text
+        handle.write(text)
+
+
 def add_personal(root: Path, base: str, state: dict) -> list[str]:
     """Append the repo to projects.txt and integrate.toml. Appends only; never rewrites a line the owner wrote."""
     done = []
@@ -108,16 +118,13 @@ def add_personal(root: Path, base: str, state: dict) -> list[str]:
     config.mkdir(parents=True, exist_ok=True)
     if not state["listed"]:
         listing = config / "projects.txt"
-        text = listing.read_text(encoding="utf-8") if listing.is_file() else ""
-        listing.write_text(text + ("" if text.endswith("\n") or not text else "\n") + f"{root}\n", encoding="utf-8")
+        append(listing, f"{root}\n")
         done.append(f"added      {root} to {shown(listing)}")
     if not state["integrate"]:
         if not TOML_KEY.match(root.name):
             raise InitError(f"the folder name {root.name!r} is not a bare TOML key; add [projects.\"{root.name}\"] to integrate.toml by hand")
         path = config / "integrate.toml"
-        text = path.read_text(encoding="utf-8") if path.is_file() else ""
-        block = f"[projects.{root.name}]\nbase = {json.dumps(base)}\nchecks = {json.dumps(CHECKS)}\n"
-        path.write_text(text + ("\n" if text and not text.endswith("\n\n") else "") + block, encoding="utf-8")
+        append(path, f"[projects.{root.name}]\nbase = {json.dumps(base)}\nchecks = {json.dumps(CHECKS)}\n", gap=True)
         done.append(f"added      [projects.{root.name}] to {shown(path)} (base {base}, checks {' '.join(CHECKS)})")
     return done
 
@@ -193,3 +200,20 @@ def run(path: Path, branch: str | None, check_only: bool, yes: bool, prove: bool
     if not asked:
         out("nothing to do: every must-have passes and the repo is already in your kitchen\n")
     return code
+
+
+def ask_projects() -> list[Path]:
+    """In a terminal, at the end of `kitchen install`: which repos to set up now. Never all of them by default."""
+    listed = [p for p in common.projects() if p.is_dir()]
+    print("\nSet up repos now with `kitchen init` (each one asks its own questions; nothing is pushed)?\n"
+          + (f"   [1] all {len(listed)} in your projects.txt\n" if listed else "")
+          + "   [2] one: type its path\n   [3] none (recommended): run `kitchen init <repo>` later, in the repos you choose")
+    while True:
+        reply = input("> ").strip() or "3"
+        if reply == "1" and listed:
+            return listed
+        if reply == "3":
+            return []
+        if reply.startswith(("/", "~", ".")):
+            return [Path(reply).expanduser()]
+        print("   type the repo's path" if reply == "2" else "   answer " + ("1, " if listed else "") + "2 or 3, or type a path")

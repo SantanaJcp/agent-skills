@@ -10,6 +10,7 @@ kitchen's own global/AGENTS.md, and install says so. Principles: `handoff` (ever
 """
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path
 
@@ -44,8 +45,14 @@ def save(choice: str) -> None:
     path.write_text(choice + "\n", encoding="utf-8")
 
 
+def targets(home: Path) -> list[Path]:
+    """Where install writes the generated file: Claude Code's and Codex's global rules."""
+    return [home / ".claude" / "CLAUDE.md", home / ".codex" / "AGENTS.md"]
+
+
 def resolve(choice: str | None, repo: Path) -> Path | None:
-    """The rules file for a choice; None means principles only. A chosen file that does not exist is an error."""
+    """The rules file for a choice; None means principles only. A chosen file that does not exist is an error, and so is
+    one install writes: install would replace its own source, and every rerun would nest the last output in the next."""
     if choice == "none":
         return None
     if choice in (None, "global"):
@@ -56,6 +63,9 @@ def resolve(choice: str | None, repo: Path) -> Path | None:
         raise RulesError(f"--rules takes an absolute path, `global` or `none`; got {choice!r}")
     if not path.is_file():
         raise RulesError(f"the rules file {path} does not exist")
+    if generated(path) or any(path.resolve() == t.resolve() for t in targets(common.home()) if t.exists()):
+        raise RulesError(f"{path} is where `kitchen install` writes its output; move your rules elsewhere "
+                         f"(for example {common.config_dir() / 'my-rules.md'}) and pass that path")
     return path
 
 
@@ -100,3 +110,23 @@ def generated(path: Path) -> bool:
         return False
     with path.open(encoding="utf-8", errors="replace") as handle:
         return handle.readline().startswith(MARKER)
+
+
+def ask(current: Path, kitchen_rules: Path) -> str:
+    """In a terminal: whose rules every agent reads. Recommends this kitchen's rules only to whoever already had them."""
+    had_them = (current.is_symlink() and Path(os.path.realpath(current)) == kitchen_rules.resolve()) or (
+        generated(current) and str(kitchen_rules) in current.read_text(encoding="utf-8").splitlines()[0])
+    recommended = "1" if had_them else "3"
+    print("\nWhose rules should every agent read, above the kitchen's principles?\n"
+          f"   [1] this kitchen's global/AGENTS.md (its owner's rules){' (recommended)' if recommended == '1' else ''}\n"
+          "   [2] a file of yours: type its absolute path\n"
+          f"   [3] none: the principles only{' (recommended)' if recommended == '3' else ''}")
+    while True:
+        reply = input("> ").strip() or recommended
+        if reply == "1":
+            return "global"
+        if reply == "3":
+            return "none"
+        if reply.startswith(("/", "~")):
+            return reply
+        print("   type the absolute path of your rules file" if reply == "2" else "   answer 1 or 3, or type an absolute path")

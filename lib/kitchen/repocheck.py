@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import subprocess
 import tomllib
 from pathlib import Path, PurePosixPath
@@ -612,7 +613,35 @@ def guard_command(name: str) -> str:
             f'{{ echo "kitchen: guard missing: $h" >&2; exit 2; }}; exec "$h"\'')
 
 
+def matches_bash(matcher: object) -> bool:
+    """Claude Code's matcher: empty or `*` matches every tool; otherwise an exact name or a regex over the tool name."""
+    if matcher in (None, "", "*"):
+        return True
+    try:
+        return isinstance(matcher, str) and re.fullmatch(matcher, "Bash") is not None
+    except re.error:
+        return False
+
+
+def runs_guard(command: str, name: str) -> bool:
+    """The command executes this guard: kitchen's own form, or the guard's path as the program it runs. Mentioning
+    the path (`echo .kitchen/hooks/x`) is not running it."""
+    if command == guard_command(name):
+        return True
+    try:
+        words = shlex.split(command)
+    except ValueError:
+        return False
+    if not words:
+        return False
+    program = words[0]
+    for prefix in ("$CLAUDE_PROJECT_DIR/", "${CLAUDE_PROJECT_DIR}/", "./"):
+        program = program.removeprefix(prefix)
+    return program == f"{VENDORED_HOOKS}/{name}" or program.endswith(f"/{VENDORED_HOOKS}/{name}")
+
+
 def claude_hook_commands(text: str | None) -> list[str] | None:
+    """The commands Claude Code runs before a Bash call, from .claude/settings.json; groups for other tools do not count."""
     try:
         data = json.loads(text) if text is not None else None
     except json.JSONDecodeError:
@@ -620,7 +649,8 @@ def claude_hook_commands(text: str | None) -> list[str] | None:
     if not isinstance(data, dict):
         return None
     groups = (data.get("hooks") or {}).get("PreToolUse") or []
-    return [str(h.get("command", "")) for g in groups if isinstance(g, dict) for h in g.get("hooks") or [] if isinstance(h, dict)]
+    return [str(h.get("command", "")) for g in groups if isinstance(g, dict) and matches_bash(g.get("matcher"))
+            for h in g.get("hooks") or [] if isinstance(h, dict) and h.get("type", "command") == "command"]
 
 
 def agent_hooks(repo: Repo) -> dict:
@@ -634,8 +664,10 @@ def agent_hooks(repo: Repo) -> dict:
         return criterion("FAIL", f"no {VENDORED_HOOKS}/: teammates and cloud sessions run agents without the kitchen's guards", next=refresh)
     stale = [n for n in guards if n not in missing and repo.read(f"{VENDORED_HOOKS}/{n}") != guards[n]]
     commands = claude_hook_commands(repo.read(CLAUDE_SETTINGS))
-    unrun = [n for n in guards if not n.endswith(".py") and not any(f"{VENDORED_HOOKS}/{n}" in c for c in commands or [])]
-    problems = ([f"missing {', '.join(missing)}"] if missing else []) + ([f"{', '.join(stale)} differ from this kitchen's copy"] if stale else [])
+    unrun = [n for n in guards if not n.endswith(".py") and not any(runs_guard(c, n) for c in commands or [])]
+    inert = [n for n in guards if not n.endswith(".py") and n not in missing and not repo.is_executable(f"{VENDORED_HOOKS}/{n}")]
+    problems = ([f"missing {', '.join(missing)}"] if missing else []) + ([f"{', '.join(stale)} differ from this kitchen's copy"] if stale else []) \
+        + ([f"{', '.join(inert)} not executable"] if inert else [])
     if commands is None:
         problems.append(f"{CLAUDE_SETTINGS} is missing or not JSON")
     elif unrun:
