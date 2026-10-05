@@ -96,6 +96,18 @@ class LogAndStatusTests(ProjectFixture):
         self.assertEqual((entry["branch"], entry["agent"], entry["status"]), ("main", "claude", "done"))
         self.assertTrue(entry["sha"])
 
+    def test_log_records_the_session_of_the_agent_that_logged(self):
+        project = self.make_project()
+
+        sessions = {"CODEX_SESSION_ID": "codex-123", "CLAUDE_CODE_SESSION_ID": "claude-456"}
+        self.extra_env = {**self.extra_env, **sessions, "KITCHEN_AGENT": "codex"}
+        self.kitchen("log", "from codex", cwd=project)
+        self.extra_env["KITCHEN_AGENT"] = "claude"
+        self.kitchen("log", "from claude", cwd=project)
+
+        entries = [json.loads(line) for line in (self.home / "state" / "log.jsonl").read_text().splitlines()]
+        self.assertEqual([(e["agent"], e["session"]) for e in entries], [("codex", "codex-123"), ("claude", "claude-456")])
+
     def test_status_shows_blocked_entries_first_and_owed_decisions(self):
         project = self.make_project()
         self.kitchen("log", "step one done", "--status", "done", cwd=project)
@@ -911,6 +923,24 @@ class RetroTests(ProjectFixture):
         self.assertEqual(self.texts("--tool", "claude"), ["dale, sigue"])
         self.assertEqual(result.stdout.splitlines()[-1],
                          "1 prompts included · 5 excluded (notification 2, agent-launched 1, non-interactive 1, replayed 1) · 0 unknown provenance")
+
+    def test_claude_excludes_a_t3_thread_an_agent_launched(self):
+        brief = "This thread starts a discussion with the owner about the kitchen. Work in your worktree."
+        self.write_claude([
+            {"type": "queue-operation", "operation": "enqueue", "timestamp": "2099-01-01T10:00:00Z", "content": brief},
+            self.claude_event(brief, entrypoint="sdk-ts", origin=None, cwd="/wt/docs"),
+            self.claude_event("listame los 24 principios", entrypoint="sdk-ts", origin=None, cwd="/wt/docs", ts="2099-01-01T10:05:00Z"),
+        ], session="child", folder="-wt-docs")
+        self.write_claude([
+            {"type": "assistant", "timestamp": "2099-01-01T09:59:56Z", "cwd": "/scratch", "message": {"content": [
+                {"type": "tool_use", "name": "mcp__t3-code__t3_thread_launch",
+                 "input": {"title": "Principles", "workspaceStrategy": {"type": "worktree"}, "message": brief}}]}},
+        ], session="parent", folder="-scratch")
+
+        result = self.kitchen("retro", "--since", "1d", "--tool", "claude", cwd=self.home)
+
+        self.assertEqual(self.texts("--tool", "claude"), ["listame los 24 principios"])
+        self.assertIn("excluded (agent-launched 1)", result.stdout.splitlines()[-1])
 
     def test_codex_unwraps_requests_and_drops_delegated_and_guardian_sessions(self):
         self.write_codex("human", "vscode", ["## Context:\nfiles\n## My request for Codex:\nsube a dev", "Act as the review sub-agent for this task. Review it"])

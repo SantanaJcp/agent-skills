@@ -28,6 +28,11 @@ def detect_agent() -> str:
     return "unknown"
 
 
+def detect_session(agent: str) -> str | None:
+    """The agent's own session id: Claude Code and Codex each export one (measured in T3 Code and the CLIs)."""
+    return os.environ.get({"claude": "CLAUDE_CODE_SESSION_ID", "codex": "CODEX_SESSION_ID"}.get(agent, ""))
+
+
 def write(message: str, status: str, cwd: Path) -> dict:
     repo = git_out(cwd, "rev-parse", "--show-toplevel")
     entry = {
@@ -36,8 +41,8 @@ def write(message: str, status: str, cwd: Path) -> dict:
         "project": git_common_dir(cwd) if repo else None,  # worktrees of one repo share it
         "branch": git_out(cwd, "rev-parse", "--abbrev-ref", "HEAD") if repo else None,
         "sha": git_out(cwd, "rev-parse", "--short", "HEAD") if repo else None,
-        "agent": detect_agent(),
-        "session": os.environ.get("CLAUDE_CODE_SESSION_ID"),
+        "agent": (agent := detect_agent()),
+        "session": detect_session(agent),
         "status": status,
         "message": message,
     }
