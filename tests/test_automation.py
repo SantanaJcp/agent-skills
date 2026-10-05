@@ -1121,6 +1121,27 @@ git commit -q -am "More notes"
         self.assert_refused(self.run_job("weekly-gardener", "shop"), "no PR summary")
 
 
+@unittest.skipUnless(platform.system() == "Darwin", "launchd is the macOS schedule")
+class MacScheduleTests(AutomationFixture):
+    def test_scheduled_jobs_run_at_standard_priority_not_throttled_as_background(self):
+        self.configure([])
+        self.fake("launchctl", 'echo "launchctl $*" >> "$CALLS"')
+        self.fake("npm", 'echo "npm $*" >> "$CALLS"')
+        home = Path(self.tmp.name) / "home"
+        env = {**self.job_env(), "HOME": str(home), "PATH": f"{self.bin}:{os.environ['PATH']}"}
+
+        result = subprocess.run(["bash", str(AUTOMATION / "bin" / "install-schedule"), "shop"], env=env,
+                                capture_output=True, text=True)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        plists = sorted((home / "Library" / "LaunchAgents").glob("*.plist"))
+        self.assertEqual([p.name for p in plists], ["com.kitchen.shop.nightly-guard.plist", "com.kitchen.shop.weekly-gardener.plist"])
+        for plist in plists:
+            text = plist.read_text()
+            self.assertIn("<key>ProcessType</key><string>Standard</string>", text, plist.name)
+            self.assertNotIn("Background", text, plist.name)
+
+
 @unittest.skipUnless(platform.system() == "Linux", "systemd user timers are the Linux schedule")
 class LinuxScheduleTests(AutomationFixture):
     def install(self, *args, linger="yes"):

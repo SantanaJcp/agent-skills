@@ -23,6 +23,9 @@ case "$PLATFORM" in
 esac
 mkdir -p "$AGENTS"
 
+# ProcessType Standard, not Background: macOS throttles Background jobs' CPU and I/O, which roughly doubled the
+# nightly's test time and tripped a project's 3-minute test timeout (measured 2026-10-05: 4m38s and 6m11s
+# scheduled vs 2m40s to 3m09s run by hand).
 write_plist() { # label log-dir weekday-or-empty hour program-args...
   local label="$1" log_dir="$2" weekday="$3" hour="$4"; shift 4
   local plist="$AGENTS/$label.plist" args="" calendar="<dict>"
@@ -41,7 +44,7 @@ write_plist() { # label log-dir weekday-or-empty hour program-args...
   <key>StartCalendarInterval</key>$calendar
   <key>StandardOutPath</key><string>$log_dir/launchd.log</string>
   <key>StandardErrorPath</key><string>$log_dir/launchd.log</string>
-  <key>ProcessType</key><string>Background</string>
+  <key>ProcessType</key><string>Standard</string>
 </dict>
 </plist>
 PLIST
