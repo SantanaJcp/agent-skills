@@ -974,6 +974,59 @@ class RetroTests(ProjectFixture):
         self.assertEqual(self.texts("--tool", "claude"), ["listame los 24 principios"])
         self.assertIn("excluded (agent-launched 1)", result.stdout.splitlines()[-1])
 
+    def test_a_command_that_only_mentions_claude_p_launches_nothing(self):
+        brief = "This thread starts a discussion with the owner about the kitchen. Work in your worktree."
+        self.write_claude([
+            self.claude_event(brief, entrypoint="sdk-ts", origin=None, cwd="/wt/docs"),
+            self.claude_event("listame los principios", entrypoint="sdk-ts", origin=None, cwd="/wt/docs", ts="2099-01-01T10:05:00Z"),
+        ], session="thread", folder="-wt-docs")
+        heredoc = f"python3 - <<'EOF'\nLAUNCH = 'claude -p'\nBRIEF = '{brief}'\nEOF"
+        self.write_claude([
+            {"type": "assistant", "timestamp": "2099-01-01T10:20:00Z", "cwd": "/elsewhere", "message": {"content": [
+                {"type": "tool_use", "name": "Bash", "input": {"command": heredoc}}]}},
+        ], session="editor", folder="-elsewhere")
+
+        result = self.kitchen("retro", "--since", "1d", "--tool", "claude", cwd=self.home)
+
+        self.assertEqual(self.texts("--tool", "claude"), [brief, "listame los principios"])
+        self.assertIn("0 unknown provenance", result.stdout.splitlines()[-1])
+
+    def test_unknown_provenance_covers_only_the_launched_first_prompt(self):
+        launched = "Without using any tools, answer in one line: which language do you reply in?"
+        self.write_claude([
+            self.claude_event(launched, entrypoint="sdk-ts", origin=None, cwd="/tmp"),
+            self.claude_event("y en inglés?", entrypoint="sdk-ts", origin=None, cwd="/tmp", ts="2099-01-01T10:03:00Z"),
+        ], session="probe", folder="-tmp")
+        self.write_claude([
+            {"type": "assistant", "timestamp": "2099-01-01T08:00:00Z", "cwd": "/srv", "message": {"content": [
+                {"type": "tool_use", "name": "Bash", "input": {"command": f"claude -p '{launched}'"}}]}},
+        ], session="parent", folder="-srv")
+
+        result = self.kitchen("retro", "--since", "1d", "--tool", "claude", cwd=self.home)
+
+        self.assertEqual(self.texts("--tool", "claude"), ["y en inglés?"])
+        self.assertIn("1 unknown provenance", result.stdout.splitlines()[-1])
+
+    def test_a_short_prompt_launched_with_claude_p_is_agent_launched(self):
+        self.write_claude([self.claude_event("/wait-what", entrypoint="sdk-ts", origin=None, cwd="/tmp")], session="probe", folder="-tmp")
+        self.write_claude([
+            {"type": "assistant", "timestamp": "2099-01-01T09:59:30Z", "cwd": "/srv", "message": {"content": [
+                {"type": "tool_use", "name": "Bash", "input": {"command": 'cd /tmp && claude -p "/wait-what" --model x 2>&1 | head -4'}}]}},
+        ], session="parent", folder="-srv")
+
+        result = self.kitchen("retro", "--since", "1d", "--tool", "claude", cwd=self.home)
+
+        self.assertIn("excluded (agent-launched 1)", result.stdout.splitlines()[-1])
+
+    def test_a_plural_t3_notice_is_a_notification(self):
+        self.write_claude([
+            self.claude_event("Delegated tasks node:a, node:b reached terminal states. Use task_status with each taskId to read the results.",
+                              entrypoint="sdk-ts", origin=None),
+            self.claude_event("dale, sigue", entrypoint="sdk-ts", origin=None, ts="2099-01-01T10:01:00Z"),
+        ])
+
+        self.assertEqual(self.texts("--tool", "claude"), ["dale, sigue"])
+
     def test_codex_unwraps_requests_and_drops_delegated_and_guardian_sessions(self):
         self.write_codex("human", "vscode", ["## Context:\nfiles\n## My request for Codex:\nsube a dev", "Act as the review sub-agent for this task. Review it"])
         self.write_codex("guardian", {"subagent": {"other": "guardian"}}, ["approve this command?"], thread_source="guardian_review")

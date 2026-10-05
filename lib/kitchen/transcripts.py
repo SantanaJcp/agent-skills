@@ -17,8 +17,11 @@ import datetime
 import json
 import os
 import re
+import sys
 from collections import Counter
 from pathlib import Path
+
+import importlib.util
 
 from .common import home, parse_ts, private_terms
 from .credentials import redact
@@ -30,7 +33,7 @@ HARNESS = (
     "Context handoff (",  # T3 Code injects these when it moves context between threads
 )
 DELEGATED = re.compile(r"^Act as the [\w -]+ sub-agent for this task\.")  # T3 Code wraps delegated tasks this way
-DELEGATION_NOTICE = re.compile(r"^Delegated task \S+ reached a terminal state\.")  # T3 Code reports a finished delegation
+DELEGATION_NOTICE = re.compile(r"^Delegated tasks? \S.*? reached (?:a )?terminal states?\.")  # T3 Code reports finished delegations
 CODEX_REQUEST = re.compile(r"## My request(?: for Codex)?:\s*\n(.*)", re.S)
 SLASH_COMMAND = re.compile(r"^<command-(?:name|message)>")  # Claude Code's envelope for a slash command I typed
 COMMAND_NAME = re.compile(r"<command-name>([^<]*)</command-name>")
@@ -78,19 +81,39 @@ def slash_command(text: str) -> str:
 
 
 LAUNCH_WINDOW = datetime.timedelta(minutes=10)  # a launched session starts right after its launch
-CD_PREFIX = re.compile(r"^cd\s+(\"[^\"]+\"|'[^']+'|[^\s;&]+)\s*(?:&&|;)")
+_SHELLPARSE = None
 
 
-def launch_dir(command: str, cwd: str | None) -> str | None:
-    """Where the command ran: a leading `cd <dir> &&` from the agent's cwd, else the agent's cwd."""
-    match = CD_PREFIX.match(command)
-    target = os.path.expanduser(match.group(1).strip("\"'")) if match else None
-    if target and not os.path.isabs(target):
-        target = os.path.join(cwd, target) if cwd else None
-    found = target or cwd
-    return os.path.realpath(found) if found else None
+def shellparse():
+    """The guards' shell parser (hooks/shellparse.py): which commands a Bash call actually runs."""
+    global _SHELLPARSE
+    if _SHELLPARSE is None:
+        path = Path(__file__).resolve().parents[2] / "hooks" / "shellparse.py"
+        spec = importlib.util.spec_from_file_location("kitchen_shellparse", path)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module  # its dataclasses look themselves up there
+        spec.loader.exec_module(module)
+        _SHELLPARSE = module
+    return _SHELLPARSE
 
 
+def launched(command: str, cwd: str | None) -> list[dict]:
+    """The `claude -p` / `codex exec` calls a Bash command really runs, with the directory each runs in. A command
+    that only mentions one (a heredoc, an echo, a string in a script) launches nothing. A command the parser cannot
+    read is kept as one launch of unknown directory, so it can only make a session `unknown`, never `agent-launched`."""
+    sp = shellparse()
+    try:
+        calls = sp.commands(command, cwd)
+    except (sp.ParseError, RecursionError, ValueError):
+        return [{"command": command, "dir": None}]
+    out = []
+    for call in calls:
+        argv = [a.value for a in call.argv]
+        if (call.name == "claude" and any(a in ("-p", "--print") for a in argv[1:])) or (call.name == "codex" and argv[1:2] == ["exec"]):
+            # each argument quoted, so a short prompt still matches only as a whole argument (see matches_launch)
+            quoted = " ".join('"' + " ".join(a.split()) + '"' for a in argv)
+            out.append({"command": quoted, "dir": os.path.realpath(call.cwd) if call.cwd else None})
+    return out
 def agent_launches(since) -> list[dict]:
     """`claude -p` / `codex exec` commands agents ran: the command, the directory it ran in, and when."""
     launches = []
@@ -114,9 +137,9 @@ def agent_launches(since) -> list[dict]:
                     for text in t3_texts(part.get("input")):
                         launches.append({"command": " ".join(text.split()), "dir": None, "ts": ts, "any_dir": True})
                     continue
-                command = " ".join(str((part.get("input") or {}).get("command", "")).split())
+                command = str((part.get("input") or {}).get("command", ""))
                 if LAUNCH.search(command):
-                    launches.append({"command": command, "dir": launch_dir(command, event.get("cwd")), "ts": ts})
+                    launches += [{**found, "ts": ts} for found in launched(command, event.get("cwd"))]
     return launches
 
 
@@ -213,7 +236,7 @@ def claude_prompts(since, launches: list[str]) -> list[dict]:
                     reason = None  # the harness recorded a human turn in this session
                 elif launch == "linked":
                     reason = "agent-launched"
-                elif launch == "unlinked":
+                elif launch == "unlinked" and prefix_key(text) == prefix_key(first_prompt or ""):
                     reason = "unknown"  # an agent sent this text elsewhere; nothing in this session settles it
                 else:
                     reason = None
