@@ -1,0 +1,34 @@
+#!/bin/sh
+# bin/check: this project's one check contract, written by `kitchen adopt --propose`. It is yours: edit it.
+# Tiers: commit (the pre-commit hook), integrate (before a merge), nightly (on a schedule) and verify-tree
+# (a whole tree, as `kitchen integrate` checks it). `bin/check --list` prints them.
+# "unverified" marks a command found in a manifest that kitchen adopt never ran: it is a lead, not a fact.
+# `kitchen adopt --propose --prove` runs the commit tier once and a negative control that must turn it red.
+# A tier with no command fails: an empty check is never green.
+set -eu
+cd "$(dirname "$0")/.."
+
+tier_commit() {
+{{commit}}
+}
+
+tier_integrate() {
+{{integrate}}
+}
+
+tier_nightly() {
+  tier_integrate
+}
+
+tier_verify_tree() {
+  tier_integrate
+}
+
+case "${1:-}" in
+  --list) printf '%s\n' commit integrate nightly verify-tree ;;
+  commit) tier_commit ;;
+  integrate) tier_integrate ;;
+  nightly) tier_nightly ;;
+  verify-tree) tier_verify_tree ;;
+  *) echo "usage: bin/check --list | commit | integrate | nightly | verify-tree" >&2; exit 2 ;;
+esac

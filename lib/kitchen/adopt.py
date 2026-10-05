@@ -492,7 +492,7 @@ def secret_scan(repo: Repo, hooks: dict) -> dict:
     return criterion("FAIL", "no active pre-commit hook, so no secret scan runs", next=step)
 
 
-def baseline_ratchet(repo: Repo, gates: list[tuple[str, str]]) -> dict:
+def baseline_candidates(repo: Repo) -> list[str]:
     def is_baseline(rel: str) -> bool:
         path = PurePosixPath(rel)
         if TEST_DIRS & {p.lower() for p in path.parts[:-1]}:
@@ -500,7 +500,11 @@ def baseline_ratchet(repo: Repo, gates: list[tuple[str, str]]) -> dict:
         if path.name in ("eslint-suppressions.json", ".betterer.results"):
             return True
         return bool(re.search(r"baseline|ratchet", path.name, re.IGNORECASE)) and path.suffix in (".json", ".toml", ".yml", ".yaml", ".txt", ".csv", ".xml")
-    candidates = [f for f in repo.files if is_baseline(f)]
+    return [f for f in repo.files if is_baseline(f)]
+
+
+def baseline_ratchet(repo: Repo, gates: list[tuple[str, str]]) -> dict:
+    candidates = baseline_candidates(repo)
     if not candidates:
         return criterion("FAIL", "no baseline file (*baseline*/*ratchet* data file, eslint-suppressions.json, .betterer.results)",
                          next="Record a baseline of today's violations and check it in a gate so the count can only go down.")

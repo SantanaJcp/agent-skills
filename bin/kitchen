@@ -397,12 +397,25 @@ def cmd_inventory(args: argparse.Namespace) -> int:
 
 
 def cmd_adopt(args: argparse.Namespace) -> int:
-    from kitchen import adopt  # local import: keeps this subcommand out of the shared import line
+    from kitchen import adopt, propose  # local import: keeps this subcommand out of the shared import line
     try:
+        if args.propose:
+            if args.prove:
+                print("kitchen adopt --prove RUNS REPOSITORY CODE: bin/check commit, the commands it calls and the proposed hook, "
+                      "in a temporary worktree of the target repo.", file=sys.stderr)
+            result = propose.propose(Path(args.path), args.branch, args.prove, log=lambda line: print(line, file=sys.stderr))
+            if args.json:
+                print(json.dumps(result, indent=2, ensure_ascii=False))
+            else:
+                print(propose.render(result), end="")
+            return result["exit"]
         report = adopt.check(Path(args.path), args.branch)
     except adopt.NotARepo as error:
         print(f"FAIL  {error}", file=sys.stderr)
         return adopt.NOT_A_REPO
+    except propose.ProposeError as error:
+        print(f"FAIL  {error}", file=sys.stderr)
+        return 1
     print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else adopt.render(report))
     return report["missing"]
 
@@ -469,10 +482,15 @@ def main() -> int:
     inv.add_argument("--json", action="store_true")
     inv.set_defaults(func=cmd_inventory)
 
-    adopt = sub.add_parser("adopt", help="what a repo is missing for a trustworthy agent loop (read-only with --check)")
+    adopt = sub.add_parser("adopt", help="what a repo is missing for a trustworthy agent loop: --check reads, --propose writes a branch")
     adopt.add_argument("path", help="repository to inspect")
-    adopt.add_argument("--check", action="store_true", required=True,
-                       help="read-only: run no repository code, print PASS/FAIL/unknown per criterion; exit code = must-haves not PASS")
+    mode = adopt.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--check", action="store_true",
+                      help="read-only: run no repository code, print PASS/FAIL/unknown per criterion; exit code = must-haves not PASS")
+    mode.add_argument("--propose", action="store_true",
+                      help="write only the missing pieces on branch kitchen/adopt, in a temporary worktree; never pushes; runs no repository code")
+    adopt.add_argument("--prove", action="store_true",
+                       help="with --propose: RUNS REPOSITORY CODE in the temporary worktree (bin/check commit, a negative control, the hook's controls)")
     adopt.add_argument("--branch", help="shared branch to read for a required status (default: the GitHub default branch)")
     adopt.add_argument("--json", action="store_true")
     adopt.set_defaults(func=cmd_adopt)
@@ -497,6 +515,8 @@ def main() -> int:
     integ.set_defaults(func=cmd_integrate)
 
     args = parser.parse_args()
+    if args.command == "adopt" and args.prove and not args.propose:
+        adopt.error("--prove needs --propose: it proves the proposal branch")
     return args.func(args)
 
 
