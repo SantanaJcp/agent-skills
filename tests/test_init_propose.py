@@ -149,7 +149,7 @@ class Proposal(ProposeFixture):
         result = self.propose_json(repo)
 
         self.assertEqual(self.added(repo), [".agents/skills/verify-calc/SKILL.md", ".agents/skills/verify-calc/features/README.md",
-                                            ".claude/settings.json", ".githooks/pre-commit", ".kitchen/baseline.json",
+                                            ".claude/settings.json", ".githooks/pre-commit", ".kitchen/PRINCIPLES.md", ".kitchen/baseline.json",
                                             ".kitchen/hooks/deny-no-verify", ".kitchen/hooks/deny-recursive-rm",
                                             ".kitchen/hooks/deny-shared-push", ".kitchen/hooks/shellparse.py", ".kitchen/init.json",
                                             "KITCHEN-INIT.md", "bin/check", "decisions.md"])
@@ -171,7 +171,7 @@ class Proposal(ProposeFixture):
         self.assertEqual(baseline["mode"], "measure-only")
         self.assertEqual(baseline["must_haves"], {"check-contract": "FAIL", "pre-commit-hook": "FAIL", "agents-md": "FAIL",
                                                   "verify-skill": "FAIL", "decisions": "FAIL", "secret-scan": "FAIL",
-                                                  "baseline-ratchet": "FAIL", "skills-linked": "FAIL", "branch-protection": "unknown", "agent-hooks": "FAIL"})
+                                                  "baseline-ratchet": "FAIL", "skills-linked": "FAIL", "branch-protection": "unknown", "agent-hooks": "FAIL", "principles": "FAIL"})
         manifest = json.loads(self.show(repo, BRANCH, ".kitchen/init.json"))
         for path in ("bin/check", ".githooks/pre-commit", "decisions.md", ".kitchen/baseline.json",
                      ".agents/skills/verify-calc/SKILL.md", ".agents/skills/verify-calc/features/README.md"):
@@ -262,7 +262,7 @@ class Proposal(ProposeFixture):
 
         result = self.propose_json(repo)
 
-        self.assertEqual(self.added(repo), [".claude/settings.json", ".kitchen/hooks/deny-no-verify", ".kitchen/hooks/deny-recursive-rm",
+        self.assertEqual(self.added(repo), [".claude/settings.json", ".kitchen/PRINCIPLES.md", ".kitchen/hooks/deny-no-verify", ".kitchen/hooks/deny-recursive-rm",
                                             ".kitchen/hooks/deny-shared-push", ".kitchen/hooks/shellparse.py",
                                             ".kitchen/init.json", "KITCHEN-INIT.md", "decisions.md"])
         for path in ("bin/check", ".githooks/pre-commit", ".agents/skills/verify-calc/SKILL.md", "quality/baseline.json", "AGENTS.md"):
@@ -566,6 +566,58 @@ class AgentHooks(ProposeFixture):
         text = next(p["text"] for p in result["proposals"] if p["id"] == "agent-hooks")
         self.assertIn("kitchen left it alone", text)
         self.assertIn("deny-shared-push", text)
+
+
+class Refresh(ProposeFixture):
+    """init follows the kitchen: a copy it wrote and nobody edited is refreshed; an edited copy is left alone."""
+
+    def older_kitchen(self):
+        """A copy of this kitchen whose deny-shared-push differs: what a repo initialized last month received."""
+        old = self.root / "old-kitchen"
+        for part in ("bin", "lib", "hooks", "templates"):
+            shutil.copytree(KITCHEN.parent.parent / part, old / part, ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copy(KITCHEN.parent.parent / "PRINCIPLES.md", old / "PRINCIPLES.md")
+        guard = old / "hooks" / "deny-shared-push"
+        guard.write_text(guard.read_text() + "# an older release\n")
+        return old
+
+    def init_with(self, kitchen, repo):
+        result = subprocess.run([sys.executable, str(kitchen / "bin" / "kitchen"), "init", str(repo), "--yes", "--base", "main", "--json"],
+                                capture_output=True, text=True, env=self.env())
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        return json.loads(result.stdout)["proposal"]
+
+    def state(self, result, path):
+        return next(f["state"] for f in result["files"] if f["path"] == path)
+
+    def test_an_untouched_copy_follows_the_kitchen(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        self.init_with(self.older_kitchen(), repo)
+
+        result = self.propose_json(repo)
+
+        self.assertEqual(self.state(result, ".kitchen/hooks/deny-shared-push"), "refreshed")
+        self.assertEqual(self.show(repo, BRANCH, ".kitchen/hooks/deny-shared-push"), (KITCHEN_HOOKS / "deny-shared-push").read_text())
+        manifest = json.loads(self.show(repo, BRANCH, ".kitchen/init.json"))
+        recorded = manifest["files"][".kitchen/hooks/deny-shared-push"]["sha256"]
+        self.assertEqual(recorded, hashlib.sha256((KITCHEN_HOOKS / "deny-shared-push").read_bytes()).hexdigest())
+        again = self.propose_json(repo)
+        self.assertEqual(self.state(again, ".kitchen/hooks/deny-shared-push"), "unchanged")
+
+    def test_an_edited_copy_is_left_alone(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        self.init_with(self.older_kitchen(), repo)
+        checkout = self.root / "checkout"
+        self.git(repo, "worktree", "add", "--quiet", str(checkout), BRANCH)
+        guard = checkout / ".kitchen" / "hooks" / "deny-shared-push"
+        guard.write_text(guard.read_text() + "# the owner's change\n")
+        self.git(checkout, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "owner edit")
+        self.git(repo, "worktree", "remove", "--force", str(checkout))
+
+        result = self.propose_json(repo)
+
+        self.assertEqual(self.state(result, ".kitchen/hooks/deny-shared-push"), "edited by owner")
+        self.assertTrue(self.show(repo, BRANCH, ".kitchen/hooks/deny-shared-push").endswith("# the owner's change\n"))
 
 
 class Ask(ProposeFixture):

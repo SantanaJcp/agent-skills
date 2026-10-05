@@ -16,7 +16,7 @@ from pathlib import Path
 KITCHEN = Path(__file__).resolve().parent.parent / "bin" / "kitchen"
 GOLDEN = Path(__file__).resolve().parent / "golden" / "init"
 MUST_HAVE_IDS = ["check-contract", "pre-commit-hook", "agents-md", "verify-skill", "decisions",
-                 "secret-scan", "baseline-ratchet", "skills-linked", "branch-protection", "agent-hooks"]
+                 "secret-scan", "baseline-ratchet", "skills-linked", "branch-protection", "agent-hooks", "principles"]
 KITCHEN_HOOKS = KITCHEN.parent.parent / "hooks"
 GUARDS = ("deny-no-verify", "deny-recursive-rm", "deny-shared-push")
 
@@ -68,7 +68,9 @@ def complete_files():
         ".githooks/pre-commit": "#!/bin/sh\n" + RAN + "gitleaks git --pre-commit --staged\nexec bin/check commit\n",
         "scripts/baseline.py": "import sys\n" + RAN.replace("touch", "# touch"),
         "quality/baseline.json": '{"todo_comments": ["src/app.py:3"]}\n',
-        "AGENTS.md": "# Shop\n\nProve behavior with the `verify-shop` skill; `bin/check commit` runs on every commit.\n",
+        "AGENTS.md": "# Shop\n\nProve behavior with the `verify-shop` skill; `bin/check commit` runs on every commit.\n"
+                     "Principles: `.kitchen/PRINCIPLES.md`.\n",
+        ".kitchen/PRINCIPLES.md": (KITCHEN.parent.parent / "PRINCIPLES.md").read_text(),
         "CLAUDE.md": "@AGENTS.md\n",
         "decisions.md": "# Decisions\n\n- [x] 2026-01-02 keep one check contract\n",
         ".agents/skills/verify-shop/SKILL.md": "---\nname: verify-shop\ndescription: Prove the shop works.\n---\n",
@@ -179,7 +181,7 @@ class GoldenReports(InitFixture):
         self.assertEqual(list(report["stacks"]), ["dotnet"])
         self.assertEqual([(c["path"], c["stack"], c["lint"]["status"]) for c in report["components"]], [(".", "dotnet", "PASS")])
         self.assertEqual(self.statuses(report), {**{i: "FAIL" for i in MUST_HAVE_IDS}, "branch-protection": "unknown"})
-        self.assertEqual(result.returncode, 10)
+        self.assertEqual(result.returncode, 11)
 
     def test_typescript_monorepo(self):
         repo = self.make_repo("typescript", {
@@ -227,7 +229,7 @@ class GoldenReports(InitFixture):
         self.assertEqual((report["stack_status"], report["stacks"], report["components"]), ("unsupported", {}, []))
         self.assertEqual(report["unsupported"], ["go.mod"])
         self.assertIn("unsupported  no .NET, Node or Python manifest", result.stdout)
-        self.assertEqual(result.returncode, 10)
+        self.assertEqual(result.returncode, 11)
 
     def test_complete_repo_passes_every_must_have(self):
         repo = self.make_complete()

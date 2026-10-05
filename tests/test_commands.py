@@ -108,6 +108,21 @@ class LogAndStatusTests(ProjectFixture):
         entries = [json.loads(line) for line in (self.home / "state" / "log.jsonl").read_text().splitlines()]
         self.assertEqual([(e["agent"], e["session"]) for e in entries], [("codex", "codex-123"), ("claude", "claude-456")])
 
+    def test_status_flags_rule_files_that_went_stale_after_install(self):
+        project = self.make_project()
+        self.list_projects(project)
+        rules = self.add_global_rules()
+        self.kitchen("install")
+        self.assertIn("rules      fresh", self.kitchen("status").stdout)
+        self.assertNotIn("kitchen  rules", self.kitchen("status", "--exceptions").stdout)
+
+        rules.write_text("# Rules\n- a rule added after install\n")
+        result = self.kitchen("status", "--exceptions")
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("kitchen  rules      ", result.stdout)
+        self.assertIn("CLAUDE.md is stale", result.stdout)
+
     def test_status_shows_blocked_entries_first_and_owed_decisions(self):
         project = self.make_project()
         self.kitchen("log", "step one done", "--status", "done", cwd=project)

@@ -461,8 +461,12 @@ def journal_lines(label: str, entries: list[dict], with_repo: bool = False) -> l
     return lines
 
 
+def rules_lines(problems: list[str]) -> list[str]:
+    return [f"rules      {p}" for p in problems] or ["rules      fresh: the installed rule files match your rules and PRINCIPLES.md"]
+
+
 def render(report: dict, window: str) -> str:
-    out = [f"kitchen status · journal window {window}"]
+    out = [f"kitchen status · journal window {window}", *rules_lines(report.get("rules", []))]
     for p in report["projects"]:
         out.append("")
         out.append(header(p))
@@ -480,7 +484,7 @@ def render(report: dict, window: str) -> str:
 
 def exceptions(report: dict) -> list[str]:
     """Only the lines that are not green, each prefixed with its project; empty when everything is green."""
-    out = []
+    out = [f"kitchen  rules      {p}" for p in report.get("rules", [])]
     for p in report["projects"]:
         if not header_green(p):
             out.append(header(p))

@@ -13,6 +13,7 @@ Measured by --check at 4ec6634 (that commit's tree; uncommitted changes are not 
   FAIL     skills in .claude/skills           no project skills under .agents/skills to link
   unknown  required status on shared branch   origin is not a GitHub remote, so protection cannot be read
   FAIL     agent guards travel with the repo  no .kitchen/hooks/: teammates and cloud sessions run agents without the kitchen's guards
+  FAIL     principles travel with the repo    no .kitchen/PRINCIPLES.md: an agent with only this repo never sees the principles
 
 Files on kitchen/init
   written          decisions.md
@@ -38,10 +39,14 @@ Files on kitchen/init
   written          .claude/settings.json
        does: The kitchen's agent guards, copied into the repo so teammates and cloud sessions run them without installing the kitchen; .claude/settings.json runs each one before every Bash command in Claude Code.
        would block today: agent commands that push to a shared branch, skip the repo's hooks, or rm -r outside the temp dir, in Claude Code sessions started at the repo root
+  written          .kitchen/PRINCIPLES.md
+       does: The kitchen's PRINCIPLES.md, so an agent with only this repo (a teammate, a cloud session) knows what we do and why.
+       would block today: nothing: agents read it once AGENTS.md or CLAUDE.md names it
 
 Proposals (not written: yours to apply)
   1. agents-md: AGENTS.md has 3 lines but names no verify command (a verify-<repo> skill, bin/check or bin/verify). Name the verify command in AGENTS.md (the verify-<repo> skill or bin/check).
   2. skills-linked: link the project skills in each clone: mkdir -p .claude/skills && ln -s ../../.agents/skills/verify-calc .claude/skills/verify-calc
+  3. principles: add this line to AGENTS.md (kitchen writes no prose there): Principles: `.kitchen/PRINCIPLES.md` says what we do and why. When no rule here settles a decision, read it and decide the way it points.
 
 Unverified
   `python3 -m unittest discover -s tests` (unittest: test files under tests/): detected, never run
@@ -56,7 +61,7 @@ Unverified
   required status on shared branch: unknown (origin is not a GitHub remote, so protection cannot be read)
 
 Readiness
-  files proposed              yes: 11 files on kitchen/init
+  files proposed              yes: 12 files on kitchen/init
   checks run green            not run: rerun with --prove (it runs repository code)
   negative control went red   not run: rerun with --prove (it runs repository code)
   unattended-ready            not assessed: kitchen init does not assess unattended runs (sandbox, schedule, credentials)

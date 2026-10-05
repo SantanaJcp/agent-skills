@@ -9,7 +9,7 @@ Hooks
   core.hooksPath=.githooks; pre-commit .githooks/pre-commit: active
   managers: .githooks
 Agent files
-  AGENTS.md 3 lines; CLAUDE.md 1 line; decisions.md yes
+  AGENTS.md 4 lines; CLAUDE.md 1 line; decisions.md yes
   project skills: verify-shop; verify: verify-shop
 CI
   none
@@ -17,7 +17,7 @@ CI
 Must-haves
   PASS     check contract                     bin/check (executable) declares commit, integrate, nightly, verify-tree at lines commit:5, integrate:6, nightly:6, verify-tree:7
   PASS     pre-commit hook active             .githooks/pre-commit is executable (core.hooksPath=.githooks)
-  PASS     AGENTS.md                          AGENTS.md has 3 lines; line 3 names verify-shop
+  PASS     AGENTS.md                          AGENTS.md has 4 lines; line 3 names verify-shop
   PASS     verify skill + map guard           verify-shop: 2 feature files; guard tests/test_feature_map.py:1
   PASS     decisions.md                       decisions.md
   PASS     secret scan in hook                gitleaks at .githooks/pre-commit:3
@@ -25,5 +25,6 @@ Must-haves
   PASS     skills in .claude/skills           .claude/skills links verify-shop
   PASS     required status on shared branch   gh api repos/example/shop/rules/branches/main: required_status_checks (check)
   PASS     agent guards travel with the repo  .kitchen/hooks matches this kitchen's 4 files; .claude/settings.json runs each guard
+  PASS     principles travel with the repo    .kitchen/PRINCIPLES.md matches this kitchen's; named in the agent instructions
 
-Missing 0 of 10 must-haves (0 FAIL, 0 unknown)
+Missing 0 of 11 must-haves (0 FAIL, 0 unknown)
