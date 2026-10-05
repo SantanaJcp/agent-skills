@@ -19,6 +19,7 @@ One entry per decision: date, decision, scope, when to revisit. `- [ ]` marks a 
 - 2026-10-05. **The principles travel with the repo too:** `kitchen init` proposes `.kitchen/PRINCIPLES.md` (an eleventh must-have, `principles`) and the AGENTS.md line that names it, so a teammate or a cloud session with only the repo reads them. Scope: `kitchen init`.
 - 2026-10-05. **init refreshes its own copies:** a copy of the kitchen's files that init wrote and nobody edited (sha256 matches `.kitchen/init.json`) follows the kitchen; an edited copy is left alone and reported. Scope: `kitchen init`.
 - 2026-10-05. **Stale generated rules are an exception in `kitchen status`,** not only in `doctor`. Scope: status, doctor.
+- 2026-10-05. **One model role, `reviewer`, until a workflow reads another** (option B; verifier, worker and explorer were dropped the same day, unused). Scope: `kitchen models`.
 - 2026-10-05. **Models per role are each person's setup**, never fixed in a repo. A model that is not available fails when used, with the role and model named; no other model stands in. Scope: `kitchen models`, `second-opinion`.
 - 2026-10-05. **Not exclusive to T3 Code.** Everything must work in the Claude Code and Codex CLIs, in T3 Code and in cloud sessions; T3's tools are one transport among several. Scope: the whole kitchen.
 - 2026-10-05. **p3-stack is not installed.** Its ideas were read; re-evaluate in a few weeks. Scope: the kitchen.

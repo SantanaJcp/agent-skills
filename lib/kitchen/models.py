@@ -1,8 +1,9 @@
 """`kitchen models`: which model does each role, in each person's own setup (~/.config/kitchen/models.toml).
 
-Roles: `reviewer` and `verifier` depend on who wrote the work, so they are set per author family (`--author claude`
-means the work is Claude's and the role runs on the other provider); `worker` and `explorer` are one entry each.
-Every entry is explicit: provider, model (`default` = that tool's own default), effort and service tier.
+One role today, `reviewer`, the one `second-opinion` reads. It depends on who wrote the work, so it is set per author
+family (`--author claude` means the work is Claude's and the reviewer runs on the other provider). A new role is added
+when a workflow reads it, not before. Every entry is explicit: provider, model (`default` = that tool's own default),
+effort and service tier.
 
 A role nobody set is an error with the command that sets it, never a default model; a reviewer on the author's own
 provider is refused. Whether the model exists is learned when it is used: the tool's error is shown as it is.
@@ -18,8 +19,7 @@ from pathlib import Path
 from kitchen import common
 
 PROVIDERS = ("claude", "codex")
-BY_AUTHOR = ("reviewer", "verifier")
-SINGLE = ("worker", "explorer")
+ROLES = ("reviewer",)  # each set per author family
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
 TIERS = ("standard", "fast")
 FIELDS = ("provider", "model", "effort", "tier")
@@ -43,16 +43,12 @@ def load() -> dict:
         raise ModelsError(f"cannot parse {p}: {error}; fix it or rerun `kitchen models set`") from error
 
 
-def key(role: str, author: str | None) -> tuple[str, ...]:
-    if role in BY_AUTHOR:
-        if author not in PROVIDERS:
-            raise ModelsError(f"`{role}` depends on who wrote the work: pass --author {' or --author '.join(PROVIDERS)}")
-        return (role, author)
-    if role in SINGLE:
-        if author:
-            raise ModelsError(f"`{role}` does not depend on the author; drop --author")
-        return (role,)
-    raise ModelsError(f"unknown role {role!r}: one of {', '.join(BY_AUTHOR + SINGLE)}")
+def key(role: str, author: str | None) -> tuple[str, str]:
+    if role not in ROLES:
+        raise ModelsError(f"unknown role {role!r}: one of {', '.join(ROLES)}")
+    if author not in PROVIDERS:
+        raise ModelsError(f"`{role}` depends on who wrote the work: pass --author {' or --author '.join(PROVIDERS)}")
+    return (role, author)
 
 
 def set_command(role: str, author: str | None) -> str:
@@ -70,7 +66,7 @@ def validate(role: str, author: str | None, entry: dict) -> dict:
         raise ModelsError(f"effort must be one of {', '.join(EFFORTS)}, not {entry['effort']!r}")
     if entry["tier"] not in TIERS:
         raise ModelsError(f"tier must be one of {', '.join(TIERS)}, not {entry['tier']!r}")
-    if role in BY_AUTHOR and entry["provider"] == author:
+    if entry["provider"] == author:
         raise ModelsError(f"a {role} for {author}'s work must run on the other provider: the author's model does not check its own work")
     return {f: entry[f] for f in FIELDS}
 
@@ -87,17 +83,16 @@ def get(role: str, author: str | None) -> dict:
 def put(role: str, author: str | None, entry: dict) -> None:
     clean = validate(role, author, entry)
     data = load()
+    unknown = sorted(set(data) - set(ROLES))
+    if unknown:  # rewriting the file would drop them silently
+        raise ModelsError(f"{path()} has tables kitchen does not read ({', '.join(unknown)}); remove them by hand, then rerun")
     node = data
     for part in key(role, author)[:-1]:
         node = node.setdefault(part, {})
     node[key(role, author)[-1]] = clean
     lines = ["# kitchen models: which model does each role. Written by `kitchen models set`; each person sets their own.", ""]
-    for role_name in BY_AUTHOR + SINGLE:
-        if role_name not in data:
-            continue
-        entries = [(f"{role_name}.{a}", data[role_name][a]) for a in PROVIDERS if a in data[role_name]] if role_name in BY_AUTHOR \
-            else [(role_name, data[role_name])]
-        for table, values in entries:
+    for role_name in ROLES:
+        for table, values in [(f"{role_name}.{a}", data[role_name][a]) for a in PROVIDERS if a in data.get(role_name, {})]:
             lines.append(f"[{table}]")
             lines += [f"{f} = {json.dumps(values[f])}" for f in FIELDS]
             lines.append("")
@@ -125,7 +120,7 @@ def command(entry: dict) -> list[str]:
 def render() -> str:
     data = load()
     out = [f"kitchen models  ({path()})"]
-    rows = [(r, a) for r in BY_AUTHOR for a in PROVIDERS] + [(r, None) for r in SINGLE]
+    rows = [(r, a) for r in ROLES for a in PROVIDERS]
     for role, author in rows:
         label = f"{role} for {author} work" if author else role
         try:
