@@ -1,6 +1,6 @@
-"""`kitchen adopt --check`: golden reports on fixture repos, and proof that it writes and runs nothing.
+"""`kitchen init --check`: golden reports on fixture repos, and proof that it writes and runs nothing.
 
-Expected verdicts are written by hand from each fixture's design, not recomputed the way adopt.py does.
+Expected verdicts are written by hand from each fixture's design, not recomputed the way repocheck.py does.
 Regenerate the golden text files with KITCHEN_UPDATE_GOLDEN=1, then review the diff by hand.
 """
 import json
@@ -14,12 +14,12 @@ import unittest
 from pathlib import Path
 
 KITCHEN = Path(__file__).resolve().parent.parent / "bin" / "kitchen"
-GOLDEN = Path(__file__).resolve().parent / "golden" / "adopt"
+GOLDEN = Path(__file__).resolve().parent / "golden" / "init"
 MUST_HAVE_IDS = ["check-contract", "pre-commit-hook", "agents-md", "verify-skill", "decisions",
                  "secret-scan", "baseline-ratchet", "skills-linked", "branch-protection"]
 
-# Every executable a fixture ships touches $ADOPT_MARKER when run: adopt must never create it.
-RAN = 'touch "$ADOPT_MARKER"\n'
+# Every executable a fixture ships touches $INIT_MARKER when run: init must never create it.
+RAN = 'touch "$INIT_MARKER"\n'
 
 BIN_CHECK = "#!/bin/sh\n" + RAN + textwrap.dedent("""\
     case "$1" in
@@ -71,7 +71,7 @@ def complete_files():
     }
 
 
-class AdoptFixture(unittest.TestCase):
+class InitFixture(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name).resolve()
@@ -93,7 +93,7 @@ class AdoptFixture(unittest.TestCase):
     def env(self, gh=None):
         env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
         env.update({"HOME": str(self.home), "GIT_CONFIG_GLOBAL": str(self.home / ".gitconfig"), "GIT_CONFIG_NOSYSTEM": "1",
-                    "ADOPT_MARKER": str(self.marker), "KITCHEN_GH": str(gh or self.root / "no-such-gh"),
+                    "INIT_MARKER": str(self.marker), "KITCHEN_GH": str(gh or self.root / "no-such-gh"),
                     "FAKE_GH_LOG": str(self.gh_log), "FAKE_GH_RESPONSES": str(self.gh_responses)})
         return env
 
@@ -126,12 +126,12 @@ class AdoptFixture(unittest.TestCase):
         self.gh_responses.write_text(json.dumps(PROTECTED))
         return repo
 
-    def adopt(self, repo, *extra, gh=None):
-        return subprocess.run([sys.executable, str(KITCHEN), "adopt", "--check", str(repo), *extra],
+    def init_check(self, repo, *extra, gh=None):
+        return subprocess.run([sys.executable, str(KITCHEN), "init", "--check", str(repo), *extra],
                               capture_output=True, text=True, env=self.env(gh))
 
     def report(self, repo, gh=None):
-        result = self.adopt(repo, "--json", gh=gh)
+        result = self.init_check(repo, "--json", gh=gh)
         report = json.loads(result.stdout)
         self.assertEqual(result.returncode, report["missing"], result.stderr)
         return report
@@ -140,7 +140,7 @@ class AdoptFixture(unittest.TestCase):
         return {m["id"]: m["status"] for m in report["must_haves"]}
 
     def assert_golden(self, name, repo, gh=None):
-        result = self.adopt(repo, gh=gh)
+        result = self.init_check(repo, gh=gh)
         text = result.stdout.replace(str(repo), "<repo>")
         golden = GOLDEN / f"{name}.txt"
         if os.environ.get("KITCHEN_UPDATE_GOLDEN"):
@@ -150,7 +150,7 @@ class AdoptFixture(unittest.TestCase):
         return result
 
 
-class GoldenReports(AdoptFixture):
+class GoldenReports(InitFixture):
     def test_dotnet_repo(self):
         repo = self.make_repo("dotnet", {
             "Shop.sln": "Microsoft Visual Studio Solution File\n",
@@ -226,7 +226,7 @@ class GoldenReports(AdoptFixture):
         self.assertNotIn("Next steps", result.stdout)
 
 
-class ReadOnly(AdoptFixture):
+class ReadOnly(InitFixture):
     def snapshot(self, repo):
         """Every path under the repo (including .git) with its mtime, size and mode, plus git's own view."""
         entries = {}
@@ -244,17 +244,17 @@ class ReadOnly(AdoptFixture):
         (repo / "src" / "untracked.py").write_text("x = 1\n")
         before = self.snapshot(repo)
 
-        text = self.adopt(repo, gh=self.fake_gh)
-        machine = self.adopt(repo, "--json", gh=self.fake_gh)
+        text = self.init_check(repo, gh=self.fake_gh)
+        machine = self.init_check(repo, "--json", gh=self.fake_gh)
 
         self.assertEqual((text.returncode, machine.returncode), (0, 0), text.stdout)
         self.assertEqual(self.snapshot(repo), before)
-        self.assertFalse(self.marker.exists(), "adopt executed a hook or bin/check from the inspected repo")
+        self.assertFalse(self.marker.exists(), "init executed a hook or bin/check from the inspected repo")
 
     def test_output_is_idempotent(self):
         repo = self.make_complete()
 
-        runs = [self.adopt(repo, *flags, gh=self.fake_gh).stdout for flags in ((), (), ("--json",), ("--json",))]
+        runs = [self.init_check(repo, *flags, gh=self.fake_gh).stdout for flags in ((), (), ("--json",), ("--json",))]
 
         self.assertEqual(runs[0], runs[1])
         self.assertEqual(runs[2], runs[3])
@@ -262,7 +262,7 @@ class ReadOnly(AdoptFixture):
     def test_gh_calls_are_get_only(self):
         repo = self.make_complete()
 
-        self.adopt(repo, gh=self.fake_gh)
+        self.init_check(repo, gh=self.fake_gh)
 
         calls = [json.loads(line) for line in self.gh_log.read_text().splitlines()]
         self.assertEqual([c[0] for c in calls], ["api"] * 3)
@@ -270,7 +270,7 @@ class ReadOnly(AdoptFixture):
             self.assertFalse({"-X", "--method", "-f", "-F", "--field", "--raw-field", "--input"} & set(call), call)
 
 
-class MustHaves(AdoptFixture):
+class MustHaves(InitFixture):
     def test_without_gh_branch_protection_is_unknown_never_pass(self):
         repo = self.make_complete()
 
@@ -285,7 +285,7 @@ class MustHaves(AdoptFixture):
         unprotected = {**PROTECTED, "repos/example/shop/rules/branches/main": [{"type": "deletion"}]}
         self.gh_responses.write_text(json.dumps(unprotected))
 
-        result = self.adopt(repo, gh=self.fake_gh)
+        result = self.init_check(repo, gh=self.fake_gh)
 
         self.assertEqual(result.returncode, 1)
         self.assertIn("FAIL     required status on shared branch", result.stdout)
@@ -305,7 +305,7 @@ class MustHaves(AdoptFixture):
             "repos/example/shop/rules/branches/dev": PROTECTED["repos/example/shop/rules/branches/main"],
         }))
 
-        result = self.adopt(repo, "--branch", "dev", gh=self.fake_gh)
+        result = self.init_check(repo, "--branch", "dev", gh=self.fake_gh)
 
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn("rules/branches/dev: required_status_checks (check)", result.stdout)
@@ -389,14 +389,20 @@ class MustHaves(AdoptFixture):
     def test_not_a_repository_exits_64(self):
         plain = self.root / "plain"
         plain.mkdir()
-        result = self.adopt(plain)
+        result = self.init_check(plain)
         self.assertEqual(result.returncode, 64)
         self.assertIn("is not a git repository", result.stderr)
 
-    def test_check_flag_is_required(self):
-        result = subprocess.run([sys.executable, str(KITCHEN), "adopt", str(self.root)], capture_output=True, text=True, env=self.env())
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("--check", result.stderr)
+    def test_without_a_terminal_init_asks_for_flags_and_writes_nothing(self):
+        repo = self.make_repo("calc", {"pyproject.toml": "[project]\nname = 'calc'\n", "calc.py": "x = 1\n"})
+        result = subprocess.run([sys.executable, str(KITCHEN), "init", str(repo)], capture_output=True, text=True,
+                                env=self.env(), stdin=subprocess.DEVNULL)
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("--yes", result.stderr)
+        self.assertIn("Write the missing pieces on branch kitchen/init?", result.stderr)
+        branches = subprocess.run(["git", "-C", str(repo), "branch", "--list", "kitchen/init"], capture_output=True, text=True, env=self.env())
+        self.assertEqual(branches.stdout.strip(), "", "init wrote a branch without an answer")
+        self.assertFalse((self.home / ".config" / "kitchen" / "projects.txt").exists(), "init wrote personal config without an answer")
 
 
 if __name__ == "__main__":

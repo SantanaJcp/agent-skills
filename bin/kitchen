@@ -396,32 +396,23 @@ def cmd_inventory(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_adopt(args: argparse.Namespace) -> int:
-    from kitchen import adopt, propose  # local import: keeps this subcommand out of the shared import line
+def cmd_init(args: argparse.Namespace) -> int:
+    from kitchen import init, propose, repocheck  # local import: keeps this subcommand out of the shared import line
     try:
-        if args.propose:
-            if args.prove:
-                print("kitchen adopt --prove RUNS REPOSITORY CODE in a temporary worktree of the target repo: its checkout may run "
-                      "the repo's git filters, then bin/check commit, the commands it calls and the proposed hook run.", file=sys.stderr)
-            result = propose.propose(Path(args.path), args.branch, args.prove, log=lambda line: print(line, file=sys.stderr))
-            if args.json:
-                print(json.dumps(result, indent=2, ensure_ascii=False))
-            else:
-                print(propose.render(result), end="")
-            return result["exit"]
-        report = adopt.check(Path(args.path), args.branch)
-    except adopt.NotARepo as error:
+        return init.run(Path(args.path), args.branch, args.check, args.yes, args.prove, args.base, args.json)
+    except repocheck.NotARepo as error:
         print(f"FAIL  {error}", file=sys.stderr)
-        return adopt.NOT_A_REPO
-    except propose.ProposeError as error:
+        return repocheck.NOT_A_REPO
+    except (propose.ProposeError, init.InitError) as error:
         print(f"FAIL  {error}", file=sys.stderr)
         return 1
     except propose.Interrupted as error:
         print(f"FAIL  interrupted by {error}: stopped the running check's process group and removed the temporary worktree",
               file=sys.stderr)
         return 128 + error.signum
-    print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else adopt.render(report))
-    return report["missing"]
+    except EOFError:
+        print("FAIL  input ended before every question was answered; nothing more was written", file=sys.stderr)
+        return 2
 
 
 def cmd_retro(args: argparse.Namespace) -> int:
@@ -486,18 +477,17 @@ def main() -> int:
     inv.add_argument("--json", action="store_true")
     inv.set_defaults(func=cmd_inventory)
 
-    adopt = sub.add_parser("adopt", help="what a repo is missing for a trustworthy agent loop: --check reads, --propose writes a branch")
-    adopt.add_argument("path", help="repository to inspect")
-    mode = adopt.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--check", action="store_true",
-                      help="read-only: run no repository code, print PASS/FAIL/unknown per criterion; exit code = must-haves not PASS")
-    mode.add_argument("--propose", action="store_true",
-                      help="write only the missing pieces on branch kitchen/adopt, in a temporary worktree; never pushes; runs no repository code")
-    adopt.add_argument("--prove", action="store_true",
-                       help="with --propose: RUNS REPOSITORY CODE in the temporary worktree (bin/check commit, a negative control, the hook's controls)")
-    adopt.add_argument("--branch", help="shared branch to read for a required status (default: the GitHub default branch)")
-    adopt.add_argument("--json", action="store_true")
-    adopt.set_defaults(func=cmd_adopt)
+    init_cmd = sub.add_parser("init", help="set one repo up for a trustworthy agent loop: check, ask, then propose a branch and add it to your kitchen")
+    init_cmd.add_argument("path", help="repository to set up")
+    init_cmd.add_argument("--check", action="store_true",
+                          help="read-only: run no repository code, print PASS/FAIL/unknown per criterion; exit code = must-haves not PASS")
+    init_cmd.add_argument("--yes", action="store_true", help="take the recommended answers without asking (never runs repository code)")
+    init_cmd.add_argument("--prove", action="store_true",
+                          help="answer yes to proving the gate: RUNS REPOSITORY CODE in a temporary worktree (bin/check commit, a negative control, the hook)")
+    init_cmd.add_argument("--base", help="shared base branch for integrate.toml (default: origin/HEAD; asked when unknown)")
+    init_cmd.add_argument("--branch", help="shared branch to read for a required status (default: the GitHub default branch)")
+    init_cmd.add_argument("--json", action="store_true")
+    init_cmd.set_defaults(func=cmd_init)
 
     retro = sub.add_parser("retro", help="my prompts from Claude Code and Codex transcripts")
     retro.add_argument("--since", default="7d")
@@ -519,8 +509,8 @@ def main() -> int:
     integ.set_defaults(func=cmd_integrate)
 
     args = parser.parse_args()
-    if args.command == "adopt" and args.prove and not args.propose:
-        adopt.error("--prove needs --propose: it proves the proposal branch")
+    if args.command == "init" and args.check and (args.yes or args.prove or args.base):
+        init_cmd.error("--check only reads: it takes no --yes, --prove or --base")
     return args.func(args)
 
 

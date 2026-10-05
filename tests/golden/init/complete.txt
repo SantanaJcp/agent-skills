@@ -1,5 +1,5 @@
-kitchen adopt --check <repo>  (read-only: ran no repository code)
-HEAD 4fcedf6
+kitchen init --check <repo>  (read-only: ran no repository code)
+HEAD dc8141f
 
 Stacks
   python       pyproject.toml

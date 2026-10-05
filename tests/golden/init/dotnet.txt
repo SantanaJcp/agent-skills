@@ -1,4 +1,4 @@
-kitchen adopt --check <repo>  (read-only: ran no repository code)
+kitchen init --check <repo>  (read-only: ran no repository code)
 HEAD e1131cc
 
 Stacks

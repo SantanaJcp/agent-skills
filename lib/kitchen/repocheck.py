@@ -1,4 +1,4 @@
-"""`kitchen adopt --check`: what a repo still needs for an agent loop that can be trusted. Read-only.
+"""`kitchen init --check`: what a repo still needs for an agent loop that can be trusted. Read-only.
 
 It reads files and git metadata, plus GET-only `gh api` calls with a timeout when gh is installed.
 It never runs repository code: no hooks, no package scripts, no `bin/check`. Every criterion is
@@ -707,8 +707,17 @@ def summarize(files: list[str], limit: int = 3) -> str:
     return shown + (f" +{len(files) - limit} more" if len(files) > limit else "")
 
 
+def render_summary(report: dict) -> str:
+    """The must-haves alone: what `kitchen init` shows before it asks. `--check` prints the full report."""
+    out = [f"kitchen init {report['path']}", f"HEAD {report['head'] or 'none'}", ""]
+    for m in report["must_haves"]:
+        out.append(f"  {m['status']:<8} {m['label']:<34} {m['proof']}")
+    out.append(f"Missing {report['missing']} of {len(report['must_haves'])} must-haves ({report['failed']} FAIL, {report['unknown']} unknown)")
+    return "\n".join(out)
+
+
 def render(report: dict) -> str:
-    out = [f"kitchen adopt --check {report['path']}  (read-only: ran no repository code)", f"HEAD {report['head'] or 'none'}", "", "Stacks"]
+    out = [f"kitchen init --check {report['path']}  (read-only: ran no repository code)", f"HEAD {report['head'] or 'none'}", "", "Stacks"]
     for stack, files in report["stacks"].items():
         out.append(f"  {stack:<12} {summarize(files)}")
     if report["stack_status"] == "unsupported":

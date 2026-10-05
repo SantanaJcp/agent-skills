@@ -1,9 +1,9 @@
 #!/bin/sh
-# bin/check: this project's one check contract, written by `kitchen adopt --propose`. It is yours: edit it.
+# bin/check: this project's one check contract, written by `kitchen init`. It is yours: edit it.
 # Tiers: commit (the pre-commit hook), integrate (before a merge), nightly (on a schedule) and verify-tree
 # (a whole tree, as `kitchen integrate` checks it). `bin/check --list` prints them.
-# "unverified" marks a command found in a manifest that kitchen adopt never ran: it is a lead, not a fact.
-# `kitchen adopt --propose --prove` runs the commit tier once and a negative control that must turn it red.
+# "unverified" marks a command found in a manifest that kitchen init never ran: it is a lead, not a fact.
+# `kitchen init --prove` runs the commit tier once and a negative control that must turn it red.
 # A tier with no command fails: an empty check is never green.
 set -eu
 cd "$(dirname "$0")/.."

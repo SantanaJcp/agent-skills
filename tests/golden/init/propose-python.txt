@@ -1,5 +1,6 @@
-kitchen adopt --propose <repo>  (ran no repository code)
-Branch kitchen/adopt @ 5b90cd2 (new), from 4ec6634; not pushed
+
+kitchen init <repo>  (ran no repository code)
+Branch kitchen/init @ d90b56f (new), from 4ec6634; not pushed
 
 Measured by --check at 4ec6634 (that commit's tree; uncommitted changes are not part of the proposal)
   FAIL     check contract                     no bin/check and no .kitchen/checks.toml
@@ -12,7 +13,7 @@ Measured by --check at 4ec6634 (that commit's tree; uncommitted changes are not 
   FAIL     skills in .claude/skills           no project skills under .agents/skills to link
   unknown  required status on shared branch   origin is not a GitHub remote, so protection cannot be read
 
-Files on kitchen/adopt
+Files on kitchen/init
   written          decisions.md
        does: Dated decisions; `- [ ]` marks one the owner still owes, and `kitchen status` counts them.
        would block today: nothing; it lists 4 owed decisions for `kitchen status`
@@ -38,7 +39,7 @@ Proposals (not written: yours to apply)
 
 Unverified
   `python3 -m unittest discover -s tests` (unittest: test files under tests/): detected, never run
-  bin/check integrate, nightly and verify-tree: never run by kitchen adopt
+  bin/check integrate, nightly and verify-tree: never run by kitchen init
   .githooks/pre-commit is inactive until `git config core.hooksPath .githooks` in each clone
   .githooks/pre-commit: gitleaks never ran
   verify-calc is a skeleton: placeholders, no bin/verify, no feature mapped; it proves nothing yet
@@ -47,10 +48,10 @@ Unverified
   required status on shared branch: unknown (origin is not a GitHub remote, so protection cannot be read)
 
 Readiness
-  files proposed              yes: 6 files on kitchen/adopt
+  files proposed              yes: 6 files on kitchen/init
   checks run green            not run: rerun with --prove (it runs repository code)
   negative control went red   not run: rerun with --prove (it runs repository code)
-  unattended-ready            not assessed: kitchen adopt does not assess unattended runs (sandbox, schedule, credentials)
+  unattended-ready            not assessed: kitchen init does not assess unattended runs (sandbox, schedule, credentials)
 
 Trust per piece
   not proved   bin/check: rerun with --prove
@@ -78,5 +79,8 @@ One-way doors: owner decisions, printed and never executed
        # origin is not a GitHub remote: replace OWNER/REPO
 
 Next (two-way, yours)
-  review the branch (`git diff HEAD...kitchen/adopt`), then push it yourself: `git push -u origin kitchen/adopt`
+  review the branch (`git diff HEAD...kitchen/init`), then push it yourself: `git push -u origin kitchen/init`
   after it merges, activate the hook in each clone: `git config core.hooksPath .githooks`
+added      <repo> to ~/.config/kitchen/projects.txt
+added      [projects.calc] to ~/.config/kitchen/integrate.toml (base main, checks bin/check integrate)
+skipped    prove (--yes never runs repository code: add --prove)
