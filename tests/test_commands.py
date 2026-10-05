@@ -371,7 +371,7 @@ class LogAndStatusTests(ProjectFixture):
         self.assertEqual((result.returncode, result.stdout), (0, ""), result.stdout + result.stderr)
         automation = self.home / "config" / "automation"
         self.assertIn(f"  nightly    not configured (no {automation / 'shop.env'})", out)
-        self.assertIn(f"  gardener   not configured (no GARDENER_VERIFY_STEPS in {automation / 'shop.env'}"
+        self.assertIn(f"  gardener   not configured (no {automation / 'shop.env'}"
                       f" and no gardener in {self.home / 'config' / 'integrate.toml'})", out)
         self.assertIn(f"  decisions  not configured (no base for 'shop' in {self.home / 'config' / 'integrate.toml'})", out)
         self.assertNotIn("✓", out)
@@ -430,58 +430,102 @@ class LogAndStatusTests(ProjectFixture):
         ])
         self.assertIn(f"  nightly    not configured (GUARD_STEPS is empty or unset in {env})", self.kitchen("status").stdout)
 
-    def test_the_nightly_is_configured_only_by_a_guard_steps_array_with_a_step_as_bash_reads_it(self):
+    # What each env leaves, measured with bash as the jobs source it (macOS /bin/bash 3.2, launchd's PATH):
+    # env -i HOME=$HOME PATH=/usr/bin:/bin bash --noprofile --norc -c 'set -euo pipefail; source "$1"; set +u;
+    #   printf "%s %s" "${#GUARD_STEPS[@]}" "${#GARDENER_VERIFY_STEPS[@]}"' _ <env>
+    NIGHTLY_CONFIGURED, NIGHTLY_ABSENT, NIGHTLY_UNKNOWN = ("  nightly    ✗ no record (GUARD_STEPS in",
+                                                         "  nightly    not configured (GUARD_STEPS is empty",
+                                                         "  nightly    unknown: cannot source")
+
+    def assert_nightly(self, cases):
         project = self.make_project("shop")
         self.list_projects(project)
-        configured, absent, unknown = "  nightly    ✗ no record (GUARD_STEPS in", "  nightly    not configured (GUARD_STEPS is empty", \
-            "  nightly    unknown: cannot tell whether GUARD_STEPS"
-        # Element counts checked with bash: `source <env>; echo ${#GUARD_STEPS[@]}`.
-        cases = {
+        for text, expected in cases.items():
+            with self.subTest(text=text):
+                self.configure_automation(text=text)
+                self.assertIn(expected, self.kitchen("status").stdout)
+
+    def test_the_nightly_is_configured_only_by_a_guard_steps_array_with_a_step_as_bash_reads_it(self):
+        configured, absent, unknown = self.NIGHTLY_CONFIGURED, self.NIGHTLY_ABSENT, self.NIGHTLY_UNKNOWN
+        self.assert_nightly({
             "": absent,                                                                    # 0
             "GUARD_LABEL=\"nightly-guard\"\n": absent,                                    # 0
             '# GUARD_STEPS=("tests|true")\n': absent,                                       # 0
             'GUARD_STEPS=(\n  # "tests|true"\n)\n': absent,                                # 0
             'GUARD_STEPS=("tests|true")\nGUARD_STEPS=()\n': absent,                         # 0
             'GUARD_STEPS=( \\\n)\n': absent,                                              # 0: a line continuation
+            "GUARD_STEPS=($(true))\n": absent,                                             # 0
             'GUARD_STEPS=(   # name|command, run in order\n  "build|make build"  # first\n  "tests|make test"\n)\n': configured,  # 2
             'GUARD_STEPS=()\nGUARD_STEPS+=("tests|true")\n': configured,                   # 1
             'GUARD_STEPS=("tests|true")\nGUARD_STEPS+=()\n': configured,                   # 1: += appends
             'export GUARD_STEPS=(\'tests|echo ")"\')\n': configured,                       # 1
-            'GUARD_STEPS=("$(printf tests)|true")\n': configured,                           # 1: quoted, one word
+            'GUARD_STEPS=("$(printf tests)|true")\n': configured,                           # 1
             'GUARD_STEPS=("tests|make test DIR=$HOME")\n': configured,                      # 1
-            'GUARD_STEPS=("${COMMON[@]}" "tests|true")\n': configured,                      # 1 with COMMON=()
             "GUARD_STEPS=\n": configured,                                                  # 1: a scalar is one element
-            "GUARD_STEPS=($(true))\n": unknown,                                            # 0
-            "GUARD_STEPS=($STEPS)\n": unknown,                                             # 0 with STEPS unset
-            "GUARD_STEPS=(`printf x`)\n": unknown,                                         # 1, same shape as the line above
-            'GUARD_STEPS=("${COMMON[@]}")\n': unknown,                                      # 0 with COMMON=()
-        }
-        for text, expected in cases.items():
-            with self.subTest(text=text):
-                self.configure_automation(text=text)
-                self.assertIn(expected, self.kitchen("status").stdout)
+            "GUARD_STEPS=(`printf x`)\n": configured,                                      # 1
+            'GUARD_STEPS=("${COMMON[@]}" "tests|true")\n': unknown,                         # exit 1: COMMON unbound under set -u
+            "GUARD_STEPS=($STEPS)\n": unknown,                                             # exit 1: STEPS unbound
+            'GUARD_STEPS=("${COMMON[@]}")\n': unknown,                                      # exit 1
+        })
 
-    def test_a_guard_steps_array_it_cannot_parse_is_unknown_never_not_configured(self):
+    def test_the_env_is_read_as_the_jobs_source_it_not_as_text(self):
+        shared = self.home / "config" / "shared.env"
+        (self.home / "config").mkdir(exist_ok=True)
+        shared.write_text('GUARD_STEPS=("tests|true")\nGARDENER_VERIFY_STEPS=("tests|true")\n')
+        configured = self.NIGHTLY_CONFIGURED
+        self.assert_nightly({
+            'GUARD_STEPS=(); GUARD_STEPS+=("tests|true")\n': configured,                    # 1
+            'declare -a GUARD_STEPS\nGUARD_STEPS[0]="tests|true"\n': configured,            # 1
+            f'source "{shared}"\n': configured,                                             # 1
+            'GUARD_STEPS=("tests|true")\nNOTE="a note\nGUARD_STEPS=()\n"\n': configured,    # 1
+            'GUARD_STEPS=("tests|true")\nif false; then\n  GUARD_STEPS=()\nfi\n': configured,  # 1
+        })
+        self.configure_automation(text=f'source "{shared}"\n')
+        self.assertIn("  gardener   ✗ no record on this host (GARDENER_VERIFY_STEPS in", self.kitchen("status").stdout)  # 1
+
+    def test_an_env_that_fails_to_source_is_unknown_never_not_configured(self):
         project = self.make_project("shop")
         self.list_projects(project)
-        env = self.configure_automation(text='GUARD_STEPS=(\n  "tests|true"\n')
+        for text in ('GUARD_STEPS=("tests|true")\nGARDENER_VERIFY_STEPS=("tests|true")\nexit 1\n',   # exit 1
+                     'GUARD_STEPS=("tests|true")\nGARDENER_VERIFY_STEPS=("tests|true")\nfalse\n',    # exit 1 under set -e
+                     'GARDENER_VERIFY_STEPS=("tests|true")\nGUARD_STEPS=(\n  "tests|true"\n'):      # exit 2: syntax error
+            with self.subTest(text=text):
+                env = self.configure_automation(text=text)
 
-        result = self.kitchen("status", "--exceptions")
+                result = self.kitchen("status", "--exceptions")
 
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn(f"shop  nightly    unknown: cannot source {env}: bash exited", result.stdout)
+                self.assertIn(f"shop  gardener   unknown: cannot source {env}: bash exited", result.stdout)
+                self.assertNotIn("not configured", result.stdout)
+
+    def test_an_env_that_does_not_finish_sourcing_in_time_is_unknown_and_status_returns_promptly(self):
+        project = self.make_project("shop")
+        self.list_projects(project)
+        env = self.configure_automation(text='GUARD_STEPS=("tests|true")\nsleep 30\n')
+        started = datetime.datetime.now()
+
+        result = self.kitchen("status", "--exceptions", env_extra={"KITCHEN_ENV_TIMEOUT_SECONDS": "1"})
+
+        self.assertLess((datetime.datetime.now() - started).total_seconds(), 10)
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-        self.assertIn(f"shop  nightly    unknown: cannot parse GUARD_STEPS in {env}", result.stdout)
+        self.assertIn(f"shop  nightly    unknown: sourcing {env} took longer than 1s", result.stdout)
+        self.assertIn(f"shop  gardener   unknown: sourcing {env} took longer than 1s", result.stdout)
 
     def test_an_env_without_gardener_verify_steps_configures_the_nightly_but_not_the_gardener(self):
         self.green_project()
         (self.home / "state" / "gardener" / "shop.jsonl").unlink()
-        self.configure_automation(text='GUARD_STEPS=("tests|true")\n# GARDENER_VERIFY_STEPS=("tests|true")\nGARDENER_LABEL="gardener"\n')
+        for text in ('GUARD_STEPS=("tests|true")\n# GARDENER_VERIFY_STEPS=("tests|true")\nGARDENER_LABEL="gardener"\n',  # 1 0
+                     'GUARD_STEPS=("tests|true")\nGARDENER_VERIFY_STEPS=()\n'):                                       # 1 0
+            with self.subTest(text=text):
+                self.configure_automation(text=text)
 
-        result = self.kitchen("status", "--exceptions")
-        out = self.kitchen("status").stdout
+                result = self.kitchen("status", "--exceptions")
+                out = self.kitchen("status").stdout
 
-        self.assertEqual((result.returncode, result.stdout), (0, ""), result.stdout + result.stderr)
-        self.assertIn("  nightly    ✓ green", out)
-        self.assertIn("  gardener   not configured (no GARDENER_VERIFY_STEPS in", out)
+                self.assertEqual((result.returncode, result.stdout), (0, ""), result.stdout + result.stderr)
+                self.assertIn("  nightly    ✓ green", out)
+                self.assertIn("  gardener   not configured (GARDENER_VERIFY_STEPS is empty or unset in", out)
 
     @unittest.skipIf(os.geteuid() == 0, "root reads a file without permissions")
     def test_an_unreadable_automation_env_makes_the_gardener_unknown_never_not_configured(self):
