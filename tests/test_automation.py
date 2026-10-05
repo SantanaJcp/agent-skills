@@ -39,6 +39,8 @@ class AutomationFixture(unittest.TestCase):
         self.fake("gh", 'echo "gh $*" >> "$CALLS"; [ "${GH_FAIL:-0}" = 1 ] && exit 1\n'
                         'case "$1 $2" in "pr list") echo "${OPEN_PRS:-0}";; "pr create") echo "https://example.test/pull/1";; esac')
         self.fake("claude", 'echo "claude" >> "$CALLS"; exit "${CLAUDE_EXIT:-0}"')
+        for notifier in ("osascript", "notify-send"):  # a test never pops a real notification
+            self.fake(notifier, 'echo "notify $*" >> "$CALLS"')
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -49,7 +51,7 @@ class AutomationFixture(unittest.TestCase):
         path.chmod(0o755)
 
     def configure(self, steps, cleanup="true", metrics="", needs_docker=0, project="shop", extra=""):
-        step_lines = "\n".join(f'  "{s}"' for s in steps)
+        step_lines = "\n".join(f'  "{s}"' for s in steps or [])
         (self.config / "automation" / f"{project}.env").write_text(textwrap.dedent(f"""\
             REPO_URL="{self.origin}"
             GH_REPO="owner/shop"
@@ -61,7 +63,7 @@ class AutomationFixture(unittest.TestCase):
             CLEANUP_CMD="{cleanup}"
             METRICS_CMD="{metrics}"
             GARDENER_ENV_PASS=(CALLS CLAUDE_EXIT)
-            """) + extra + f"\nGUARD_STEPS=(\n{step_lines}\n)\n")
+            """) + extra + ("" if steps is None else f"\nGUARD_STEPS=(\n{step_lines}\n)\n"))
 
     def run_job(self, job, *args, **env):
         full_env = {**clean_env(), "KITCHEN_CONFIG": str(self.config), "KITCHEN_STATE": str(self.state),
@@ -88,6 +90,12 @@ class AutomationFixture(unittest.TestCase):
 
     def calls_log(self):
         return self.calls.read_text() if self.calls.exists() else ""
+
+    def notifications(self):
+        return [line for line in self.calls_log().splitlines() if line.startswith("notify ")]
+
+    def gardener(self, project="shop"):
+        return [json.loads(line) for line in (self.state / "gardener" / f"{project}.jsonl").read_text().splitlines()]
 
     def git(self, repo, *args):
         return subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, text=True,
@@ -118,6 +126,40 @@ class NightlyGuardTests(AutomationFixture):
         self.assertEqual((run["status"], run["failed_step"]), ("red", "bad"))
         self.assertFalse(marker.exists())
         self.assertIn("gh issue create", self.calls_log())
+
+    def test_a_run_without_steps_is_a_configuration_failure_never_green(self):
+        for name, steps in (("empty", []), ("unset", None)):
+            with self.subTest(name):
+                self.configure(steps)
+
+                result = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
+
+                run = self.nightly()[-1]
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+                self.assertEqual((run["status"], run["failed_step"]), ("incomplete", "config"))
+                self.assertIn("no guard step ran", result.stdout)
+
+    def test_each_step_runs_strict_so_a_hidden_failure_fails_it(self):
+        for name, command in (("chained", "false; true"), ("piped", "false | true")):
+            with self.subTest(name):
+                self.configure([f"{name}|{command}"])
+
+                result = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
+
+                run = self.nightly()[-1]
+                self.assertEqual(result.returncode, 1, result.stdout)
+                self.assertEqual((run["status"], run["failed_step"]), ("red", name))
+
+    def test_red_or_incomplete_run_notifies_and_a_green_run_stays_silent(self):
+        sent = []
+        for steps in (["ok|true"], ["bad|false"], []):
+            self.configure(steps)
+            self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
+            sent.append(self.notifications()[sum(map(len, sent)):])
+
+        self.assertEqual([len(batch) for batch in sent], [0, 1, 1], sent)
+        self.assertIn("kitchen nightly: shop red", sent[1][0])
+        self.assertIn("kitchen nightly: shop incomplete", sent[2][0])
 
     def test_green_run_records_metrics_and_cleanup(self):
         self.configure(["ok|true"], metrics="echo '{\\\"tests\\\": 3}'")
@@ -551,6 +593,7 @@ class GardenerTests(AutomationFixture):
         self.assertEqual(result.returncode, 75, result.stdout)
         self.assertIn("gardener skipped: busy", result.stdout)
         self.assertNotIn("claude", self.calls_log())
+        self.assertEqual([(r["status"], r["detail"][:21]) for r in self.gardener()], [("none", "gardener skipped: bus")])
 
 
 class GardenerPublicationTests(AutomationFixture):
@@ -558,6 +601,15 @@ class GardenerPublicationTests(AutomationFixture):
 
     def agent(self, script):
         self.fake("claude", 'echo "claude" >> "$CALLS"\n' + script)
+
+    def verify_config(self, steps, extra="", guard_steps=(), **options):
+        """srt is a node script: the job finds node only on EXTRA_PATH, as under launchd."""
+        node = Path(shutil.which("node")).parent
+        self.configure(list(guard_steps), extra=f'EXTRA_PATH="{self.bin}:{node}"\nGARDENER_VERIFY_STEPS=({steps})\n' + extra, **options)
+
+    def configure_publishing(self, extra="", **options):
+        """A config the jobs can pass with: neither the gardener nor the guard is green without steps of its own."""
+        self.verify_config('"ok|true"', extra, guard_steps=["ok|true"], **options)
 
     def commit_script(self, branch='"${GARDENER_BRANCH_PREFIX}tidy"', path="notes.txt", lines=3):
         return textwrap.dedent(f"""\
@@ -666,9 +718,40 @@ class GardenerPublicationTests(AutomationFixture):
 
         self.assertEqual(values.read_text().split(), ["/bin/bash", "unset"])
 
+    def run_each_result(self):
+        """published, refused, none, incomplete: one gardener run each. Returns the notifications of each run."""
+        sent = []
+        for setup, agent, env in ((self.configure_publishing, self.commit_script(), {}),
+                                  (lambda: self.configure([]), self.commit_script(), {}),
+                                  (self.configure_publishing, "true", {}),
+                                  (self.configure_publishing, 'exit "$CLAUDE_EXIT"', {"CLAUDE_EXIT": "3"})):
+            setup()
+            self.agent(agent)
+            self.run_job("weekly-gardener", "shop", **env)
+            sent.append(self.notifications()[sum(map(len, sent)):])
+        return sent
+
+    def test_each_run_appends_one_gardener_record_with_its_result(self):
+        self.run_each_result()
+
+        records = self.gardener()
+        self.assertEqual([r["status"] for r in records], ["published", "refused", "none", "incomplete"])
+        self.assertEqual(records[0]["detail"], "https://example.test/pull/1")
+        self.assertIn("no independent verification configured", records[1]["detail"])
+        self.assertEqual(records[2]["detail"], "no gardener branch was committed")
+        self.assertIn("claude exited 3", records[3]["detail"])
+        self.assertEqual(len({r["run_id"] for r in records}), 4)
+
+    def test_refused_or_incomplete_runs_notify_and_the_others_stay_silent(self):
+        sent = self.run_each_result()
+
+        self.assertEqual([len(batch) for batch in sent], [0, 1, 0, 1], sent)
+        self.assertIn("kitchen gardener: shop refused", sent[1][0])
+        self.assertIn("kitchen gardener: shop incomplete", sent[3][0])
+
     def test_job_publishes_the_agents_branch_with_the_label_and_summary(self):
         branch = f"gardener/{datetime.datetime.now(datetime.timezone.utc):%Y-%m-%d}-tidy"
-        self.configure([])
+        self.configure_publishing()
         self.agent(self.commit_script())
 
         result = self.run_job("weekly-gardener", "shop")
@@ -684,7 +767,7 @@ class GardenerPublicationTests(AutomationFixture):
 
     def test_only_the_validated_final_tree_is_published_as_one_commit(self):
         branch = f"gardener/{datetime.datetime.now(datetime.timezone.utc):%Y-%m-%d}-tidy"
-        self.configure([])
+        self.configure_publishing()
         self.agent(textwrap.dedent("""\
             git checkout -q -b "${GARDENER_BRANCH_PREFIX}tidy"
             mkdir -p .github/workflows && echo "on: push" > .github/workflows/test.yml && echo leaked-value > leaked.txt
@@ -723,7 +806,7 @@ class GardenerPublicationTests(AutomationFixture):
     def test_branch_moved_during_publication_cannot_change_what_is_published(self):
         tmp = Path(self.tmp.name)
         started, moved = tmp / "commit-tree.started", tmp / "branch.moved"
-        self.configure([])
+        self.configure_publishing()
         self.fake("git", f"""[ "$1" = commit-tree ] && {{ touch {started}; for i in $(seq 1 500); do [ -f {moved} ] && break; sleep .01; done; }}
 exec {shutil.which("git")} "$@" """)
         self.agent(self.commit_script() + f"""
@@ -746,7 +829,7 @@ git reset -q --hard "$safe"
     def test_hook_files_the_agent_leaves_in_the_tree_never_run_unsealed(self):
         evil = Path(self.tmp.name) / "hook-ran"
         self.commit_to_origin({"scripts/hooks/post-checkout": ("#!/bin/sh\nexit 0\n", 0o755)})
-        self.configure([], extra='HOOKS_PATH="scripts/hooks"')
+        self.configure_publishing(extra='HOOKS_PATH="scripts/hooks"')
         self.agent(self.commit_script() + f"""
 printf '#!/bin/sh\\ntouch {evil}\\n' > scripts/hooks/pre-push && chmod +x scripts/hooks/pre-push
 printf '#!/bin/sh\\ntouch {evil}\\n' > scripts/hooks/post-checkout
@@ -763,7 +846,7 @@ printf '#!/bin/sh\\ntouch {evil}\\n' > scripts/hooks/post-checkout
         tmp = Path(self.tmp.name)
         evil, cleaned = tmp / "evil-ran", tmp / "cleaned"
         self.commit_to_origin({"stop.sh": (f"touch {cleaned}\n", 0o644)})
-        self.configure([], cleanup="sh stop.sh")
+        self.configure_publishing(cleanup="sh stop.sh")
         self.agent(self.commit_script() + f"echo 'touch {evil}' > stop.sh\n")
 
         result = self.run_job("weekly-gardener", "shop")
@@ -781,10 +864,6 @@ git commit -q -am "More notes"
 
         self.assert_refused(self.run_job("weekly-gardener", "shop"), "GitHub token (across lines)")
 
-    def verify_config(self, steps, extra=""):
-        """srt is a node script: the job finds node only on EXTRA_PATH, as under launchd."""
-        node = Path(shutil.which("node")).parent
-        self.configure([], extra=f'EXTRA_PATH="{self.bin}:{node}"\nGARDENER_VERIFY_STEPS=({steps})\n' + extra)
 
     def pr_body(self):
         line = next(line for line in self.calls_log().splitlines() if line.startswith("gh pr create"))
@@ -917,7 +996,7 @@ git commit -q -am "More notes"
         self.git(self.origin, "init", "-q", "--bare", str(common))
         for key in ("core.fsmonitor", "core.sshCommand", "core.alternateRefsCommand"):
             self.git(common, "config", key, str(hook))
-        self.configure([], cleanup="true")
+        self.configure_publishing(cleanup="true")
         for redirect in ("", f"printf '%s\\n' '{common}' > .git/commondir\n"):
             with self.subTest(commondir=bool(redirect)):
                 self.agent(self.commit_script() + f"git config core.fsmonitor {hook}\ngit config core.sshCommand {hook}\n" + redirect)
@@ -945,7 +1024,7 @@ git commit -q -am "More notes"
     def test_prepare_runs_on_the_pinned_base_before_the_agent(self):
         out = Path(self.tmp.name) / "prepared"
         self.commit_to_origin({"base.txt": ("from the base\n", 0o644)})
-        self.configure([], extra=f'GARDENER_PREPARE_CMD="cat base.txt > {out} && test ! -e .git && echo prepare >> $CALLS"')
+        self.configure_publishing(extra=f'GARDENER_PREPARE_CMD="cat base.txt > {out} && test ! -e .git && echo prepare >> $CALLS"')
         self.agent(self.commit_script())
 
         result = self.run_job("weekly-gardener", "shop")
@@ -965,12 +1044,11 @@ git commit -q -am "More notes"
         self.assertIn("GARDENER_PREPARE_CMD failed", result.stdout)
         self.assertNotIn("claude", self.calls_log())
 
-    def test_without_verify_steps_the_pr_says_the_agent_is_the_only_evidence(self):
+    def test_without_verify_steps_the_job_refuses_to_publish(self):
         self.configure([])
         self.agent(self.commit_script())
 
-        self.assertEqual(self.run_job("weekly-gardener", "shop").returncode, 0)
-        self.assertIn("Job verification: none configured", self.pr_body())
+        self.assert_refused(self.run_job("weekly-gardener", "shop"), "no independent verification configured")
 
     def test_verify_sandbox_settings_carry_the_agents_boundary(self):
         settings = json.loads(subprocess.run(

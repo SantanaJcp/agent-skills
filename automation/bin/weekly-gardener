@@ -15,15 +15,22 @@
 #   3. Before publishing, the job reruns GARDENER_VERIFY_STEPS itself on that exact tree, written from the
 #      objects (lib/export_tree.py: no .gitattributes, filters or hooks) and sandboxed by srt
 #      (lib/sandbox_settings.py --format srt, the agent's boundary). A step passes only when its strict shell
-#      exits 0 and says so; a failing, killed or hung step publishes nothing. The PR body lists the steps
-#      that passed, or says none were configured.
+#      exits 0 and says so; a failing, killed or hung step publishes nothing, and so does an empty
+#      GARDENER_VERIFY_STEPS. The PR body lists the steps that passed.
 # The agent works in a fresh clone of its own ($WORK_DIR/clone, deleted at the end); the job never runs git
 # with that clone's config or hooks. It lists the agent's branch, imports the objects into a bare repository
 # of its own ($JOB_DIR, which the agent cannot write), checks them with git fsck and publishes from there.
+# Every run ends with exactly one result, logged as one GARDENER-RESULT line and recorded as one line in
+# $STATE_ROOT/gardener/<project>.jsonl for `kitchen status`: published <url>, none <reason> (nothing to publish, or
+# skipped), refused <reason>, or incomplete <reason> (a prerequisite failed, claude failed, or the run was aborted,
+# interrupted or killed). A refused or incomplete run also shows a local notification (lib/kitchen/notify.py).
 # Usage: weekly-gardener <project>
 source "$(dirname "$0")/../lib/common.sh" "$1"
 
 RUN_DATE="$(date -u +%Y-%m-%d)"
+STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%S+00:00)"
+RESULT=""         # published / none / refused / incomplete, set once by result()
+RESULT_DETAIL=""
 RUN_LOG="$LOG_DIR/gardener-$RUN_ID.log"
 WORK_DIR="$STATE_DIR/gardener/$RUN_ID"
 SUMMARY_FILE="$WORK_DIR/summary.md"
@@ -43,6 +50,11 @@ VERIFY_TIMEOUT="${GARDENER_VERIFY_TIMEOUT_SECONDS:-3600}"
 SRT="$KITCHEN_AUTOMATION/node_modules/.bin/srt"  # pinned in automation/package.json
 PROMPT_FILE="${GARDENER_PROMPT_FILE:-$KITCHEN_AUTOMATION/prompts/gardener.md}"  # override only for canary probes
 STARTED=0
+
+# The run's one result (see the top of this file); finish records it.
+result() { RESULT="$1"; RESULT_DETAIL="$2"; log "GARDENER-RESULT: $1 - $2"; }
+refuse() { result refused "$1"; return 1; }
+stop() { result incomplete "$1"; exit 1; }
 
 finish() {
   local rc=$?
@@ -64,6 +76,12 @@ finish() {
   rm -rf "$AGENT_CLONE" "$JOB_DIR/prepare" "$JOB_DIR/cleanup" "$JOB_DIR/verify" "$JOB_DIR/publish.git"
   find "$LOG_DIR" -name 'gardener-*' -mtime +90 -delete
   find "$STATE_DIR/gardener" "$STATE_DIR/gardener-job" -mindepth 1 -maxdepth 1 -mtime +90 -exec rm -rf {} + 2>/dev/null
+  [ -n "$RESULT" ] || result incomplete "aborted (exit $rc)"
+  case "$RESULT" in
+    refused|incomplete) notify "kitchen gardener: $PROJECT $RESULT" "$RESULT_DETAIL" || warn "not notified: see the log" ;;
+  esac
+  record_gardener "$RESULT" "$RESULT_DETAIL" "$RUN_ID" "$RUN_LOG" "$STARTED_AT" ${WARNINGS[@]+"${WARNINGS[@]}"} ||
+    log "FAILED to write the gardener record $GARDENER_RECORD"
   log "gardener end: status=$rc"
   exit "$rc"
 }
@@ -100,8 +118,6 @@ run_sealed() {
     "$@"
 }
 
-refuse() { log "GARDENER-RESULT: refused - $1"; return 1; }
-
 # On Linux both sandboxes put an unreadable device over each dangerous file or directory that does not
 # exist yet, so it cannot be created. git add then fails on those devices ("can only add regular files"),
 # and the .NET SDK's SourceLink fails reading .gitmodules. So the checkout excludes every masked name
@@ -129,10 +145,8 @@ prepare_linux_checkout() {
 # Sets VERIFY_REPORT for the PR body.
 verify_tree() {
   local tree="$1" vdir="$JOB_DIR/verify" spec name cmd rc recorded var path keep=() args passed=""
-  if [ ${#GARDENER_VERIFY_STEPS[@]} = 0 ]; then
-    VERIFY_REPORT="Job verification: none configured (GARDENER_VERIFY_STEPS); the only evidence is the agent's own report above."
-    return 0
-  fi
+  # The agent's own report is not evidence: without steps of its own the job publishes nothing.
+  [ ${#GARDENER_VERIFY_STEPS[@]} -gt 0 ] || refuse "no independent verification configured (GARDENER_VERIFY_STEPS is empty)" || return 1
   python3 "$KITCHEN_AUTOMATION/lib/export_tree.py" "$GIT_DIR" "$tree" "$vdir" >/dev/null ||
     refuse "could not export the validated tree" || return 1
   git config --file "$JOB_DIR/gitconfig" user.name kitchen-gardener-verify
@@ -195,7 +209,7 @@ publish() {
   listing="$(git --git-dir="$AGENT_CLONE/.git" for-each-ref --format='%(objectname) %(refname:short)' refs/heads/gardener/)" ||
     refuse "cannot list the branches of the agent's clone" || return 1
   if [ -z "$listing" ]; then
-    log "GARDENER-RESULT: none - no gardener branch was committed"
+    result none "no gardener branch was committed"
     return 0
   fi
   [ "$(printf '%s\n' "$listing" | wc -l | tr -d ' ')" = 1 ] || refuse "more than one gardener branch: $(echo $listing)" || return 1
@@ -254,18 +268,21 @@ publish() {
   local url
   url="$(gh pr create -R "$GH_REPO" --base "$BRANCH" --head "$br" --label "$GARDENER_LABEL" \
     --title "$title" --body-file "$JOB_DIR/body.md")" || refuse "gh pr create failed for pushed branch $br" || return 1
+  RESULT=published RESULT_DETAIL="$url"
   log "GARDENER-RESULT: $url ($changed changed lines in one commit, squashed from $ahead)"
 }
 
 if [ "$LOCK_STATE" = busy ]; then
-  log "gardener skipped: busy (another job of $PROJECT held the clone for ${LOCK_WAIT_SECONDS:-3600}s)"
+  result none "gardener skipped: busy (another job of $PROJECT held the clone for ${LOCK_WAIT_SECONDS:-3600}s)"
   exit 75
 fi
+close_stale_records "$RUN_ID" "$GARDENER_RECORD"
+record_gardener running "" "$RUN_ID" "$RUN_LOG" "$STARTED_AT"
 
 gh label create "$GARDENER_LABEL" -R "$GH_REPO" --color 0E8A16 --description "Weekly gardener PR" >/dev/null 2>&1 || true
 pending="$(gh pr list -R "$GH_REPO" --label "$GARDENER_LABEL" --state open --json number --jq 'length')"
 if [ "${pending:-0}" -gt 0 ]; then
-  log "gardener skipped: $pending gardener PR(s) still open"; exit 0
+  result none "gardener skipped: $pending gardener PR(s) still open"; exit 0
 fi
 
 log "gardener start: project=$PROJECT"
@@ -282,16 +299,13 @@ project_hooks="$(git -C "$CLONE_DIR" config --get kitchen.projectHooksPath || tr
 [ -z "$project_hooks" ] || git -C "$AGENT_CLONE" config kitchen.projectHooksPath "$project_hooks"
 CLONE_DIR="$AGENT_CLONE" install_push_guard
 if [ "${NEEDS_DOCKER:-0}" = 1 ] && ! ensure_docker; then
-  log "gardener end: status=1 (Docker is required and not available; the gardener could not verify its change)"
-  exit 1
+  stop "Docker is required and not available; the gardener could not verify its change"
 fi
 if [ ${#GARDENER_VERIFY_STEPS[@]} -gt 0 ] && [ ! -x "$SRT" ]; then
-  log "gardener end: status=1 (GARDENER_VERIFY_STEPS is set and srt is not installed: npm ci --ignore-scripts --prefix $KITCHEN_AUTOMATION)"
-  exit 1
+  stop "GARDENER_VERIFY_STEPS is set and srt is not installed: npm ci --ignore-scripts --prefix $KITCHEN_AUTOMATION"
 fi
 if [ ${#GARDENER_VERIFY_STEPS[@]} -gt 0 ] && ! PATH="$TOOL_PATH" command -v node >/dev/null; then
-  log "gardener end: status=1 (GARDENER_VERIFY_STEPS is set and srt needs node, which is not on EXTRA_PATH)"
-  exit 1
+  stop "GARDENER_VERIFY_STEPS is set and srt needs node, which is not on EXTRA_PATH"
 fi
 # What the sandboxes need beyond the project's paths, per platform.
 PLATFORM_READ=()
@@ -302,8 +316,7 @@ case "$(uname)" in
     # .NET's named mutexes and MSBuild create directories straight in /tmp, ignoring TMPDIR, so the
     # sandboxes must write /tmp. That is safe only when /tmp is this run's own: systemd PrivateTmp=yes.
     if ! findmnt -n -o FSROOT --mountpoint /tmp | tail -n 1 | grep -q '^/systemd-private-'; then
-      log "gardener end: status=1 (on Linux the gardener needs a private /tmp: run it from its systemd unit, see install-schedule, or with systemd-run --user -p PrivateTmp=yes)"
-      exit 1
+      stop "on Linux the gardener needs a private /tmp: run it from its systemd unit, see install-schedule, or with systemd-run --user -p PrivateTmp=yes"
     fi
     mkdir -p /tmp/claude  # srt points TMPDIR here; a fresh private /tmp lacks it
     PLATFORM_WRITE=(/tmp)
@@ -313,8 +326,7 @@ case "$(uname)" in
     # paths and the network.
     AGENT_SHELL=(SHELL=/bin/bash) ;;
   *)
-    log "gardener end: status=1 (unsupported platform: $(uname))"
-    exit 1 ;;
+    stop "unsupported platform: $(uname)" ;;
 esac
 prepare_linux_checkout "$AGENT_CLONE"
 # Optional: refresh what the sandboxes read offline (package caches) before the agent runs. It runs
@@ -323,11 +335,10 @@ prepare_linux_checkout "$AGENT_CLONE"
 if [ -n "${GARDENER_PREPARE_CMD:-}" ]; then
   log "prepare: $GARDENER_PREPARE_CMD"
   python3 "$KITCHEN_AUTOMATION/lib/export_tree.py" "$CLONE_DIR" "$BASE_SHA^{tree}" "$JOB_DIR/prepare" >/dev/null || {
-    log "gardener end: status=1 (could not export $BASE_SHA to run GARDENER_PREPARE_CMD)"; exit 1; }
+    stop "could not export $BASE_SHA to run GARDENER_PREPARE_CMD"; }
   if ! (cd "$JOB_DIR/prepare" && bounded "$NET_TIMEOUT" bash -e -o pipefail -c "$GARDENER_PREPARE_CMD") \
     > "$LOG_DIR/gardener-$RUN_ID-prepare.log" 2>&1; then
-    log "gardener end: status=1 (GARDENER_PREPARE_CMD failed; log $LOG_DIR/gardener-$RUN_ID-prepare.log)"
-    exit 1
+    stop "GARDENER_PREPARE_CMD failed; log $LOG_DIR/gardener-$RUN_ID-prepare.log"
   fi
   rm -rf "$JOB_DIR/prepare"
 fi
@@ -356,7 +367,7 @@ Project facts:
 - largest diff the job will publish: $MAX_CHANGED_LINES changed lines
 - paths the job refuses to publish: ${GARDENER_PROTECTED_PATHS[*]:-none}
 - quality metrics command: ${QUALITY_CMD:-none configured}
-- steps the job reruns on your final tree before publishing (same sandbox, no Docker): ${VERIFY_NAMES:-none configured}
+- steps the job reruns on your final tree before publishing (same sandbox, no Docker): ${VERIFY_NAMES:-none configured, so the job will refuse to publish}
 - committed baseline: ${BASELINE_FILE:-none configured}
 - metrics history (one JSON object per nightly run): $HISTORY_DIR/history.jsonl
 - run id: $RUN_ID"
@@ -372,7 +383,7 @@ run_sealed claude -p "$PROMPT" \
   --add-dir "$HISTORY_DIR" "$WORK_DIR" \
   --output-format text </dev/null || status=$?
 if [ "$status" != 0 ]; then
-  log "GARDENER-RESULT: none - claude exited $status; nothing published"
+  result incomplete "claude exited $status; nothing published"
   exit "$status"
 fi
 GIT_DIR="$JOB_DIR/publish.git" publish

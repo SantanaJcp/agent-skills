@@ -323,6 +323,9 @@ def cmd_check(args: argparse.Namespace) -> int:
 def cmd_log(args: argparse.Namespace) -> int:
     entry = journal.write(args.message, args.status, Path.cwd())
     print(f"logged  {entry['status']} · {entry['repo']} @ {entry['sha'] or 'no git'} · {entry['agent']}")
+    problem = journal.notify_owner(entry)
+    if problem:
+        print(f"kitchen log: {problem}", file=sys.stderr)
     return 0
 
 
@@ -333,7 +336,12 @@ def cmd_status(args: argparse.Namespace) -> int:
     if not repos:
         print(f"No projects: list one path per line in {common.config_dir() / 'projects.txt'}, or pass paths.")
         return 1
-    report = [status.project(repo, since) for repo in repos]
+    report = status.build(repos, since)
+    if args.exceptions:
+        lines = status.exceptions(report)
+        if lines:
+            print("\n".join(lines))
+        return 1 if lines else 0
     print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else status.render(report, args.since))
     return 0
 
@@ -357,9 +365,13 @@ def cmd_retro(args: argparse.Namespace) -> int:
 def cmd_integrate(args: argparse.Namespace) -> int:
     repo = Path(args.repo).resolve()
     project = args.project or repo.name
-    base = args.base or integrate.configured_base(project) or "origin/main"
+    try:
+        base = integrate.base_for(project, args.base)
+    except integrate.IntegrateError as error:
+        print(f"FAIL  {project}: {error}")
+        return 1
     if args.recorded:
-        valid, message = integrate.recorded(repo, base, args.refs, project)
+        valid, message = integrate.recorded(repo, base, args.refs, project, args.check)
         print(f"{'PASS' if valid else 'FAIL'}  {project}: {message}")
         return 0 if valid else 1
     record = integrate.integrate(repo, base, args.refs, project, args.check)
@@ -388,10 +400,12 @@ def main() -> int:
     log.add_argument("--status", choices=journal.STATUSES, default="note")
     log.set_defaults(func=cmd_log)
 
-    stat = sub.add_parser("status", help="where every project stands: git, PRs, nightly guard, journal, decisions")
+    stat = sub.add_parser("status", help="where every project stands: git, PRs, nightly guard, gardener, journal, decisions")
     stat.add_argument("paths", nargs="*", help="project paths or configured project names; default: ~/.config/kitchen/projects.txt")
     stat.add_argument("--since", default="24h", help="journal window, e.g. 24h or 7d")
-    stat.add_argument("--json", action="store_true")
+    stat_output = stat.add_mutually_exclusive_group()
+    stat_output.add_argument("--json", action="store_true")
+    stat_output.add_argument("--exceptions", action="store_true", help="print only the lines that are not green; exit 1 when there are any")
     stat.set_defaults(func=cmd_status)
 
     inv = sub.add_parser("inventory", help="skills, rule files and automations the agents can see, and their drift")
@@ -411,7 +425,7 @@ def main() -> int:
     integ = sub.add_parser("integrate", help="merge branches in order onto a base in a disposable clone and run the project's checks after each merge")
     integ.add_argument("refs", nargs="+", help="branches, SHAs or pr:<number>, in merge order")
     integ.add_argument("--repo", default=".", help="source repository (default: current directory)")
-    integ.add_argument("--base", help="ref to merge onto (default: the project's `base` in integrate.toml, else origin/main)")
+    integ.add_argument("--base", help="ref to merge onto (default: the project's `base` in integrate.toml; there is no other default)")
     integ.add_argument("--project", help="project name in ~/.config/kitchen/integrate.toml (default: repo folder name)")
     integ.add_argument("--check", action="append", help="check command to run instead of the configured ones (repeatable)")
     integ.add_argument("--recorded", action="store_true", help="run nothing: PASS only if a recorded PASS matches the refs' current SHAs")
