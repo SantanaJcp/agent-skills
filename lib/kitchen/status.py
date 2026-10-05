@@ -5,6 +5,13 @@ journal. A fact it cannot read is `unknown`, never zero or none.
 overdue, a gardener run that was refused, incomplete, overdue or not recorded on this machine, PRs or decisions it
 could not read, owed decisions, and checkpoints that wait on the owner (blocked, decision), unattached ones included.
 
+Each of nightly, gardener and decisions is configured only by explicit config, never guessed from the records:
+- the nightly, by the project's automation env, `<config>/automation/<project>.env`, the file the jobs source;
+- the gardener, by `GARDENER_VERIFY_STEPS` in that env, or a `gardener` key in the project's integrate.toml entry;
+- decisions, by a `base` in that entry.
+One that is not configured shows an informational `not configured` line: never green, never an exception. One that is
+configured and lacks its record is an exception; a config that cannot be read is `unknown`, also an exception.
+
 A project whose gardener runs on another host says so in integrate.toml, `gardener = "remote:<host-label>"`: its
 gardener line is then informational, `remote (<host-label>): not read here`. Never green, never an exception.
 """
@@ -20,7 +27,7 @@ import tomllib
 from pathlib import Path
 
 from . import integrate, journal
-from .common import git, git_common_dir, git_out, now, parse_ts, state_dir
+from .common import config_dir, git, git_common_dir, git_out, now, parse_ts, state_dir
 
 OWED_DECISION = re.compile(r"^\s*- \[ \]", re.MULTILINE)
 UNKNOWN = "unknown"  # a read failed: never shown as zero or none
@@ -30,6 +37,9 @@ GARDENER_DUE = datetime.timedelta(days=8)  # install-schedule runs the gardener 
 NOON = datetime.timedelta(hours=12)
 GARDENER_GREEN = ("published", "none")
 REMOTE = re.compile(r"remote:(\S+)")
+# An assignment the gardener job reads when it sources the env; a commented-out line configures nothing.
+GARDENER_STEPS = re.compile(r"^[ \t]*(?:(?:export|declare|typeset|readonly)(?:[ \t]+-\w+)*[ \t]+)?GARDENER_VERIFY_STEPS\+?=",
+                            re.MULTILINE)
 
 
 def gh_timeout() -> int:
@@ -53,6 +63,18 @@ def night(run: dict) -> datetime.date | None:
     return (ts.astimezone() - NOON).date() if ts else None
 
 
+def automation_env(name: str) -> dict:
+    """The project's automation env, as the jobs find it (automation/lib/common.sh): its path, text, or why it could
+    not be read. No file means no automation configured for the project."""
+    path = config_dir() / "automation" / f"{name}.env"
+    if not path.exists():
+        return {"path": path, "exists": False, "text": None, "error": None}
+    try:
+        return {"path": path, "exists": True, "text": path.read_text(encoding="utf-8"), "error": None}
+    except (OSError, UnicodeDecodeError) as error:
+        return {"path": path, "exists": True, "text": None, "error": f"cannot read {path}: {error}"}
+
+
 def nightly(name: str) -> dict | None:
     runs = history("nightly", name)
     if not runs:
@@ -68,8 +90,9 @@ def nightly(name: str) -> dict | None:
             "overdue": UNKNOWN if age is None else age > NIGHTLY_CADENCE.total_seconds()}
 
 
-def gardener(name: str, entry: dict, error: str | None) -> dict | None:
-    """The gardener's last run as recorded on this machine, or where it runs when that is another host."""
+def gardener(name: str, entry: dict, error: str | None, env: dict) -> dict:
+    """The gardener's last run as recorded on this machine, where it runs when that is another host, or that it is
+    not configured for this project."""
     if error:
         return {"setting_error": error}
     value = entry.get("gardener")
@@ -78,9 +101,13 @@ def gardener(name: str, entry: dict, error: str | None) -> dict | None:
         if not remote:
             return {"setting_error": f"gardener = {value!r} is not remote:<host-label> ({integrate.config_path()})"}
         return {"remote": remote.group(1)}
+    if env["error"]:
+        return {"setting_error": env["error"]}
+    if not GARDENER_STEPS.search(env["text"] or ""):
+        return {"not_configured": f"no GARDENER_VERIFY_STEPS in {env['path']} and no gardener in {integrate.config_path()}"}
     runs = history("gardener", name)
     if not runs:
-        return None
+        return {"no_record": f"GARDENER_VERIFY_STEPS in {env['path']}"}
     age = age_seconds(runs[-1])
     return {**runs[-1], "age_seconds": age, "overdue": UNKNOWN if age is None else age > GARDENER_DUE.total_seconds()}
 
@@ -153,13 +180,13 @@ def settings(name: str) -> tuple[dict, str | None]:
 
 
 def base_of(name: str, entry: dict, error: str | None) -> dict:
-    """The project's base ref from integrate.toml. There is no default base."""
+    """The project's base ref from integrate.toml. There is no default base: without one, decisions are not configured."""
     if error:
-        return {"ref": None, "sha": None, "error": error}
+        return {"ref": None, "sha": None, "error": error, "configured": True}  # unknown, not absent
     ref = entry.get("base")
     if not ref:
-        return {"ref": None, "sha": None, "error": f"no base for {name!r} in {integrate.config_path()}"}
-    return {"ref": ref, "sha": None, "error": None}
+        return {"ref": None, "sha": None, "error": f"no base for {name!r} in {integrate.config_path()}", "configured": False}
+    return {"ref": ref, "sha": None, "error": None, "configured": True}
 
 
 def resolve_base(repo: Path, base: dict) -> dict:
@@ -171,6 +198,8 @@ def resolve_base(repo: Path, base: dict) -> dict:
 
 def decisions(repo: Path, base: dict) -> dict:
     """decisions.md as committed on the base ref, not as it is in whatever the checkout holds."""
+    if not base["configured"]:
+        return {"ref": None, "not_configured": base["error"]}
     if base["error"]:
         return {"ref": base["ref"], "owed": UNKNOWN, "error": base["error"]}
     listing = git(repo, "ls-tree", "--name-only", base["sha"], "--", "decisions.md")
@@ -212,6 +241,7 @@ def project(repo: Path, since) -> dict:
     blocks = [b for b in listing.stdout.split("\n\n") if b.strip()][1:] if listing.returncode == 0 else None
     prunable = sum(1 for b in blocks if "\nprunable" in b) if blocks is not None else UNKNOWN
     up = upstream(repo, branch)
+    env = automation_env(name)
     run = nightly(name)
     entry, config_error = settings(name)
     base = resolve_base(repo, base_of(name, entry, config_error))
@@ -228,11 +258,20 @@ def project(repo: Path, since) -> dict:
         "extra_worktrees": len(blocks) - prunable if blocks is not None else UNKNOWN,
         "prunable_worktrees": prunable,
         "pull_requests": pull_requests(repo),
-        "nightly": {**run, "matches": nightly_match(run, head, up), "behind": behind_base(repo, run, base)} if run else None,
-        "gardener": gardener(name, entry, config_error),
+        "nightly": nightly_state(env, run, head, up, repo, base),
+        "gardener": gardener(name, entry, config_error, env),
         "journal": journal.read(since=since, project=common_dir, repo=toplevel),
         "decisions": decisions(repo, base),
     }
+
+
+def nightly_state(env: dict, run: dict | None, head: str | None, up, repo: Path, base: dict) -> dict:
+    """The nightly's last run, or that it is configured with no run recorded, or that it is not configured at all."""
+    if not env["exists"]:
+        return {"not_configured": f"no {env['path']}"}
+    if run is None:
+        return {"no_record": f"configured in {env['path']}"}
+    return {**run, "matches": nightly_match(run, head, up), "behind": behind_base(repo, run, base)}
 
 
 def build(repos: list[Path], since) -> dict:
@@ -264,9 +303,11 @@ def header_green(p: dict) -> bool:
     return "error" not in p and UNKNOWN not in (p["branch"], p["sha"], p["dirty"], p["extra_worktrees"], p["prunable_worktrees"], p["upstream"])
 
 
-def nightly_line(run: dict | None) -> str:
-    if run is None:
-        return "nightly    no record"
+def nightly_line(run: dict) -> str:
+    if "not_configured" in run:
+        return f"nightly    not configured ({run['not_configured']})"
+    if "no_record" in run:
+        return f"nightly    ✗ no record ({run['no_record']})"
     mark = "✓" if nightly_green(run) else "✗"  # an overdue green is not green now
     failed = f" (failed: {run['failed_step']})" if run.get("failed_step") else ""
     matches = f" (= {run['matches']})" if run.get("matches") else ""
@@ -284,14 +325,22 @@ def nightly_line(run: dict | None) -> str:
             f" · {behind_text} · green streak {streak_text}{overdue}{warnings}")
 
 
-def nightly_green(run: dict | None) -> bool:
+def nightly_green(run: dict) -> bool:
     """Green only with every fact known: a green verdict, not overdue, and a known distance to the base."""
-    return run is not None and run.get("status") == "green" and run["overdue"] is False and run["behind"]["count"] != UNKNOWN
+    return run.get("status") == "green" and run["overdue"] is False and run["behind"]["count"] != UNKNOWN
 
 
-def gardener_line(run: dict | None) -> str:
-    if run is None:
-        return f"gardener   {UNKNOWN}: no local record (the gardener may run on another host)"
+def nightly_exception(run: dict) -> bool:
+    """A nightly that is not configured is not read: neither green nor an exception."""
+    return not nightly_green(run) and "not_configured" not in run
+
+
+def gardener_line(run: dict) -> str:
+    if "not_configured" in run:
+        return f"gardener   not configured ({run['not_configured']})"
+    if "no_record" in run:
+        return (f"gardener   ✗ no record on this host ({run['no_record']}; if it runs on another host,"
+                f" set gardener = \"remote:<host-label>\" in {integrate.config_path()})")
     if "setting_error" in run:
         return f"gardener   {UNKNOWN}: {run['setting_error']}"
     if "remote" in run:
@@ -303,14 +352,14 @@ def gardener_line(run: dict | None) -> str:
     return f"gardener   {mark} {run.get('status')}{detail} · {duration(run['age_seconds'])} ago{overdue}{warnings}"
 
 
-def gardener_green(run: dict | None) -> bool:
+def gardener_green(run: dict) -> bool:
     """Green only for a good result whose time is known and that is not overdue (an unknown time shows as `unknown ago`)."""
-    return run is not None and run.get("status") in GARDENER_GREEN and run.get("overdue") is False
+    return run.get("status") in GARDENER_GREEN and run.get("overdue") is False
 
 
-def gardener_exception(run: dict | None) -> bool:
-    """A remote gardener is not read here: neither green nor an exception."""
-    return not gardener_green(run) and not (run and "remote" in run)
+def gardener_exception(run: dict) -> bool:
+    """A remote or unconfigured gardener is not read here: neither green nor an exception."""
+    return not gardener_green(run) and "remote" not in run and "not_configured" not in run
 
 
 def prs_line(prs: dict) -> str:
@@ -321,6 +370,8 @@ def prs_line(prs: dict) -> str:
 
 
 def decisions_line(d: dict) -> str:
+    if "not_configured" in d:
+        return f"decisions  not configured ({d['not_configured']})"
     if d["owed"] == UNKNOWN:
         return f"decisions  {UNKNOWN}: {d['error']}"
     if d["owed"] is None:
@@ -329,7 +380,12 @@ def decisions_line(d: dict) -> str:
 
 
 def decisions_green(d: dict) -> bool:
-    return d["owed"] != UNKNOWN and not d["owed"]
+    return "not_configured" not in d and d["owed"] != UNKNOWN and not d["owed"]
+
+
+def decisions_exception(d: dict) -> bool:
+    """Decisions without a base are not read: neither green nor an exception."""
+    return not decisions_green(d) and "not_configured" not in d
 
 
 def entry_line(entry: dict, with_repo: bool = False) -> str:
@@ -372,11 +428,11 @@ def exceptions(report: dict) -> list[str]:
             out.append(header(p))
         if "error" in p:
             continue
-        for line, green in ((nightly_line(p["nightly"]), nightly_green(p["nightly"])),
-                            (gardener_line(p["gardener"]), not gardener_exception(p["gardener"])),
-                            (prs_line(p["pull_requests"]), "error" not in p["pull_requests"]),
-                            (decisions_line(p["decisions"]), decisions_green(p["decisions"]))):
-            if not green:
+        for line, exception in ((nightly_line(p["nightly"]), nightly_exception(p["nightly"])),
+                                (gardener_line(p["gardener"]), gardener_exception(p["gardener"])),
+                                (prs_line(p["pull_requests"]), "error" in p["pull_requests"]),
+                                (decisions_line(p["decisions"]), decisions_exception(p["decisions"]))):
+            if exception:
                 out.append(f"{p['name']}  {line}")
         out += [f"{p['name']}  journal    {entry_line(e)}" for e in p["journal"] if e.get("status") in journal.OWNER_STATUSES]
     out += [f"unattached  {entry_line(e, with_repo=True)}" for e in report["unattached"] if e.get("status") in journal.OWNER_STATUSES]
