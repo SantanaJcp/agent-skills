@@ -384,7 +384,11 @@ Project facts:
 STARTED=1
 status=0
 cd "$AGENT_CLONE"
+# --setting-sources local: the user's settings (their interactive hooks, e.g. the kitchen guards, which block
+# legitimate cleanup inside the clone) and the project's checked-in settings (hooks from the tree under work)
+# do not load; the OS sandbox from --settings is the boundary here, and --settings always applies.
 run_sealed claude -p "$PROMPT" \
+  --setting-sources local \
   --settings "$WORK_DIR/settings.json" --strict-mcp-config \
   --permission-mode acceptEdits \
   --allowedTools "Bash" "Read" "Edit" "Write" "Grep" "Glob" \
