@@ -65,6 +65,15 @@ class AutomationFixture(unittest.TestCase):
             GARDENER_ENV_PASS=(CALLS CLAUDE_EXIT)
             """) + extra + ("" if steps is None else f"\nGUARD_STEPS=(\n{step_lines}\n)\n"))
 
+    def verify_config(self, steps, extra="", guard_steps=(), **options):
+        """srt is a node script: the job finds node only on EXTRA_PATH, as under launchd."""
+        node = Path(shutil.which("node")).parent
+        self.configure(list(guard_steps), extra=f'EXTRA_PATH="{self.bin}:{node}"\nGARDENER_VERIFY_STEPS=({steps})\n' + extra, **options)
+
+    def configure_publishing(self, extra="", **options):
+        """A config the jobs can pass with: neither the gardener nor the guard is green without steps of its own."""
+        self.verify_config('"ok|true"', extra, guard_steps=["ok|true"], **options)
+
     def run_job(self, job, *args, **env):
         full_env = {**clean_env(), "KITCHEN_CONFIG": str(self.config), "KITCHEN_STATE": str(self.state),
                     "KITCHEN_REAL_GH": str(self.bin / "gh"), "CALLS": str(self.calls), "DOCKER_WAIT_TRIES": "1", "DOCKER_WAIT_SECONDS": "0", **env}
@@ -553,7 +562,7 @@ class NightlyGuardTests(AutomationFixture):
 class GardenerTests(AutomationFixture):
     def test_claude_failure_is_the_job_status_and_cleanup_still_runs(self):
         cleaned = Path(self.tmp.name) / "cleaned"
-        self.configure([], cleanup=f"touch {cleaned}")
+        self.configure_publishing(cleanup=f"touch {cleaned}")
 
         result = self.run_job("weekly-gardener", "shop", CLAUDE_EXIT="3")
 
@@ -562,7 +571,7 @@ class GardenerTests(AutomationFixture):
         self.assertIn("gardener end: status=3", result.stdout)
 
     def test_skips_while_a_gardener_pr_is_open(self):
-        self.configure([])
+        self.configure_publishing()
 
         result = self.run_job("weekly-gardener", "shop", OPEN_PRS="1")
 
@@ -571,7 +580,7 @@ class GardenerTests(AutomationFixture):
         self.assertNotIn("claude", self.calls_log())
 
     def test_missing_docker_stops_the_gardener(self):
-        self.configure([], needs_docker=1)
+        self.configure_publishing(needs_docker=1)
         self.fake("docker", "exit 1")
         self.fake("open", "exit 1")
 
@@ -602,15 +611,6 @@ class GardenerPublicationTests(AutomationFixture):
     def agent(self, script):
         self.fake("claude", 'echo "claude" >> "$CALLS"\n' + script)
 
-    def verify_config(self, steps, extra="", guard_steps=(), **options):
-        """srt is a node script: the job finds node only on EXTRA_PATH, as under launchd."""
-        node = Path(shutil.which("node")).parent
-        self.configure(list(guard_steps), extra=f'EXTRA_PATH="{self.bin}:{node}"\nGARDENER_VERIFY_STEPS=({steps})\n' + extra, **options)
-
-    def configure_publishing(self, extra="", **options):
-        """A config the jobs can pass with: neither the gardener nor the guard is green without steps of its own."""
-        self.verify_config('"ok|true"', extra, guard_steps=["ok|true"], **options)
-
     def commit_script(self, branch='"${GARDENER_BRANCH_PREFIX}tidy"', path="notes.txt", lines=3):
         return textwrap.dedent(f"""\
             git checkout -q -b {branch}
@@ -623,7 +623,7 @@ class GardenerPublicationTests(AutomationFixture):
 
     def test_agent_runs_without_any_way_to_publish(self):
         probe = Path(self.tmp.name) / "probe"
-        self.configure([])
+        self.configure_publishing()
         self.agent(textwrap.dedent(f"""\
             gh api repos/owner/shop/pulls/1/merge -X PUT; echo "gh=$?" >> {probe}
             echo "token=${{GH_TOKEN:-unset}} ${{GITHUB_TOKEN:-unset}} real=${{KITCHEN_REAL_GH:-unset}}" >> {probe}
@@ -647,7 +647,7 @@ class GardenerPublicationTests(AutomationFixture):
     def test_agent_bash_runs_in_the_os_sandbox_without_credential_reads(self):
         args = Path(self.tmp.name) / "args"
         tools = Path(self.tmp.name) / "tools"
-        self.configure([], extra=f'GARDENER_SANDBOX_DOMAINS=("nuget.org")\nGARDENER_SANDBOX_WRITE=("$HOME/.nuget")\nGARDENER_SANDBOX_READ=("{tools}")')
+        self.configure_publishing(extra=f'GARDENER_SANDBOX_DOMAINS=("nuget.org")\nGARDENER_SANDBOX_WRITE=("$HOME/.nuget")\nGARDENER_SANDBOX_READ=("{tools}")')
         self.agent(f'printf "%s\\n" "$@" > {args}; git config --global --list > {args}.git')
 
         result = self.run_job("weekly-gardener", "shop")
@@ -679,7 +679,7 @@ class GardenerPublicationTests(AutomationFixture):
 
     def test_agent_environment_is_an_allowlist(self):
         names = Path(self.tmp.name) / "names"
-        self.configure([])
+        self.configure_publishing()
         self.agent(f"env | cut -d= -f1 | sort > {names}")
 
         cloud = "AWS_SESSION_" + "TOKEN"  # built at runtime: the repo never holds a credential-shaped assignment
@@ -698,7 +698,7 @@ class GardenerPublicationTests(AutomationFixture):
     @unittest.skipUnless(platform.system() == "Darwin", "zsh with an empty ZDOTDIR is the macOS shell")
     def test_agent_shell_reads_no_user_startup_file(self):
         values = Path(self.tmp.name) / "shell"
-        self.configure([])
+        self.configure_publishing()
         self.agent(f'echo "$SHELL $ZDOTDIR" > {values}; ls -A "$ZDOTDIR" | wc -l >> {values}')
 
         self.run_job("weekly-gardener", "shop")
@@ -711,7 +711,7 @@ class GardenerPublicationTests(AutomationFixture):
     @unittest.skipUnless(platform.system() == "Linux", "the owner chose bash for the Linux host")
     def test_agent_shell_on_linux_is_bash(self):
         values = Path(self.tmp.name) / "shell"
-        self.configure([])
+        self.configure_publishing()
         self.agent(f'echo "$SHELL ${{ZDOTDIR:-unset}}" > {values}')
 
         self.run_job("weekly-gardener", "shop")
@@ -789,7 +789,7 @@ class GardenerPublicationTests(AutomationFixture):
 
     def test_planted_token_is_refused_and_nothing_is_pushed(self):
         token = "gh" + "p_" + "".join(random.Random(3).choice(string.ascii_letters) for _ in range(36))  # runtime only
-        self.configure([])
+        self.configure_publishing()
         self.agent(self.commit_script() + f'echo "export TOKEN={token}" >> notes.txt && git commit -q -am "More notes"\n')
 
         self.assert_refused(self.run_job("weekly-gardener", "shop"), "possible secret in the diff: notes.txt:4: GitHub token")
@@ -798,7 +798,7 @@ class GardenerPublicationTests(AutomationFixture):
     def test_planted_random_key_is_refused(self):
         rng = random.Random(11)
         key = "".join(rng.choice(string.ascii_letters + string.digits) for _ in range(40))
-        self.configure([])
+        self.configure_publishing()
         self.agent(self.commit_script() + f'echo "client = Client(\\"{key}\\")" >> notes.txt && git commit -q -am "More notes"\n')
 
         self.assert_refused(self.run_job("weekly-gardener", "shop"), "notes.txt:4: high-entropy string")
@@ -857,7 +857,7 @@ printf '#!/bin/sh\\ntouch {evil}\\n' > scripts/hooks/post-checkout
 
     def test_token_split_across_lines_is_refused(self):
         token = "gh" + "p_" + "".join(random.Random(5).choice(string.ascii_letters) for _ in range(36))
-        self.configure([])
+        self.configure_publishing()
         self.agent(self.commit_script() + f"""printf 'value = ("{token[:18]}"\\n         "{token[18:]}")\\n' >> notes.txt
 git commit -q -am "More notes"
 """)
@@ -1035,7 +1035,7 @@ git commit -q -am "More notes"
         self.assertLess(calls.index("prepare"), calls.index("claude"))
 
     def test_failed_prepare_stops_the_run_before_the_agent(self):
-        self.configure([], extra='GARDENER_PREPARE_CMD="false; true"')
+        self.configure_publishing(extra='GARDENER_PREPARE_CMD="false; true"')
         self.agent(self.commit_script())
 
         result = self.run_job("weekly-gardener", "shop")
@@ -1043,6 +1043,17 @@ git commit -q -am "More notes"
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("GARDENER_PREPARE_CMD failed", result.stdout)
         self.assertNotIn("claude", self.calls_log())
+
+    def test_without_verify_steps_the_job_refuses_before_the_agent_runs(self):
+        self.configure([])
+        self.agent(self.commit_script())
+
+        result = self.run_job("weekly-gardener", "shop")
+
+        self.assert_refused(result, "no independent verification configured")
+        self.assertNotIn("claude", self.calls_log())
+        self.assertEqual([r["status"] for r in self.gardener()], ["refused"])
+        self.assertEqual(len(self.notifications()), 1, self.calls_log())
 
     def test_without_verify_steps_the_job_refuses_to_publish(self):
         self.configure([])
@@ -1071,25 +1082,25 @@ git commit -q -am "More notes"
         self.assertNotIn("gh pr create", self.calls_log())
 
     def test_oversized_diff_is_not_published(self):
-        self.configure([], extra="GARDENER_MAX_CHANGED_LINES=5")
+        self.configure_publishing(extra="GARDENER_MAX_CHANGED_LINES=5")
         self.agent(self.commit_script(lines=10))
 
         self.assert_refused(self.run_job("weekly-gardener", "shop"), "the bound is 5")
 
     def test_protected_path_is_not_published(self):
-        self.configure([])
+        self.configure_publishing()
         self.agent(self.commit_script(path=".github/workflows/ci.yml"))
 
         self.assert_refused(self.run_job("weekly-gardener", "shop"), "protected path .github/workflows/ci.yml")
 
     def test_branch_with_another_name_is_not_published(self):
-        self.configure([])
+        self.configure_publishing()
         self.agent(self.commit_script(branch="gardener/misc"))
 
         self.assert_refused(self.run_job("weekly-gardener", "shop"), "is not named gardener/")
 
     def test_branch_without_a_summary_is_not_published(self):
-        self.configure([])
+        self.configure_publishing()
         self.agent(self.commit_script() + 'rm "$GARDENER_SUMMARY_FILE"\n')
 
         self.assert_refused(self.run_job("weekly-gardener", "shop"), "no PR summary")

@@ -4,6 +4,9 @@ journal. A fact it cannot read is `unknown`, never zero or none.
 `--exceptions` keeps only the lines that are not green: a project it cannot read, a nightly that is not green or is
 overdue, a gardener run that was refused, incomplete or not recorded on this machine, PRs or decisions it could not
 read, owed decisions, and checkpoints that wait on the owner (blocked, decision), unattached ones included.
+
+A project whose gardener runs on another host says so in integrate.toml, `gardener = "remote:<host-label>"`: its
+gardener line is then informational, `remote (<host-label>): not read here`. Never green, never an exception.
 """
 from __future__ import annotations
 
@@ -25,6 +28,7 @@ NIGHTLY_CADENCE = datetime.timedelta(hours=24)  # install-schedule runs the guar
 # A night runs from noon to noon, local time: a manual run at 23:00 and the scheduled 02:00 run are one night.
 NOON = datetime.timedelta(hours=12)
 GARDENER_GREEN = ("published", "none")
+REMOTE = re.compile(r"remote:(\S+)")
 
 
 def gh_timeout() -> int:
@@ -63,8 +67,16 @@ def nightly(name: str) -> dict | None:
             "overdue": UNKNOWN if age is None else age > NIGHTLY_CADENCE.total_seconds()}
 
 
-def gardener(name: str) -> dict | None:
-    """The gardener's last run as recorded on this machine. It may run on another host: then there is no record here."""
+def gardener(name: str, entry: dict, error: str | None) -> dict | None:
+    """The gardener's last run as recorded on this machine, or where it runs when that is another host."""
+    if error:
+        return {"setting_error": error}
+    value = entry.get("gardener")
+    if value is not None:
+        remote = REMOTE.fullmatch(value) if isinstance(value, str) else None
+        if not remote:
+            return {"setting_error": f"gardener = {value!r} is not remote:<host-label> ({integrate.config_path()})"}
+        return {"remote": remote.group(1)}
     runs = history("gardener", name)
     return {**runs[-1], "age_seconds": age_seconds(runs[-1])} if runs else None
 
@@ -125,12 +137,22 @@ def nightly_match(run: dict | None, head: str | None, up) -> str | None:
     return None
 
 
-def base_of(name: str) -> dict:
-    """The project's base ref from integrate.toml, resolved in the repo. There is no default base."""
+def settings(name: str) -> tuple[dict, str | None]:
+    """The project's entry in integrate.toml, or why it could not be read."""
+    path = integrate.config_path()
+    if not path.is_file():
+        return {}, None
     try:
-        ref = integrate.configured_base(name)
+        return tomllib.loads(path.read_text(encoding="utf-8")).get("projects", {}).get(name, {}), None
     except (tomllib.TOMLDecodeError, OSError) as error:
-        return {"ref": None, "sha": None, "error": f"cannot read {integrate.config_path()}: {error}"}
+        return {}, f"cannot read {path}: {error}"
+
+
+def base_of(name: str, entry: dict, error: str | None) -> dict:
+    """The project's base ref from integrate.toml. There is no default base."""
+    if error:
+        return {"ref": None, "sha": None, "error": error}
+    ref = entry.get("base")
     if not ref:
         return {"ref": None, "sha": None, "error": f"no base for {name!r} in {integrate.config_path()}"}
     return {"ref": ref, "sha": None, "error": None}
@@ -187,7 +209,8 @@ def project(repo: Path, since) -> dict:
     prunable = sum(1 for b in blocks if "\nprunable" in b) if blocks is not None else UNKNOWN
     up = upstream(repo, branch)
     run = nightly(name)
-    base = resolve_base(repo, base_of(name))
+    entry, config_error = settings(name)
+    base = resolve_base(repo, base_of(name, entry, config_error))
     common_dir = git_common_dir(repo)
 
     return {
@@ -202,7 +225,7 @@ def project(repo: Path, since) -> dict:
         "prunable_worktrees": prunable,
         "pull_requests": pull_requests(repo),
         "nightly": {**run, "matches": nightly_match(run, head, up), "behind": behind_base(repo, run, base)} if run else None,
-        "gardener": gardener(name),
+        "gardener": gardener(name, entry, config_error),
         "journal": journal.read(since=since, project=common_dir, repo=toplevel),
         "decisions": decisions(repo, base),
     }
@@ -264,6 +287,10 @@ def nightly_green(run: dict | None) -> bool:
 def gardener_line(run: dict | None) -> str:
     if run is None:
         return f"gardener   {UNKNOWN}: no local record (the gardener may run on another host)"
+    if "setting_error" in run:
+        return f"gardener   {UNKNOWN}: {run['setting_error']}"
+    if "remote" in run:
+        return f"gardener   remote ({run['remote']}): not read here"
     mark = "✓" if run.get("status") in GARDENER_GREEN else "✗"
     detail = f": {run['detail']}" if run.get("detail") else ""
     warnings = f" · warnings: {'; '.join(map(str, run['warnings']))}" if run.get("warnings") else ""
@@ -272,6 +299,11 @@ def gardener_line(run: dict | None) -> str:
 
 def gardener_green(run: dict | None) -> bool:
     return run is not None and run.get("status") in GARDENER_GREEN
+
+
+def gardener_exception(run: dict | None) -> bool:
+    """A remote gardener is not read here: neither green nor an exception."""
+    return not gardener_green(run) and not (run and "remote" in run)
 
 
 def prs_line(prs: dict) -> str:
@@ -332,7 +364,7 @@ def exceptions(report: dict) -> list[str]:
         if "error" in p:
             continue
         for line, green in ((nightly_line(p["nightly"]), nightly_green(p["nightly"])),
-                            (gardener_line(p["gardener"]), gardener_green(p["gardener"])),
+                            (gardener_line(p["gardener"]), not gardener_exception(p["gardener"])),
                             (prs_line(p["pull_requests"]), "error" not in p["pull_requests"]),
                             (decisions_line(p["decisions"]), decisions_green(p["decisions"]))):
             if not green:

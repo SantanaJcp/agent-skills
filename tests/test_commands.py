@@ -58,9 +58,9 @@ class ProjectFixture(KitchenFixture):
         (self.home / "config").mkdir(exist_ok=True)
         (self.home / "config" / "projects.txt").write_text("# projects\n" + "\n".join(str(p) for p in paths) + "\n")
 
-    def configure_base(self, base, project="shop"):
+    def configure_base(self, base, project="shop", extra=""):
         (self.home / "config").mkdir(exist_ok=True)
-        (self.home / "config" / "integrate.toml").write_text(f'[projects.{project}]\nbase = "{base}"\nchecks = ["true"]\n')
+        (self.home / "config" / "integrate.toml").write_text(f'[projects.{project}]\nbase = "{base}"\nchecks = ["true"]\n{extra}')
 
     def commit(self, project, name, text, message="change"):
         (project / name).write_text(text)
@@ -289,6 +289,26 @@ class LogAndStatusTests(ProjectFixture):
         self.assertTrue(any(line.startswith("unattached") and "needs the prod password" in line for line in lines), red.stdout)
         for green_line in ("PRs", "gardener", "decisions", "journal window"):
             self.assertNotIn(green_line, red.stdout)
+
+    def test_a_remote_gardener_is_informational_never_green_and_never_an_exception(self):
+        self.green_project()
+        (self.home / "state" / "gardener" / "shop.jsonl").unlink()
+        self.configure_base("main", extra='gardener = "remote:build-host"\n')
+
+        remote = self.kitchen("status", "--exceptions")
+        out = self.kitchen("status").stdout
+        self.configure_base("main", extra='gardener = "elsewhere"\n')
+        malformed = self.kitchen("status", "--exceptions")
+        self.configure_base("main")
+        local = self.kitchen("status", "--exceptions")
+
+        self.assertEqual((remote.returncode, remote.stdout), (0, ""), remote.stdout + remote.stderr)
+        self.assertIn("  gardener   remote (build-host): not read here", out)
+        self.assertNotIn("✓", out[out.index("gardener"):].splitlines()[0])
+        self.assertEqual(malformed.returncode, 1, malformed.stdout)
+        self.assertIn("shop  gardener   unknown: gardener = 'elsewhere'", malformed.stdout)
+        self.assertEqual(local.returncode, 1, local.stdout)
+        self.assertIn("shop  gardener   unknown: no local record", local.stdout)
 
     def test_log_notifies_only_blocked_and_decision_checkpoints_redacted(self):
         project = self.make_project("shop")

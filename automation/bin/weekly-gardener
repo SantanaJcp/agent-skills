@@ -278,6 +278,9 @@ if [ "$LOCK_STATE" = busy ]; then
 fi
 close_stale_records "$RUN_ID" "$GARDENER_RECORD"
 record_gardener running "" "$RUN_ID" "$RUN_LOG" "$STARTED_AT"
+# Without verification of its own the job would publish nothing (verify_tree refuses too): no agent run for it.
+[ ${#GARDENER_VERIFY_STEPS[@]} -gt 0 ] ||
+  { refuse "no independent verification configured (GARDENER_VERIFY_STEPS is empty); the agent did not run"; exit 1; }
 
 gh label create "$GARDENER_LABEL" -R "$GH_REPO" --color 0E8A16 --description "Weekly gardener PR" >/dev/null 2>&1 || true
 pending="$(gh pr list -R "$GH_REPO" --label "$GARDENER_LABEL" --state open --json number --jq 'length')"
