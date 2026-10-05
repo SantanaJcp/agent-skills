@@ -5,10 +5,14 @@ import sys
 import tempfile
 
 sys.dont_write_bytecode = True
-sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
-import shellparse  # noqa: E402
 
 GUARD = "deny-recursive-rm"
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+try:
+    import shellparse  # noqa: E402
+except Exception as error:  # noqa: BLE001 - a guard that cannot load must block, not exit 1
+    sys.stderr.write(f"Blocked by the kitchen hook {GUARD}: cannot load hooks/shellparse.py ({error}). Run `kitchen doctor`.\n")
+    sys.exit(2)
 
 
 def temp_roots():

@@ -122,13 +122,29 @@ class HookPayloadTests(HookFixture):
                 self.assertEqual(self.run_guard(guard, payload).returncode, 0)
 
     def test_unreadable_input_blocks_instead_of_passing(self):
-        bad = {"not json": "{oops", "bash without command": json.dumps({"tool_name": "Bash", "tool_input": {}})}
+        """Claude Code and Codex both treat only exit 2 as a block; any other failure would let the command run."""
+        bad = {"not json": "{oops", "bash without command": json.dumps({"tool_name": "Bash", "tool_input": {}}),
+               "empty object": "{}", "no tool name": json.dumps({"tool_input": {}}), "a list": "[]",
+               "non-ascii garbage": "\u00ff\u00fe", "deeply nested": "[" * 100000 + "]" * 100000,
+               "command without tool name": json.dumps({"tool_input": {"command": 7}})}
         for guard in GUARDS:
             for label, data in bad.items():
                 with self.subTest(guard, input=label):
                     result = self.run_guard(guard, data)
                     self.assertEqual(result.returncode, 2)
                     self.assertIn("cannot read the hook input", result.stderr)
+
+    def test_a_guard_whose_parser_cannot_load_blocks(self):
+        broken = Path(self.tmp.name) / "hooks"
+        shutil.copytree(HOOKS, broken, ignore=shutil.ignore_patterns("__pycache__"))
+        (broken / "shellparse.py").write_text("raise ImportError('simulated')\n")
+
+        for guard in GUARDS:
+            with self.subTest(guard):
+                result = subprocess.run([str(broken / guard)], input=json.dumps(self.payload("ls", self.home)),
+                                        capture_output=True, text=True, env=self.env(), timeout=30)
+                self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertIn(f"Blocked by the kitchen hook {guard}", result.stderr)
 
     @unittest.skipUnless(Path("/usr/bin/python3").exists(), "no system python3")
     def test_guards_run_on_the_system_python(self):
@@ -139,6 +155,9 @@ class HookPayloadTests(HookFixture):
                 result = self.run_guard(guard, self.payload(command, self.home), python="/usr/bin/python3")
                 self.assertEqual(result.returncode, 2, result.stderr)
                 self.assertIn(ADVICE[guard], result.stderr)
+                nested = self.run_guard(guard, "[" * 100000 + "]" * 100000, python="/usr/bin/python3")
+                self.assertEqual(nested.returncode, 2, nested.stderr)
+                self.assertIn("cannot read the hook input", nested.stderr)
 
 
 if __name__ == "__main__":

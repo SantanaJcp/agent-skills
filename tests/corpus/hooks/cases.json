@@ -335,10 +335,10 @@
     {
       "id": "option-from-output",
       "guard": "deny-no-verify",
-      "kind": "known-limit",
+      "kind": "bypass",
       "command": "git commit $(echo --no-verify) -m x",
-      "expect": "allow",
-      "limit": "an option produced by a command substitution is not known when the hook runs."
+      "expect": "deny",
+      "review": "round 1: a dynamic argument in option position blocks"
     },
     {
       "id": "piped-to-shell",
@@ -1099,6 +1099,318 @@
       "command": "rsync -a --delete empty/ target/",
       "expect": "allow",
       "limit": "`rsync --delete` is not rm."
+    },
+    {
+      "id": "r1-matching-refspec",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "git push origin :",
+      "expect": "deny",
+      "review": "round 1, P1-1"
+    },
+    {
+      "id": "r1-forced-matching-refspec",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "git push origin +:",
+      "expect": "deny",
+      "review": "round 1, P1-1"
+    },
+    {
+      "id": "r1-empty-destination",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "git push origin HEAD:",
+      "expect": "deny",
+      "review": "round 1, P1-1"
+    },
+    {
+      "id": "r1-abbreviated-mirror",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "git push --mir origin",
+      "expect": "deny",
+      "review": "round 1, P1-2"
+    },
+    {
+      "id": "r1-abbreviated-all",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "git push --al origin",
+      "expect": "deny",
+      "review": "round 1, P1-2"
+    },
+    {
+      "id": "r1-abbreviated-branches",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "git push --branch origin",
+      "expect": "deny",
+      "review": "round 1, P1-2"
+    },
+    {
+      "id": "r1-xargs-refspec",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "printf dev | xargs git push origin feature",
+      "expect": "deny",
+      "review": "round 1, P1-3"
+    },
+    {
+      "id": "r1-xargs-subcommand",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "echo push origin dev | xargs git",
+      "expect": "deny",
+      "review": "round 1, P1-3"
+    },
+    {
+      "id": "r1-dynamic-subcommand",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "git $(echo push) origin dev",
+      "expect": "deny",
+      "review": "round 1, P1-3"
+    },
+    {
+      "id": "r1-config-push-default",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "git -c push.default=matching push origin",
+      "expect": "deny",
+      "review": "round 1, P1-4"
+    },
+    {
+      "id": "r1-config-remote-push",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "git -c remote.origin.push=HEAD:dev push",
+      "expect": "deny",
+      "review": "round 1, P1-4"
+    },
+    {
+      "id": "r1-config-branch-merge",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "git -c branch.feat/x.merge=refs/heads/dev push",
+      "expect": "deny",
+      "review": "round 1, P1-4"
+    },
+    {
+      "id": "r1-config-include",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "git -c include.path=/srv/cfg push",
+      "expect": "deny",
+      "review": "round 1, P1-4"
+    },
+    {
+      "id": "r1-config-env-push",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=push.default GIT_CONFIG_VALUE_0=matching git push",
+      "expect": "deny",
+      "review": "round 1, P1-4"
+    },
+    {
+      "id": "r1-config-global-file",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "GIT_CONFIG_GLOBAL=/srv/cfg git push",
+      "expect": "deny",
+      "review": "round 1, P1-4"
+    },
+    {
+      "id": "r1-env-tmpdir-into-shell",
+      "guard": "deny-recursive-rm",
+      "kind": "bypass",
+      "command": "env TMPDIR=/srv sh -c 'rm -rf \"$TMPDIR/data\"'",
+      "expect": "deny",
+      "review": "round 1, P1-5"
+    },
+    {
+      "id": "r1-prefix-tmpdir-into-shell",
+      "guard": "deny-recursive-rm",
+      "kind": "bypass",
+      "command": "TMPDIR=/srv sh -c 'rm -rf \"$TMPDIR/data\"'",
+      "expect": "deny",
+      "review": "round 1, P1-5"
+    },
+    {
+      "id": "r1-cleared-env-into-shell",
+      "guard": "deny-recursive-rm",
+      "kind": "bypass",
+      "command": "env -i sh -c 'rm -rf \"$TMPDIR/data\"'",
+      "expect": "deny",
+      "review": "round 1, P1-5"
+    },
+    {
+      "id": "r1-sudo-env-into-shell",
+      "guard": "deny-recursive-rm",
+      "kind": "bypass",
+      "command": "sudo sh -c 'rm -rf \"$TMPDIR/data\"'",
+      "expect": "deny",
+      "review": "round 1, P1-5"
+    },
+    {
+      "id": "r1-unexported-variable-into-shell",
+      "guard": "deny-recursive-rm",
+      "kind": "bypass",
+      "command": "X=/tmp/kitchen-x; sh -c 'rm -rf \"$X/data\"'",
+      "expect": "deny",
+      "review": "round 1, P1-5"
+    },
+    {
+      "id": "r1-substitution-in-default",
+      "guard": "deny-recursive-rm",
+      "kind": "bypass",
+      "command": "echo ${PR31_UNSET:-$(rm -rf /srv/data)}",
+      "expect": "deny",
+      "review": "round 1, P1-6"
+    },
+    {
+      "id": "r1-substitution-in-quoted-default",
+      "guard": "deny-recursive-rm",
+      "kind": "bypass",
+      "command": "echo \"${PR31_UNSET:-$(rm -rf /srv/data)}\"",
+      "expect": "deny",
+      "review": "round 1, P1-6"
+    },
+    {
+      "id": "r1-substitution-in-nested-default",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "echo ${A:-${B:-$(git push origin dev)}}",
+      "expect": "deny",
+      "review": "round 1, P1-6"
+    },
+    {
+      "id": "r1-backtick-in-default",
+      "guard": "deny-no-verify",
+      "kind": "bypass",
+      "command": "echo ${A:-`git commit -n -m x`}",
+      "expect": "deny",
+      "review": "round 1, P1-6"
+    },
+    {
+      "id": "r1-xargs-option",
+      "guard": "deny-no-verify",
+      "kind": "bypass",
+      "command": "printf -- -n | xargs git commit -m x",
+      "expect": "deny",
+      "review": "round 1, P1-3 class"
+    },
+    {
+      "id": "r1-dynamic-subcommand",
+      "guard": "deny-no-verify",
+      "kind": "bypass",
+      "command": "git $(echo commit) -n -m x",
+      "expect": "deny",
+      "review": "round 1, P1-3 class"
+    },
+    {
+      "id": "r1-config-include",
+      "guard": "deny-no-verify",
+      "kind": "bypass",
+      "command": "git -c include.path=/srv/cfg commit -m x",
+      "expect": "deny",
+      "review": "round 1, P1-4 class"
+    },
+    {
+      "id": "r1-config-global-file",
+      "guard": "deny-no-verify",
+      "kind": "bypass",
+      "command": "GIT_CONFIG_GLOBAL=/srv/cfg git commit -m x",
+      "expect": "deny",
+      "review": "round 1, P1-4 class"
+    },
+    {
+      "id": "r1-ansi-c-hex-option",
+      "guard": "deny-no-verify",
+      "kind": "bypass",
+      "command": "git commit $'\\x2dn' -m x",
+      "expect": "deny",
+      "review": "round 1, P2-7"
+    },
+    {
+      "id": "r1-ansi-c-octal-option",
+      "guard": "deny-no-verify",
+      "kind": "bypass",
+      "command": "git commit $'\\055n' -m x",
+      "expect": "deny",
+      "review": "round 1, P2-7"
+    },
+    {
+      "id": "r1-ansi-c-branch",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "git push origin $'\\x64ev'",
+      "expect": "deny",
+      "review": "round 1, P2-7"
+    },
+    {
+      "id": "r1-env-split-string-message",
+      "guard": "deny-no-verify",
+      "kind": "negative",
+      "command": "env -S \"git commit -m\" \"hello -n\"",
+      "expect": "allow",
+      "review": "round 1, P2-8"
+    },
+    {
+      "id": "r1-ansi-c-message",
+      "guard": "deny-no-verify",
+      "kind": "negative",
+      "command": "git commit -m $'line one\\nuse -n carefully'",
+      "expect": "allow",
+      "review": "round 1, P2-7"
+    },
+    {
+      "id": "r1-branch-dev-something",
+      "guard": "deny-shared-push",
+      "kind": "negative",
+      "command": "git push origin dev-something",
+      "expect": "allow",
+      "review": "round 1, control"
+    },
+    {
+      "id": "r1-config-unrelated",
+      "guard": "deny-shared-push",
+      "kind": "negative",
+      "command": "git -c user.name=x push origin feat/x",
+      "expect": "allow",
+      "review": "round 1, control"
+    },
+    {
+      "id": "r1-rm-inside-temp-subdir",
+      "guard": "deny-recursive-rm",
+      "kind": "negative",
+      "command": "rm -r /tmp/kitchen-x/sub",
+      "expect": "allow",
+      "review": "round 1, control"
+    },
+    {
+      "id": "r1-default-without-substitution",
+      "guard": "deny-recursive-rm",
+      "kind": "negative",
+      "command": "echo ${PR31_UNSET:-fine}; rm -rf /tmp/kitchen-x",
+      "expect": "allow",
+      "review": "round 1, control"
+    },
+    {
+      "id": "r1-message-with-n-in-substitution",
+      "guard": "deny-no-verify",
+      "kind": "negative",
+      "command": "git commit -m \"$(printf 'skip -n')\"",
+      "expect": "allow",
+      "review": "round 1, control"
+    },
+    {
+      "id": "r1-dynamic-command-word",
+      "guard": "deny-shared-push",
+      "kind": "known-limit",
+      "command": "$(echo git) push origin dev",
+      "expect": "allow",
+      "limit": "a command name produced by a substitution is not known; only a dynamic git subcommand or argument blocks."
     }
   ]
 }
