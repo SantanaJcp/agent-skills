@@ -1,4 +1,5 @@
-"""`kitchen adopt --check`: what a repo still needs for an agent loop that can be trusted. Read-only.
+"""`kitchen init --check`: what a repo still needs for an agent loop that can be trusted. Read-only.
+Principles: `truthful-state` (unknown never counts as PASS); each must-have names its own principle in MUST_HAVES.
 
 It reads files and git metadata, plus GET-only `gh api` calls with a timeout when gh is installed.
 It never runs repository code: no hooks, no package scripts, no `bin/check`. Every criterion is
@@ -10,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import subprocess
 import tomllib
 from pathlib import Path, PurePosixPath
@@ -20,17 +22,21 @@ MAX_READ_BYTES = 1_000_000
 GH_TIMEOUT_SECONDS = 15
 NOT_A_REPO = 64  # outside 0..len(MUST_HAVES), so it never reads as a count of missing must-haves
 
-MUST_HAVES = (
-    ("check-contract", "check contract"),
-    ("pre-commit-hook", "pre-commit hook active"),
-    ("agents-md", "AGENTS.md"),
-    ("verify-skill", "verify skill + map guard"),
-    ("decisions", "decisions.md"),
-    ("secret-scan", "secret scan in hook"),
-    ("baseline-ratchet", "baseline ratchet"),
-    ("skills-linked", "skills in .claude/skills"),
-    ("branch-protection", "required status on shared branch"),
+MUST_HAVES = (  # (id, label, the principle in PRINCIPLES.md it enforces)
+    ("check-contract", "check contract", "prove"),
+    ("pre-commit-hook", "pre-commit hook active", "prove"),
+    ("agents-md", "AGENTS.md", "small-owned"),
+    ("verify-skill", "verify skill + map guard", "prove"),
+    ("decisions", "decisions.md", "handoff"),
+    ("secret-scan", "secret scan in hook", "doors"),
+    ("baseline-ratchet", "baseline ratchet", "prove"),
+    ("skills-linked", "skills in .claude/skills", "handoff"),
+    ("branch-protection", "required status on shared branch", "doors"),
+    ("agent-hooks", "agent guards travel with the repo", "doors"),
 )
+KITCHEN_HOOKS = Path(__file__).resolve().parents[2] / "hooks"
+VENDORED_HOOKS = ".kitchen/hooks"
+CLAUDE_SETTINGS = ".claude/settings.json"
 
 LOCKFILES = ("package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock", "bun.lockb")
 NODE_LINT = tuple(f"eslint.config.{ext}" for ext in ("js", "mjs", "cjs", "ts", "mts", "cts")) + (
@@ -593,6 +599,84 @@ def skills_linked(repo: Repo, skills: list[str]) -> dict:
                      next=f"Link them in this clone: mkdir -p .claude/skills; {commands}")
 
 
+def kitchen_guards() -> dict[str, str]:
+    """The guards this kitchen ships, plus the parser they load: name -> content. What a repo's copy is compared with."""
+    if not KITCHEN_HOOKS.is_dir():
+        return {}
+    names = sorted(p.name for p in KITCHEN_HOOKS.iterdir() if p.is_file() and "." not in p.name and os.access(p, os.X_OK))
+    return {name: (KITCHEN_HOOKS / name).read_text(encoding="utf-8") for name in names + ["shellparse.py"]}
+
+
+def guard_command(name: str) -> str:
+    """The project hook command: the repo's own copy, failing closed (exit 2 blocks) when the copy is missing."""
+    return (f'sh -c \'h="$CLAUDE_PROJECT_DIR/{VENDORED_HOOKS}/{name}"; [ -x "$h" ] || '
+            f'{{ echo "kitchen: guard missing: $h" >&2; exit 2; }}; exec "$h"\'')
+
+
+def matches_bash(matcher: object) -> bool:
+    """Claude Code's matcher: empty or `*` matches every tool; otherwise an exact name or a regex over the tool name."""
+    if matcher in (None, "", "*"):
+        return True
+    try:
+        return isinstance(matcher, str) and re.fullmatch(matcher, "Bash") is not None
+    except re.error:
+        return False
+
+
+def runs_guard(command: str, name: str) -> bool:
+    """The command executes this guard: kitchen's own form, or the guard's path as the program it runs. Mentioning
+    the path (`echo .kitchen/hooks/x`) is not running it."""
+    if command == guard_command(name):
+        return True
+    try:
+        words = shlex.split(command)
+    except ValueError:
+        return False
+    if not words:
+        return False
+    program = words[0]
+    for prefix in ("$CLAUDE_PROJECT_DIR/", "${CLAUDE_PROJECT_DIR}/", "./"):
+        program = program.removeprefix(prefix)
+    return program == f"{VENDORED_HOOKS}/{name}" or program.endswith(f"/{VENDORED_HOOKS}/{name}")
+
+
+def claude_hook_commands(text: str | None) -> list[str] | None:
+    """The commands Claude Code runs before a Bash call, from .claude/settings.json; groups for other tools do not count."""
+    try:
+        data = json.loads(text) if text is not None else None
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    groups = (data.get("hooks") or {}).get("PreToolUse") or []
+    return [str(h.get("command", "")) for g in groups if isinstance(g, dict) and matches_bash(g.get("matcher"))
+            for h in g.get("hooks") or [] if isinstance(h, dict) and h.get("type", "command") == "command"]
+
+
+def agent_hooks(repo: Repo) -> dict:
+    guards = kitchen_guards()
+    if not guards:
+        return criterion("unknown", f"this kitchen has no guards at {KITCHEN_HOOKS} to compare with")
+    refresh = (f"Copy the kitchen's hooks/ ({', '.join(guards)}) into {VENDORED_HOOKS}/ and run each guard from {CLAUDE_SETTINGS} "
+               "(kitchen init writes both when they are missing).")
+    missing = [n for n in guards if not repo.is_file(f"{VENDORED_HOOKS}/{n}")]
+    if len(missing) == len(guards):
+        return criterion("FAIL", f"no {VENDORED_HOOKS}/: teammates and cloud sessions run agents without the kitchen's guards", next=refresh)
+    stale = [n for n in guards if n not in missing and repo.read(f"{VENDORED_HOOKS}/{n}") != guards[n]]
+    commands = claude_hook_commands(repo.read(CLAUDE_SETTINGS))
+    unrun = [n for n in guards if not n.endswith(".py") and not any(runs_guard(c, n) for c in commands or [])]
+    inert = [n for n in guards if not n.endswith(".py") and n not in missing and not repo.is_executable(f"{VENDORED_HOOKS}/{n}")]
+    problems = ([f"missing {', '.join(missing)}"] if missing else []) + ([f"{', '.join(stale)} differ from this kitchen's copy"] if stale else []) \
+        + ([f"{', '.join(inert)} not executable"] if inert else [])
+    if commands is None:
+        problems.append(f"{CLAUDE_SETTINGS} is missing or not JSON")
+    elif unrun:
+        problems.append(f"{CLAUDE_SETTINGS} does not run {', '.join(unrun)}")
+    if problems:
+        return criterion("FAIL", f"{VENDORED_HOOKS}: " + "; ".join(problems), next=refresh)
+    return criterion("PASS", f"{VENDORED_HOOKS} matches this kitchen's {len(guards)} files; {CLAUDE_SETTINGS} runs each guard")
+
+
 def gh_get(endpoint: str) -> tuple[object | None, str | None]:
     gh = os.environ.get("KITCHEN_GH") or "gh"
     env = {**os.environ, "GH_PROMPT_DISABLED": "1", "GH_NO_UPDATE_NOTIFIER": "1", "NO_COLOR": "1"}
@@ -669,8 +753,9 @@ def check(path: Path, branch: str | None = None, commit: str | None = None) -> d
         "baseline-ratchet": baseline_ratchet(repo, gates),
         "skills-linked": skills_linked(repo, skills),
         "branch-protection": branch_protection(repo, branch),
+        "agent-hooks": agent_hooks(repo),
     }
-    must_haves = [{"id": key, "label": label, **results[key]} for key, label in MUST_HAVES]
+    must_haves = [{"id": key, "label": label, "principle": principle, **results[key]} for key, label, principle in MUST_HAVES]
     next_steps = [{"n": i, "id": m["id"], "step": m.get("next", ""), "one_way_door": bool(m.get("one_way_door"))}
                   for i, m in enumerate((m for m in must_haves if m["status"] != "PASS"), start=1)]
     for m in must_haves:
@@ -707,8 +792,17 @@ def summarize(files: list[str], limit: int = 3) -> str:
     return shown + (f" +{len(files) - limit} more" if len(files) > limit else "")
 
 
+def render_summary(report: dict) -> str:
+    """The must-haves alone: what `kitchen init` shows before it asks. `--check` prints the full report."""
+    out = [f"kitchen init {report['path']}", f"HEAD {report['head'] or 'none'}", ""]
+    for m in report["must_haves"]:
+        out.append(f"  {m['status']:<8} {m['label']:<34} {m['proof']}")
+    out.append(f"Missing {report['missing']} of {len(report['must_haves'])} must-haves ({report['failed']} FAIL, {report['unknown']} unknown)")
+    return "\n".join(out)
+
+
 def render(report: dict) -> str:
-    out = [f"kitchen adopt --check {report['path']}  (read-only: ran no repository code)", f"HEAD {report['head'] or 'none'}", "", "Stacks"]
+    out = [f"kitchen init --check {report['path']}  (read-only: ran no repository code)", f"HEAD {report['head'] or 'none'}", "", "Stacks"]
     for stack, files in report["stacks"].items():
         out.append(f"  {stack:<12} {summarize(files)}")
     if report["stack_status"] == "unsupported":

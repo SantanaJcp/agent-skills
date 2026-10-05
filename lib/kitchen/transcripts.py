@@ -1,10 +1,11 @@
 """`kitchen retro`: my own prompts from Claude Code and Codex transcripts, for the retro skill to read.
+Principles: `encode-lessons` (find the repeated corrections), `truthful-state` (a count built on automated messages is fake).
 
 A retro counts interventions, so every message is classified by provenance first: who or what typed it.
 Signals come from the transcript formats themselves, not from guessing at wording:
   Claude  origin.kind / promptSource (notifications), entrypoint sdk-cli (`claude -p`), assistant
           turns with a synthetic requestId (replayed history), and sessions whose first prompt an agent
-          launched through `claude -p` (found in that agent's own tool calls).
+          launched through `claude -p` or a T3 Code launch tool (found in that agent's own tool calls).
   Codex   session_meta originator/source/thread_source (exec, subagents, guardian reviews), and user
           items without a client_id that carry the <heartbeat> envelope of a Codex automation.
 A few envelopes have no structured marker (harness injections, T3 Code delegation notices); those
@@ -36,6 +37,10 @@ COMMAND_NAME = re.compile(r"<command-name>([^<]*)</command-name>")
 COMMAND_ARGS = re.compile(r"<command-args>([^<]*)</command-args>")
 HEARTBEAT = re.compile(r"^<heartbeat>\s*<automation_id>([^<]+)</automation_id>")
 LAUNCH = re.compile(r"\bclaude\b[^\n|;&]*\s(?:-p|--print)\b|\bcodex\s+exec\b")
+# T3 Code tools that start a session with a prompt an agent wrote: the new thread's first message looks typed
+# (promptSource "sdk", entrypoint "sdk-ts", no origin), exactly like a prompt the owner typed in T3.
+T3_LAUNCH = re.compile(r'"name":\s*"mcp__t3[-_]code__(?:t3_thread_launch|create_threads|delegate_task|t3_thread_send)"')
+T3_TEXT_KEYS = ("message", "task", "prompt")
 CODEX_NOT_HUMAN_THREADS = {"subagent", "guardian_review", "security_scan"}
 
 # Reasons a message is not counted as mine. Order is the order of the coverage line.
@@ -94,19 +99,35 @@ def agent_launches(since) -> list[dict]:
         if transcript.stat().st_mtime < since.timestamp():
             continue
         for line in transcript.open(encoding="utf-8", errors="replace"):
-            if '"tool_use"' not in line or not LAUNCH.search(line):
+            if '"tool_use"' not in line or not (LAUNCH.search(line) or T3_LAUNCH.search(line)):
                 continue
             try:
                 event = json.loads(line)
             except json.JSONDecodeError:
                 continue
             for part in event.get("message", {}).get("content", []) if event.get("type") == "assistant" else []:
-                if isinstance(part, dict) and part.get("type") == "tool_use":
-                    command = " ".join(str((part.get("input") or {}).get("command", "")).split())
-                    if LAUNCH.search(command):
-                        launches.append({"command": command, "dir": launch_dir(command, event.get("cwd")),
-                                         "ts": parse_ts(event.get("timestamp") or "")})
+                if not (isinstance(part, dict) and part.get("type") == "tool_use"):
+                    continue
+                ts = parse_ts(event.get("timestamp") or "")
+                if T3_LAUNCH.search(json.dumps({"name": part.get("name")}, separators=(",", ":"))):
+                    # the new thread's directory is chosen by T3 (often a fresh worktree), so it cannot be matched
+                    for text in t3_texts(part.get("input")):
+                        launches.append({"command": " ".join(text.split()), "dir": None, "ts": ts, "any_dir": True})
+                    continue
+                command = " ".join(str((part.get("input") or {}).get("command", "")).split())
+                if LAUNCH.search(command):
+                    launches.append({"command": command, "dir": launch_dir(command, event.get("cwd")), "ts": ts})
     return launches
+
+
+def t3_texts(value) -> list[str]:
+    """Every prompt in a T3 launch tool's input: `message`, `task` or `prompt`, at any depth (create_threads sends several)."""
+    if isinstance(value, dict):
+        found = [v for k, v in value.items() if k in T3_TEXT_KEYS and isinstance(v, str)]
+        return found + [t for k, v in value.items() if k not in T3_TEXT_KEYS for t in t3_texts(v)]
+    if isinstance(value, list):
+        return [t for v in value for t in t3_texts(v)]
+    return []
 
 
 def matches_launch(prompt: str | None, command: str) -> bool:
@@ -121,7 +142,7 @@ def matches_launch(prompt: str | None, command: str) -> bool:
 def launch_evidence(first_prompt: str | None, cwd: str | None, started, launches: list[dict]) -> str | None:
     """"linked" when an agent launched this session: same text, run in this session's directory, just before it
     started. "unlinked" when only the text matches (another directory, another time): not enough to decide."""
-    candidates = [launch for launch in launches if matches_launch(first_prompt, launch["command"])]
+    candidates = [launch for launch in launches if not launch.get("any_dir") and matches_launch(first_prompt, launch["command"])]
     if not candidates:
         return None
     here = os.path.realpath(cwd) if cwd else None
@@ -129,6 +150,13 @@ def launch_evidence(first_prompt: str | None, cwd: str | None, started, launches
         if here and launch["dir"] == here and launch["ts"] and started and launch["ts"] <= started <= launch["ts"] + LAUNCH_WINDOW:
             return "linked"
     return "unlinked"
+
+
+def t3_sent(text: str, ts, launches: list[dict]) -> bool:
+    """An agent sent this very message through a T3 tool just before it arrived. Per message, not per session:
+    the owner keeps typing in a thread an agent opened, and those messages carry the same fields."""
+    return any(launch.get("any_dir") and launch["ts"] and ts and launch["ts"] <= ts <= launch["ts"] + LAUNCH_WINDOW
+               and matches_launch(text, launch["command"]) for launch in launches)
 
 
 def claude_prompts(since, launches: list[str]) -> list[dict]:
@@ -177,6 +205,8 @@ def claude_prompts(since, launches: list[str]) -> list[dict]:
                     reason = "subagent"
                 elif event.get("entrypoint") == "sdk-cli":
                     reason = "non-interactive"
+                elif t3_sent(text, ts, launches):
+                    reason = "agent-launched"
                 elif event.get("uuid") in synthetic_parents:
                     reason = "replayed"
                 elif origin.get("kind") == "human" or event.get("promptSource") == "typed":

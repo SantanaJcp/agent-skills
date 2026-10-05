@@ -23,7 +23,7 @@ You are improving the environment the agents work in, not judging one session.
    6. a skill;
    7. memory.
 
-   A mechanical violation (a banned API, a file location, a command pattern) gets a deterministic check, full stop. Reserve written rules for judgment calls.
+   A mechanical violation (a banned API, a file location, a command pattern) gets a deterministic check, full stop. Reserve written rules for judgment calls. Repeated manual work (agents rebuilding the same script) gets the script, in the repo.
 5. **Prune.** Find rules and skills that change nothing, rules the code now contradicts, and checks that never fire. Read the previous retro report and say whether its accepted proposals stopped the corrections.
 6. **Follow up.** Link each repeated failure to its enforcing check and last verified result. Distinguish a missing control from a skipped control or a wrong contract. Remove the rule that caused or now duplicates the failure.
 
@@ -37,3 +37,5 @@ Start the report with the coverage line and any provenance corrections.
 |---|---|---|---|---|---|
 
 Then a **Prune** list, a **Follow up** list and a **Last retro** check. Never apply a change; each one waits for my approval.
+
+Principles (the kitchen's PRINCIPLES.md): `encode-lessons`, `truthful-state`.

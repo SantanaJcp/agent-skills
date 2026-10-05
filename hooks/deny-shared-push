@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """PreToolUse guard: deny `git push` whose destination is dev, main, master or a configured shared branch.
 
-Extra shared branches (names or shell globs, one per line) live in ~/.config/kitchen/shared-branches.txt."""
+Extra shared branches (names or shell globs, one per line) live in ~/.config/kitchen/shared-branches.txt.
+Principles: `doors` (a shared branch changes only on the owner's explicit request)."""
 import fnmatch
 import os
 import sys

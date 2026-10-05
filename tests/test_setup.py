@@ -270,6 +270,15 @@ class FastCheckTests(KitchenFixture):
         self.assertEqual(ran, [])
         self.assertIn("SKIP  tests/test_automation.py: no staged path under automation/, lib/ or tests/test_automation.py", result.stdout)
 
+    def test_a_docs_only_commit_still_runs_the_principles_suite(self):
+        (self.repo / "tests" / "test_principles.py").write_text(self.MODULE.format(name="test_principles"))
+        self.stage("PRINCIPLES.md")
+
+        result, ran = self.check("--fast")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(ran, ["test_principles"])
+
     def test_a_cli_change_runs_the_other_modules_but_not_automation(self):
         self.stage("bin/helper.py")
 

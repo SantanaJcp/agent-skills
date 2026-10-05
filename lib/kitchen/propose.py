@@ -1,15 +1,16 @@
-"""`kitchen adopt --propose`: write only what a repo is missing, on branch kitchen/adopt, never pushed.
+"""`kitchen init`: write only what a repo is missing, on branch kitchen/init, never pushed.
+Principles: `doors` (never pushed, never overwrites), `isolate` (plumbing only; one ref move), `prove` (--prove).
 
-Stage 2 of adopt, built from git objects only: no worktree, no checkout, no write to the owner's checkout or index.
-It runs `--check` on the commit the branch starts from (`kitchen/adopt` when it exists, else HEAD), reading files
+The proposal stage of `kitchen init`, built from git objects only: no worktree, no checkout, no write to the owner's checkout or index.
+It runs `--check` on the commit the branch starts from (`kitchen/init` when it exists, else HEAD), reading files
 with ls-tree and cat-file, and adds from templates/ only the files that are missing: decisions.md, bin/check,
 .githooks/pre-commit, a verify-skill skeleton and a measure-only baseline. New blobs come from `hash-object -w
 --stdin` (no filters), the tree from a private index file in kitchen's scratch dir, then commit-tree. It never
-overwrites or edits a file and writes no AGENTS.md prose. .kitchen/adopt.json records the path and sha256 of
+overwrites or edits a file and writes no AGENTS.md prose. .kitchen/init.json records the path and sha256 of
 every file it generated, plus its own hash, so a rerun tells kitchen's untouched files from the owner's edits and
-leaves the edits alone, the manifest included; a rerun with nothing new commits nothing. ADOPT.md holds the report.
+leaves the edits alone, the manifest included; a rerun with nothing new commits nothing. KITCHEN-INIT.md holds the report.
 A symlink, submodule or file in the way of a path to write is refused before anything is written. The branch moves
-once, with `update-ref --no-deref` against its expected old value, and a symbolic kitchen/adopt is refused. It
+once, with `update-ref --no-deref` against its expected old value, and a symbolic kitchen/init is refused. It
 never pushes, opens a PR or changes GitHub settings: one-way doors are printed with their commands. Every git
 command runs with core.hooksPath pointed at an empty directory. Without --prove nothing from the repo executes.
 
@@ -39,11 +40,11 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Callable
 
-from kitchen import adopt
+from kitchen import repocheck
 
-BRANCH = "kitchen/adopt"
-MANIFEST = ".kitchen/adopt.json"
-REPORT = "ADOPT.md"
+BRANCH = "kitchen/init"
+MANIFEST = ".kitchen/init.json"
+REPORT = "KITCHEN-INIT.md"
 BASELINE = ".kitchen/baseline.json"
 HOOK = ".githooks/pre-commit"
 CHECK = "bin/check"
@@ -51,14 +52,14 @@ TEMPLATES = Path(__file__).resolve().parents[2] / "templates"
 PROVE_TIMEOUT_SECONDS = 900
 GITLEAKS_TIMEOUT_SECONDS = 120
 TAIL_LINES = 12
-CONTROL_FILE = "kitchen-adopt-control.md"
+CONTROL_FILE = "kitchen-init-control.md"
 OURS = ("written", "unchanged", "edited by owner")
-GENERATOR = "kitchen adopt --propose"
+GENERATOR = "kitchen init"
 CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 TEST_SDK = re.compile(r"Microsoft\.NET\.Test\.Sdk|<IsTestProject>\s*true", re.IGNORECASE)
-SYNTAX = "\n) {} kitchen adopt negative control: deliberate syntax error\n"
-BREAKERS = {".py": SYNTAX.format("#"), ".cs": "\n#error kitchen adopt negative control: deliberate compile error\n",
+SYNTAX = "\n) {} kitchen init negative control: deliberate syntax error\n"
+BREAKERS = {".py": SYNTAX.format("#"), ".cs": "\n#error kitchen init negative control: deliberate compile error\n",
             **{suffix: SYNTAX.format("//") for suffix in (".js", ".mjs", ".cjs", ".jsx", ".ts", ".mts", ".cts", ".tsx")}}
 
 DOES = {
@@ -68,6 +69,8 @@ DOES = {
                        "unless only documentation is staged. Inactive until `git config core.hooksPath .githooks` in each clone.",
     "verify-skill": "Skeleton of the project's verify skill from templates/verify: placeholders to fill, no bin/verify yet.",
     "baseline-ratchet": "What --check measured, in measure-only mode: no gate reads it yet.",
+    "agent-hooks": "The kitchen's agent guards, copied into the repo so teammates and cloud sessions run them without installing the "
+                   "kitchen; .claude/settings.json runs each one before every Bash command in Claude Code.",
 }
 
 
@@ -103,7 +106,7 @@ class Git:
         self.no_hooks = no_hooks
 
     def run(self, cwd: Path, *args: str, data: bytes | None = None, index: Path | None = None) -> subprocess.CompletedProcess:
-        env = adopt.git_env()
+        env = repocheck.git_env()
         if index is not None:
             env["GIT_INDEX_FILE"] = str(index)
         return subprocess.run(["git", "-c", "core.fsmonitor=false", "-c", f"core.hooksPath={self.no_hooks}", "-C", str(cwd), *args],
@@ -162,12 +165,12 @@ def sha256(data: bytes) -> str:
 
 # ---- commands from manifests --------------------------------------------------------------------
 
-def python_lint(repo: adopt.Repo, directory: str) -> tuple[str, str] | None:
+def python_lint(repo: repocheck.Repo, directory: str) -> tuple[str, str] | None:
     found = repo.find_up(directory, ("ruff.toml", ".ruff.toml"))
     if found:
         return "ruff check .", f"ruff config {found}"
-    for folder in adopt.ancestors(directory):
-        rel = adopt.join(folder, "pyproject.toml")
+    for folder in repocheck.ancestors(directory):
+        rel = repocheck.join(folder, "pyproject.toml")
         if rel in repo.fileset:
             try:
                 tools = tomllib.loads(repo.read(rel) or "").get("tool", {})
@@ -179,19 +182,19 @@ def python_lint(repo: adopt.Repo, directory: str) -> tuple[str, str] | None:
     return ("flake8", f"flake8 config {found}") if found else None
 
 
-def pytest_signal(repo: adopt.Repo, directory: str) -> str | None:
+def pytest_signal(repo: repocheck.Repo, directory: str) -> str | None:
     for name in ("pytest.ini", "conftest.py"):
-        if adopt.join(directory, name) in repo.fileset:
-            return f"pytest: {adopt.join(directory, name)}"
-    pyproject = adopt.join(directory, "pyproject.toml")
+        if repocheck.join(directory, name) in repo.fileset:
+            return f"pytest: {repocheck.join(directory, name)}"
+    pyproject = repocheck.join(directory, "pyproject.toml")
     text = repo.read(pyproject) or ""
     if "[tool.pytest" in text:
         return f"pytest: [tool.pytest.ini_options] in {pyproject}"
     for name, marker in (("setup.cfg", "[tool:pytest]"), ("tox.ini", "[pytest]")):
-        if marker in (repo.read(adopt.join(directory, name)) or ""):
-            return f"pytest: {marker} in {adopt.join(directory, name)}"
+        if marker in (repo.read(repocheck.join(directory, name)) or ""):
+            return f"pytest: {marker} in {repocheck.join(directory, name)}"
     for rel in repo.files:
-        if adopt.parent(rel) == directory and re.fullmatch(r"requirements[\w.-]*\.txt", PurePosixPath(rel).name) \
+        if repocheck.parent(rel) == directory and re.fullmatch(r"requirements[\w.-]*\.txt", PurePosixPath(rel).name) \
                 and re.search(r"^\s*pytest\b", repo.read(rel) or "", re.MULTILINE):
             return f"pytest: listed in {rel}"
     if re.search(r"[\"']pytest\b", text):
@@ -199,7 +202,7 @@ def pytest_signal(repo: adopt.Repo, directory: str) -> str | None:
     return None
 
 
-def python_commands(repo: adopt.Repo, directory: str) -> tuple[list[Command], list[str]]:
+def python_commands(repo: repocheck.Repo, directory: str) -> tuple[list[Command], list[str]]:
     commands, notes = [], []
     lint = python_lint(repo, directory)
     if lint:
@@ -213,15 +216,15 @@ def python_commands(repo: adopt.Repo, directory: str) -> tuple[list[Command], li
     elif tests:
         start = next((d for d in ("tests", "test") if any(t.startswith(f"{d}/") for t in tests)), None)
         if start:
-            commands.append(Command("commit", f"python3 -m unittest discover -s {start}", f"unittest: test files under {adopt.join(directory, start)}/", directory))
+            commands.append(Command("commit", f"python3 -m unittest discover -s {start}", f"unittest: test files under {repocheck.join(directory, start)}/", directory))
         else:
-            commands.append(Command("commit", "python3 -m unittest discover", f"unittest: {adopt.join(directory, tests[0])}", directory))
+            commands.append(Command("commit", "python3 -m unittest discover", f"unittest: {repocheck.join(directory, tests[0])}", directory))
     else:
         notes.append(f"{directory or '.'}: no test*.py file and no pytest config, so no test command")
     return commands, notes
 
 
-def node_commands(repo: adopt.Repo, directory: str, manifest: str, lint_found: bool) -> tuple[list[Command], list[str]]:
+def node_commands(repo: repocheck.Repo, directory: str, manifest: str, lint_found: bool) -> tuple[list[Command], list[str]]:
     try:
         data = json.loads(repo.read(manifest) or "")
     except json.JSONDecodeError:
@@ -248,7 +251,7 @@ def node_commands(repo: adopt.Repo, directory: str, manifest: str, lint_found: b
     return commands, notes
 
 
-def dotnet_commands(repo: adopt.Repo, directory: str, manifest: str) -> tuple[list[Command], list[str]]:
+def dotnet_commands(repo: repocheck.Repo, directory: str, manifest: str) -> tuple[list[Command], list[str]]:
     if not manifest.endswith((".sln", ".slnx", ".csproj")):
         return [], [f"{manifest}: no solution or project to build"]
     name = shlex.quote(PurePosixPath(manifest).name)
@@ -261,7 +264,7 @@ def dotnet_commands(repo: adopt.Repo, directory: str, manifest: str) -> tuple[li
     return commands, [f"{manifest}: no test project (no Microsoft.NET.Test.Sdk reference), so no test command"]
 
 
-def detect_commands(repo: adopt.Repo, components: list[dict]) -> tuple[list[Command], list[str]]:
+def detect_commands(repo: repocheck.Repo, components: list[dict]) -> tuple[list[Command], list[str]]:
     commands: list[Command] = []
     notes: list[str] = []
     for component in components:
@@ -291,7 +294,7 @@ def render_check(commands: list[Command], notes: list[str]) -> str:
     commit = [f"  # {safe(note)}" for note in notes] + body("commit")
     if not any(c.tier == "commit" for c in commands):
         commit += ['  echo "bin/check commit: no command detected; add one" >&2', "  exit 1"]
-    return template("adopt/check.sh.tmpl", commit="\n".join(commit), integrate="\n".join(["  tier_commit"] + body("integrate")))
+    return template("init/check.sh.tmpl", commit="\n".join(commit), integrate="\n".join(["  tier_commit"] + body("integrate")))
 
 
 def skill_name(folder: str) -> str:
@@ -310,7 +313,7 @@ def baseline(report: dict) -> str:
         components.append(entry)
     data = {
         "mode": "measure-only",
-        "note": "Seeded by kitchen adopt --propose from what --check measured. No gate reads it yet; it becomes a ratchet "
+        "note": "Seeded by kitchen init from what --check measured. No gate reads it yet; it becomes a ratchet "
                 "only when a gate compares against it and fails when a value gets worse.",
         "measured_at": report["head"],
         "must_haves": {m["id"]: m["status"] for m in report["must_haves"]},
@@ -320,7 +323,7 @@ def baseline(report: dict) -> str:
 
 
 def one_way_doors(origin_url: str, protection: str, project: str) -> list[dict]:
-    match = adopt.GITHUB_REMOTE.search(origin_url)
+    match = repocheck.GITHUB_REMOTE.search(origin_url)
     slug = f"{match.group(1)}/{match.group(2)}" if match else "OWNER/REPO"
     rules = [{"type": "deletion"}, {"type": "non_fast_forward"},
              {"type": "pull_request", "parameters": {"required_approving_review_count": 0, "dismiss_stale_reviews_on_push": False,
@@ -354,23 +357,33 @@ def one_way_doors(origin_url: str, protection: str, project: str) -> list[dict]:
     return doors
 
 
-def wanted_files(repo: adopt.Repo, report: dict, name: str, doors: list[dict], commands: list[Command], notes: list[str]) -> list[File]:
+def wanted_files(repo: repocheck.Repo, report: dict, name: str, doors: list[dict], commands: list[Command], notes: list[str]) -> list[File]:
     status = {m["id"]: m["status"] for m in report["must_haves"]}
     files = []
     if status["decisions"] != "PASS":
-        owed = "\n".join(f"- [ ] {d['title']} (one-way door, proposed by kitchen adopt; see ADOPT.md)" for d in doors) or "None yet."
-        files.append(File("decisions.md", "decisions", template("adopt/decisions.md.tmpl", owed=owed)))
+        owed = "\n".join(f"- [ ] {d['title']} (one-way door, proposed by kitchen init; see KITCHEN-INIT.md)" for d in doors) or "None yet."
+        files.append(File("decisions.md", "decisions", template("init/decisions.md.tmpl", owed=owed)))
     if status["check-contract"] != "PASS" and report["stack_status"] == "detected" and not repo.exists(CHECK) and not repo.exists(".kitchen/checks.toml"):
         files.append(File(CHECK, "check-contract", render_check(commands, notes), 0o755))
     hook_candidates = [f for f in repo.files if PurePosixPath(f).name == "pre-commit"] + report["hooks"]["managers"]
     if (status["pre-commit-hook"] != "PASS" or status["secret-scan"] != "PASS") and not report["hooks"]["active"] and not hook_candidates:
-        files.append(File(HOOK, "pre-commit-hook", template("adopt/pre-commit.sh.tmpl"), 0o755))
+        files.append(File(HOOK, "pre-commit-hook", template("init/pre-commit.sh.tmpl"), 0o755))
     if status["verify-skill"] != "PASS" and not any(f.startswith(".agents/skills/verify-") for f in repo.files):
         skill = (TEMPLATES / "verify" / "SKILL.md.tmpl").read_text().replace("<repo>", name)
         files += [File(f".agents/skills/verify-{name}/SKILL.md", "verify-skill", skill),
-                  File(f".agents/skills/verify-{name}/features/README.md", "verify-skill", template("adopt/features-README.md.tmpl"))]
-    if status["baseline-ratchet"] != "PASS" and not adopt.baseline_candidates(repo):
+                  File(f".agents/skills/verify-{name}/features/README.md", "verify-skill", template("init/features-README.md.tmpl"))]
+    if status["baseline-ratchet"] != "PASS" and not repocheck.baseline_candidates(repo):
         files.append(File(BASELINE, "baseline-ratchet", baseline(report)))
+    if status["agent-hooks"] != "PASS":
+        guards = repocheck.kitchen_guards()
+        for name, content in guards.items():
+            path = f"{repocheck.VENDORED_HOOKS}/{name}"
+            if not repo.exists(path):
+                files.append(File(path, "agent-hooks", content, 0o644 if name.endswith(".py") else 0o755))
+        if not repo.exists(repocheck.CLAUDE_SETTINGS):
+            commands = [{"type": "command", "command": repocheck.guard_command(n), "timeout": 30} for n in guards if not n.endswith(".py")]
+            settings = {"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": commands}]}}
+            files.append(File(repocheck.CLAUDE_SETTINGS, "agent-hooks", json.dumps(settings, indent=2) + "\n"))
     return files
 
 
@@ -380,7 +393,7 @@ def manifest_hash(data: dict) -> str:
     return sha256(json.dumps({k: v for k, v in data.items() if k != "sha256"}, indent=2, sort_keys=True).encode())
 
 
-def read_manifest(repo: adopt.Repo) -> tuple[str, dict]:
+def read_manifest(repo: repocheck.Repo) -> tuple[str, dict]:
     """(state, data): absent, unchanged (kitchen wrote it as it is), edited (kitchen's, changed since) or foreign."""
     if not repo.exists(MANIFEST):
         return "absent", {}
@@ -400,7 +413,7 @@ def blob_bytes(git: Git, root: Path, sha: str) -> bytes:
     return result.stdout
 
 
-def classify(git: Git, repo: adopt.Repo, path: str, entry: dict | None) -> str:
+def classify(git: Git, repo: repocheck.Repo, path: str, entry: dict | None) -> str:
     present = repo.exists(path)
     if entry is not None:
         if not present:
@@ -456,7 +469,7 @@ def checked_out_at(git: Git, root: Path) -> str | None:
 def repo_code_env(tmp: Path) -> dict[str, str]:
     """The caller's environment without git's repo-local variables; temp files go to kitchen's scratch dir, removed after."""
     env = {k: v for k, v in os.environ.items()
-           if k not in adopt.REPO_LOCAL_GIT_ENV and not k.startswith(("GIT_CONFIG_KEY_", "GIT_CONFIG_VALUE_"))}
+           if k not in repocheck.REPO_LOCAL_GIT_ENV and not k.startswith(("GIT_CONFIG_KEY_", "GIT_CONFIG_VALUE_"))}
     return {**env, "TMPDIR": str(tmp), "TMP": str(tmp), "TEMP": str(tmp)}
 
 
@@ -523,10 +536,10 @@ def gitleaks_tree(wt: Path, scratch: Path) -> dict:
     return {"state": "ran", "count": len(findings), "where": where[:5]}
 
 
-def control_target(repo: adopt.Repo) -> str | None:
+def control_target(repo: repocheck.Repo) -> str | None:
     """The file the negative control breaks: the first tracked test file, else the first tracked source file."""
     breakable = lambda rel: PurePosixPath(rel).suffix in BREAKERS and not rel.startswith((".agents/", ".kitchen/")) and not CONTROL.search(rel)
-    tests = sorted(f for f in adopt.test_files(repo) if breakable(f))
+    tests = sorted(f for f in repocheck.test_files(repo) if breakable(f))
     if tests:
         return tests[0]
     sources = sorted(f for f in repo.files if breakable(f))
@@ -541,7 +554,7 @@ def negative_control(git: Git, wt: Path, target: str | None, tmp: Path, log: Cal
     path = wt / target
     original = path.read_bytes()
     change = f"a {'compile' if path.suffix == '.cs' else 'syntax'} error appended to {target}"
-    log(f"kitchen adopt --prove: negative control, {change}; bin/check commit must go red")
+    log(f"kitchen init --prove: negative control, {change}; bin/check commit must go red")
     try:
         with open(path, "ab") as handle:
             handle.write(BREAKERS[path.suffix].encode())
@@ -571,12 +584,12 @@ def prove_hook(git: Git, wt: Path, tmp: Path, log: Callable[[str], None]) -> dic
     control = wt / CONTROL_FILE
     if os.path.lexists(control):
         return {"state": "untrusted", "why": f"{CONTROL_FILE} already exists, and the hook's controls need that path"}
-    log(f"kitchen adopt --prove: running {HOOK} against a staged docs-only change, then a staged fake key")
+    log(f"kitchen init --prove: running {HOOK} against a staged docs-only change, then a staged fake key")
     try:
-        control.write_text("kitchen adopt positive control: documentation only\n")
+        control.write_text("kitchen init positive control: documentation only\n")
         git(wt, "add", "-f", "--", CONTROL_FILE)
         allowed = run_code([str(wt / HOOK)], wt, tmp)
-        control.write_text("kitchen adopt negative control\naws_access_key_id = " + fake_aws_key() + "\n")
+        control.write_text("kitchen init negative control\naws_access_key_id = " + fake_aws_key() + "\n")
         git(wt, "add", "-f", "--", CONTROL_FILE)
         blocked = run_code([str(wt / HOOK)], wt, tmp)
     finally:
@@ -604,7 +617,7 @@ def prove(git: Git, wt: Path, target: str | None, hook_ours: bool, scratch: Path
         proof["checks"] = {"state": "not run", "detail": why}
         proof["control"] = {"state": "not run", "detail": "no bin/check to turn red", "why": why}
     else:
-        log(f"kitchen adopt --prove: running bin/check commit twice in {wt}")
+        log(f"kitchen init --prove: running bin/check commit twice in {wt}")
         first = run_code([str(wt / CHECK), "commit"], wt, tmp)
         second = run_code([str(wt / CHECK), "commit"], wt, tmp) if first["exit"] == 0 else None
         proof["green"] = {k: v for k, v in (second if second and second["exit"] != 0 else first).items() if k != "output"}
@@ -630,6 +643,9 @@ def blocks(piece: str, content: str | None, proof: dict | None) -> str:
     if piece == "decisions":
         owed = len(re.findall(r"^\s*- \[ \]", content or "", re.MULTILINE))
         return f"nothing; it lists {owed} owed decision{'s' if owed != 1 else ''} for `kitchen status`"
+    if piece == "agent-hooks":
+        return ("agent commands that push to a shared branch, skip the repo's hooks, or rm -r outside the temp dir, "
+                "in Claude Code sessions started at the repo root")
     if piece in ("verify-skill", "baseline-ratchet"):
         return "nothing: " + ("a skeleton" if piece == "verify-skill" else "measure-only")
     if proof is None:
@@ -674,12 +690,12 @@ def trust_lines(states: dict[str, str], pieces: dict[str, str], proof: dict | No
 def readiness(states: dict[str, str], written: int, proof: dict | None) -> dict:
     present = sum(1 for s in states.values() if s in OURS)
     files = ({"state": "yes", "detail": f"{present} file{'s' if present != 1 else ''} on {BRANCH}" + ("" if written else "; nothing new this run")}
-             if present else {"state": "no", "detail": "nothing is missing that kitchen adopt writes"})
+             if present else {"state": "no", "detail": "nothing is missing that kitchen init writes"})
     if proof is None:
         rerun = "rerun with --prove (it runs repository code)"
         return {"files_proposed": files, "checks_run_green": {"state": "not run", "detail": rerun},
                 "negative_control_went_red": {"state": "not run", "detail": rerun},
-                "unattended_ready": {"state": "not assessed", "detail": "kitchen adopt does not assess unattended runs (sandbox, schedule, credentials)"}}
+                "unattended_ready": {"state": "not assessed", "detail": "kitchen init does not assess unattended runs (sandbox, schedule, credentials)"}}
     controls = [proof["control"]]
     if proof["hook"]:
         hook = proof["hook"]
@@ -688,7 +704,7 @@ def readiness(states: dict[str, str], written: int, proof: dict | None) -> dict:
     red = "yes" if states_seen == {"yes"} else "no" if "no" in states_seen else "not run"
     return {"files_proposed": files, "checks_run_green": proof["checks"],
             "negative_control_went_red": {"state": red, "detail": "; ".join(c["detail"] for c in controls)},
-            "unattended_ready": {"state": "not assessed", "detail": "kitchen adopt does not assess unattended runs (sandbox, schedule, credentials)"}}
+            "unattended_ready": {"state": "not assessed", "detail": "kitchen init does not assess unattended runs (sandbox, schedule, credentials)"}}
 
 
 def proposals(report: dict, states: dict[str, str], pieces: dict[str, str], name: str) -> list[dict]:
@@ -700,13 +716,13 @@ def proposals(report: dict, states: dict[str, str], pieces: dict[str, str], name
         out.append({"id": key, "text": text})
     def existing(key: str) -> None:
         add(key, f"{status[key]['proof']}. {steps.get(key, '')}".strip())
-    for key in ("check-contract", "pre-commit-hook", "secret-scan", "agents-md", "verify-skill", "baseline-ratchet", "skills-linked"):
+    for key in ("check-contract", "pre-commit-hook", "secret-scan", "agents-md", "verify-skill", "baseline-ratchet", "skills-linked", "agent-hooks"):
         if status[key]["status"] == "PASS":
             continue
         if key == "check-contract" and "check-contract" not in ours:
             if report["stack_status"] != "detected":
                 add(key, "unsupported stack (no .NET, Node or Python manifest): write bin/check by hand with the tiers commit, integrate, "
-                         "nightly and verify-tree; kitchen adopt does not guess commands")
+                         "nightly and verify-tree; kitchen init does not guess commands")
             else:
                 existing(key)
         elif key in ("pre-commit-hook", "secret-scan") and "pre-commit-hook" not in ours:
@@ -716,13 +732,21 @@ def proposals(report: dict, states: dict[str, str], pieces: dict[str, str], name
                 existing(key)
         elif key == "agents-md":
             if report["agent_files"]["AGENTS.md"] is None:
-                add(key, "AGENTS.md is missing, and kitchen adopt writes no prose. Draft one with Claude Code's init: run "
+                add(key, "AGENTS.md is missing, and kitchen init writes no prose. Draft one with Claude Code's init: run "
                          "`CLAUDE_CODE_NEW_INIT=1 claude`, then `/init`; keep only verified commands, name `bin/check` and the verify "
                          "skill, and stay under 200 lines.")
             else:
                 existing(key)
         elif key in ("verify-skill", "baseline-ratchet") and key not in ours:
             existing(key)
+        elif key == "agent-hooks":
+            if "agent-hooks" not in ours:
+                existing(key)
+            elif repocheck.CLAUDE_SETTINGS not in states:  # it exists, so kitchen did not write it
+                commands = [{"type": "command", "command": repocheck.guard_command(n), "timeout": 30}
+                            for n in repocheck.kitchen_guards() if not n.endswith(".py")]
+                add(key, f"{repocheck.CLAUDE_SETTINGS} exists, so kitchen left it alone: add this group under hooks.PreToolUse: "
+                         + json.dumps({"matcher": "Bash", "hooks": commands}))
         elif key == "skills-linked":
             skills = report["agent_files"]["project_skills"] or ([f"verify-{name}"] if "verify-skill" in ours else [])
             if skills:
@@ -741,7 +765,7 @@ def unverified(report: dict, states: dict[str, str], pieces: dict[str, str], com
         for command in commands:
             if not (ran_commit and command.tier == "commit"):
                 out.append(f"`{command.line()}` ({command.source}): detected, never run")
-        out.append("bin/check integrate, nightly and verify-tree: never run by kitchen adopt")
+        out.append("bin/check integrate, nightly and verify-tree: never run by kitchen init")
     elif check_state == "edited by owner":
         out.append("bin/check was edited after kitchen generated it; kitchen no longer vouches for its commands")
     if states.get(HOOK) in OURS:
@@ -750,6 +774,10 @@ def unverified(report: dict, states: dict[str, str], pieces: dict[str, str], com
             out.append(f"{HOOK}: gitleaks never ran")
     if any(pieces.get(p) == "verify-skill" and s in OURS for p, s in states.items()):
         out.append(f"verify-{name} is a skeleton: placeholders, no bin/verify, no feature mapped; it proves nothing yet")
+    if any(pieces.get(p) == "agent-hooks" and s in OURS for p, s in states.items()):
+        out.append(f"{repocheck.VENDORED_HOOKS}: Claude Code loads {repocheck.CLAUDE_SETTINGS} only in a session started at the repo root (measured)")
+        out.append("Codex gets no project hooks from this branch: project hooks did not load in Codex 0.160 when measured; "
+                   "a Codex session has the guards only where `kitchen install` ran")
     if states.get(BASELINE) in OURS:
         out.append(f"{BASELINE} is measure-only: no gate compares against it")
     if report["components"]:
@@ -788,12 +816,12 @@ class Out:
 def render(result: dict, markdown: bool = False) -> str:
     out = Out(markdown)
     if markdown:
-        out.lines += ["# kitchen adopt proposal", "",
-                      f"Written by `kitchen adopt --propose` from base {result['base'][:7]}. The owner reviews and pushes this branch; "
+        out.lines += ["# kitchen init proposal", "",
+                      f"Written by `kitchen init` from base {result['base'][:7]}. The owner reviews and pushes this branch; "
                       "kitchen never pushes, opens a pull request or changes GitHub settings."]
     else:
         ran = "--prove: RAN REPOSITORY CODE in a temporary worktree" if result["ran_repository_code"] else "ran no repository code"
-        out.lines.append(f"kitchen adopt --propose {result['path']}  ({ran})")
+        out.lines.append(f"kitchen init {result['path']}  ({ran})")
         sha = (result["branch_sha"] or "")[:7]
         if result["changed"]:
             out.lines.append(f"Branch {BRANCH} @ {sha} ({'new' if result['created'] else 'updated'}), from {result['base'][:7]}; not pushed")
@@ -807,8 +835,11 @@ def render(result: dict, markdown: bool = False) -> str:
     out.head(f"Files on {BRANCH}")
     if not result["files"]:
         out.item("none")
-    for f in result["files"]:
+    for i, f in enumerate(result["files"]):
         out.item(f"{f['state']:<16} {f['path']}")
+        following = result["files"][i + 1] if i + 1 < len(result["files"]) else None
+        if following and (following["piece"], following["state"], following["blocks"]) == (f["piece"], f["state"], f["blocks"]):
+            continue  # one piece, several files: say what it does once, under its last file
         out.sub(f"does: {f['does']}")
         if f["state"] in ("written", "unchanged"):
             out.sub(f"would block today: {f['blocks']}")
@@ -854,13 +885,13 @@ def render(result: dict, markdown: bool = False) -> str:
 
 def propose(path: Path, branch: str | None = None, run_proof: bool = False, log: Callable[[str], None] = lambda _: None) -> dict:
     """Write the proposal with git plumbing; only --prove checks out a worktree, because it runs repository code anyway."""
-    original = adopt.Repo(path.resolve())
+    original = repocheck.Repo(path.resolve())
     root = original.root
     head = original.git("rev-parse", "--verify", "--quiet", "HEAD^{commit}")
     if not head:
         raise ProposeError(f"{root} has no commit to branch from")
     with interruptible():
-        scratch = Path(tempfile.mkdtemp(prefix="kitchen-adopt-"))
+        scratch = Path(tempfile.mkdtemp(prefix="kitchen-init-"))
         try:
             no_hooks = scratch / "no-hooks"
             no_hooks.mkdir()
@@ -868,7 +899,7 @@ def propose(path: Path, branch: str | None = None, run_proof: bool = False, log:
             target = git.run(root, "symbolic-ref", "-q", f"refs/heads/{BRANCH}")
             if target.returncode == 0:
                 raise ProposeError(f"refs/heads/{BRANCH} is a symbolic ref to {target.stdout.decode().strip()}; "
-                                   "refusing to move it. Delete it (git symbolic-ref -d refs/heads/kitchen/adopt), then rerun")
+                                   "refusing to move it. Delete it (git symbolic-ref -d refs/heads/kitchen/init), then rerun")
             elsewhere = checked_out_at(git, root)
             if elsewhere:
                 raise ProposeError(f"{BRANCH} is checked out at {elsewhere}: switch that checkout to another branch, then rerun")
@@ -881,8 +912,8 @@ def propose(path: Path, branch: str | None = None, run_proof: bool = False, log:
 def build(git: Git, root: Path, head: str, existing: str | None, branch: str | None, run_proof: bool,
           scratch: Path, log: Callable[[str], None]) -> dict:
     start = existing or head
-    report = adopt.check(root, branch, commit=start)
-    repo = adopt.Repo(root, start)
+    report = repocheck.check(root, branch, commit=start)
+    repo = repocheck.Repo(root, start)
     manifest_state, manifest = read_manifest(repo)
     name = skill_name(root.name)
     status = {m["id"]: m["status"] for m in report["must_haves"]}
@@ -912,7 +943,7 @@ def build(git: Git, root: Path, head: str, existing: str | None, branch: str | N
     if to_write:
         listing = "\n".join(f"- {f.path}" for f in to_write)
         pieces_commit = commit_files(git, root, start, [(f.path, f.content.encode(), "100755" if f.mode & 0o111 else "100644") for f in to_write],
-                                     f"kitchen adopt: propose the missing pieces\n\n{listing}\n", scratch / "index")
+                                     f"kitchen init: propose the missing pieces\n\n{listing}\n", scratch / "index")
         for f in to_write:
             states[f.path] = "written"
 
@@ -984,10 +1015,10 @@ def build(git: Git, root: Path, head: str, existing: str | None, branch: str | N
         final = pieces_commit
         if bookkeeping:
             proof_sha = proof["sha"][:7] if proof else None
-            final = commit_files(git, root, pieces_commit, bookkeeping, "kitchen adopt: report and manifest\n\n"
+            final = commit_files(git, root, pieces_commit, bookkeeping, "kitchen init: report and manifest\n\n"
                                  + (f"--prove ran at {proof_sha}.\n" if proof_sha else "Not proved: rerun with --prove.\n"), scratch / "index")
         zero = "0" * len(final)
-        git(root, "update-ref", "--no-deref", "-m", "kitchen adopt --propose", f"refs/heads/{BRANCH}", final, existing or zero)
+        git(root, "update-ref", "--no-deref", "-m", "kitchen init", f"refs/heads/{BRANCH}", final, existing or zero)
     result.update({"branch_sha": final, "created": bool(to_write) and not existing, "changed": bool(to_write), "report_file": report_state})
     return result
 
@@ -995,9 +1026,9 @@ def build(git: Git, root: Path, head: str, existing: str | None, branch: str | N
 def prove_in_worktree(git: Git, root: Path, commit: str, hook_ours: bool, scratch: Path, log: Callable[[str], None]) -> dict:
     """The only place a worktree exists. Its checkout may run the target's filters (and kitchen's empty hooksPath keeps
     hooks out); then the proof runs repository code on purpose."""
-    target = control_target(adopt.Repo(root, commit))  # chosen from the commit's tracked files, before anything runs
+    target = control_target(repocheck.Repo(root, commit))  # chosen from the commit's tracked files, before anything runs
     wt = scratch / "worktree"
-    log(f"kitchen adopt --prove: checking out {commit[:7]} in {wt}; the target's git filters (smudge) may run here")
+    log(f"kitchen init --prove: checking out {commit[:7]} in {wt}; the target's git filters (smudge) may run here")
     try:
         git(root, "worktree", "add", "--detach", "--quiet", str(wt), commit)
         proof = prove(git, wt, target, hook_ours, scratch, log)
@@ -1016,4 +1047,4 @@ def prove_in_worktree(git: Git, root: Path, commit: str, hook_ours: bool, scratc
         removed = git.run(root, "worktree", "remove", "--force", str(wt))
         git.run(root, "worktree", "prune")
         if removed.returncode != 0 and wt.exists():
-            log(f"kitchen adopt --prove: could not remove the temporary worktree {wt}: {removed.stderr.decode(errors='replace').strip()}")
+            log(f"kitchen init --prove: could not remove the temporary worktree {wt}: {removed.stderr.decode(errors='replace').strip()}")

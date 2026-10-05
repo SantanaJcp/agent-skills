@@ -32,3 +32,5 @@ Turn what I asked for into a settled set of decisions before anyone designs or b
 - **One-way doors**: decisions that are expensive to reverse. Each gets two structurally different options before we choose.
 
 If the project has a `decisions.md`, offer to append the decisions that should outlive this session.
+
+Principles (the kitchen's PRINCIPLES.md): `owner-attention`, `doors`.

@@ -1,5 +1,5 @@
-kitchen adopt --check <repo>  (read-only: ran no repository code)
-HEAD 4fcedf6
+kitchen init --check <repo>  (read-only: ran no repository code)
+HEAD <sha>
 
 Stacks
   python       pyproject.toml
@@ -24,5 +24,6 @@ Must-haves
   PASS     baseline ratchet                   quality/baseline.json is checked at bin/check:5
   PASS     skills in .claude/skills           .claude/skills links verify-shop
   PASS     required status on shared branch   gh api repos/example/shop/rules/branches/main: required_status_checks (check)
+  PASS     agent guards travel with the repo  .kitchen/hooks matches this kitchen's 4 files; .claude/settings.json runs each guard
 
-Missing 0 of 9 must-haves (0 FAIL, 0 unknown)
+Missing 0 of 10 must-haves (0 FAIL, 0 unknown)

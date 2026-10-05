@@ -1,4 +1,4 @@
-"""`kitchen adopt --propose` and `--prove` on fixture repos in temp dirs: what is written, what is never touched, and
+"""`kitchen init` and `--prove` on fixture repos in temp dirs: what is written, what is never touched, and
 whether the proof can tell a gate that works from one that cannot fail.
 
 Expected files, statuses and commands are written by hand from each fixture's design, not recomputed the way
@@ -7,7 +7,9 @@ propose.py does. Regenerate the golden report with KITCHEN_UPDATE_GOLDEN=1, then
 import hashlib
 import json
 import os
+import pty
 import re
+import select
 import shutil
 import signal
 import stat
@@ -18,9 +20,9 @@ import time
 import unittest
 from pathlib import Path
 
-from tests.test_adopt import GOLDEN, KITCHEN, RAN, AdoptFixture
+from tests.test_init_check import GOLDEN, GUARDS, KITCHEN, KITCHEN_HOOKS, RAN, InitFixture, vendored_hooks
 
-BRANCH = "kitchen/adopt"
+BRANCH = "kitchen/init"
 
 
 def node_supports_typescript():
@@ -86,7 +88,7 @@ def dotnet_files(major=10):
 CANNOT_FAIL = "#!/bin/sh\ncase \"$1\" in\n  --list) printf '%s\\n' commit integrate nightly verify-tree ;;\n  commit|integrate|nightly|verify-tree) exit 0 ;;\nesac\n"
 
 
-class ProposeFixture(AdoptFixture):
+class ProposeFixture(InitFixture):
     def setUp(self):
         super().setUp()
         self.tmpdir = self.root / "tmp"
@@ -101,13 +103,13 @@ class ProposeFixture(AdoptFixture):
         return env
 
     def propose(self, repo, *extra, gh=None):
-        return subprocess.run([sys.executable, str(KITCHEN), "adopt", "--propose", str(repo), *extra],
+        return subprocess.run([sys.executable, str(KITCHEN), "init", str(repo), "--yes", "--base", "main", *extra],
                               capture_output=True, text=True, env=self.env(gh))
 
     def propose_json(self, repo, *extra, gh=None, code=0):
         result = self.propose(repo, "--json", *extra, gh=gh)
         self.assertEqual(result.returncode, code, result.stdout + result.stderr)
-        return json.loads(result.stdout)
+        return json.loads(result.stdout)["proposal"]
 
     def git(self, repo, *args):
         return subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True, check=True,
@@ -147,10 +149,13 @@ class Proposal(ProposeFixture):
         result = self.propose_json(repo)
 
         self.assertEqual(self.added(repo), [".agents/skills/verify-calc/SKILL.md", ".agents/skills/verify-calc/features/README.md",
-                                            ".githooks/pre-commit", ".kitchen/adopt.json", ".kitchen/baseline.json",
-                                            "ADOPT.md", "bin/check", "decisions.md"])
+                                            ".claude/settings.json", ".githooks/pre-commit", ".kitchen/baseline.json",
+                                            ".kitchen/hooks/deny-no-verify", ".kitchen/hooks/deny-recursive-rm",
+                                            ".kitchen/hooks/deny-shared-push", ".kitchen/hooks/shellparse.py", ".kitchen/init.json",
+                                            "KITCHEN-INIT.md", "bin/check", "decisions.md"])
         tree = self.tree(repo, BRANCH)
         self.assertEqual((tree["bin/check"][0], tree[".githooks/pre-commit"][0]), ("100755", "100755"))
+        self.assertEqual((tree[".kitchen/hooks/deny-shared-push"][0], tree[".kitchen/hooks/shellparse.py"][0]), ("100755", "100644"))
         check = self.show(repo, BRANCH, "bin/check")
         self.assertRegex(check, r"# unverified: [^\n]*tests/\n\s*python3 -m unittest discover -s tests\n")
         self.assertIn("commit) tier_commit ;;", check)
@@ -166,8 +171,8 @@ class Proposal(ProposeFixture):
         self.assertEqual(baseline["mode"], "measure-only")
         self.assertEqual(baseline["must_haves"], {"check-contract": "FAIL", "pre-commit-hook": "FAIL", "agents-md": "FAIL",
                                                   "verify-skill": "FAIL", "decisions": "FAIL", "secret-scan": "FAIL",
-                                                  "baseline-ratchet": "FAIL", "skills-linked": "FAIL", "branch-protection": "unknown"})
-        manifest = json.loads(self.show(repo, BRANCH, ".kitchen/adopt.json"))
+                                                  "baseline-ratchet": "FAIL", "skills-linked": "FAIL", "branch-protection": "unknown", "agent-hooks": "FAIL"})
+        manifest = json.loads(self.show(repo, BRANCH, ".kitchen/init.json"))
         for path in ("bin/check", ".githooks/pre-commit", "decisions.md", ".kitchen/baseline.json",
                      ".agents/skills/verify-calc/SKILL.md", ".agents/skills/verify-calc/features/README.md"):
             blob = subprocess.run(["git", "-C", str(repo), "show", f"{BRANCH}:{path}"], capture_output=True, check=True).stdout
@@ -187,14 +192,15 @@ class Proposal(ProposeFixture):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         text = result.stdout.replace(str(repo), "<repo>")
+        text = re.sub(r"Branch kitchen/init @ [0-9a-f]{7}", "Branch kitchen/init @ <sha>", text)  # the branch holds the kitchen's guards
         golden = GOLDEN / "propose-python.txt"
         if os.environ.get("KITCHEN_UPDATE_GOLDEN"):
             golden.write_text(text)
         self.assertEqual(text, golden.read_text(), f"golden {golden.name} differs; review, then rerun with KITCHEN_UPDATE_GOLDEN=1")
-        adopt_md = self.show(repo, BRANCH, "ADOPT.md")
-        self.assertNotIn(str(self.root), adopt_md, "ADOPT.md is committed into the target repo: no absolute paths")
+        report_md = self.show(repo, BRANCH, "KITCHEN-INIT.md")
+        self.assertNotIn(str(self.root), report_md, "KITCHEN-INIT.md is committed into the target repo: no absolute paths")
         for section in ("Files", "Unverified", "Readiness", "One-way doors"):
-            self.assertIn(section, adopt_md)
+            self.assertIn(section, report_md)
 
     def test_node_reads_the_npm_test_script(self):
         repo = self.make_repo("web", NODE_FILES)
@@ -256,7 +262,9 @@ class Proposal(ProposeFixture):
 
         result = self.propose_json(repo)
 
-        self.assertEqual(self.added(repo), [".kitchen/adopt.json", "ADOPT.md", "decisions.md"])
+        self.assertEqual(self.added(repo), [".claude/settings.json", ".kitchen/hooks/deny-no-verify", ".kitchen/hooks/deny-recursive-rm",
+                                            ".kitchen/hooks/deny-shared-push", ".kitchen/hooks/shellparse.py",
+                                            ".kitchen/init.json", "KITCHEN-INIT.md", "decisions.md"])
         for path in ("bin/check", ".githooks/pre-commit", ".agents/skills/verify-calc/SKILL.md", "quality/baseline.json", "AGENTS.md"):
             self.assertEqual(self.tree(repo, BRANCH)[path], main[path], path)
         self.assertEqual({p["id"] for p in result["proposals"]} >= {"check-contract", "pre-commit-hook", "verify-skill",
@@ -445,7 +453,7 @@ class Prove(ProposeFixture):
 
         self.assert_proved(result, "tests/test_calc.py")
         self.assertEqual(self.show(repo, BRANCH, "tests/test_calc.py"), PYTHON_FILES["tests/test_calc.py"], "the control was not reverted")
-        self.assertIn("negative control went red", self.show(repo, BRANCH, "ADOPT.md"))
+        self.assertIn("negative control went red", self.show(repo, BRANCH, "KITCHEN-INIT.md"))
 
     @unittest.skipUnless(node_supports_typescript(), "needs node >= 22.18 (runs .ts tests natively) and npm")
     def test_node_negative_control_goes_red(self):
@@ -485,13 +493,153 @@ class Prove(ProposeFixture):
 
         self.assertIn("RUNS REPOSITORY CODE", result.stderr)
 
-    def test_prove_needs_propose(self):
+    def test_check_takes_no_answers(self):
         repo = self.make_repo("calc", PYTHON_FILES)
-        result = subprocess.run([sys.executable, str(KITCHEN), "adopt", "--check", "--prove", str(repo)],
+        result = subprocess.run([sys.executable, str(KITCHEN), "init", "--check", "--prove", str(repo)],
                                 capture_output=True, text=True, env=self.env())
         self.assertEqual(result.returncode, 2)
-        self.assertIn("--prove needs --propose", result.stderr)
+        self.assertIn("--check only reads", result.stderr)
 
+
+
+class AgentHooks(ProposeFixture):
+    """The guards travel with the repo: the copy on the branch runs from .claude/settings.json and fails closed."""
+
+    def hook_commands(self, repo):
+        settings = json.loads(self.show(repo, BRANCH, ".claude/settings.json"))
+        return [h["command"] for g in settings["hooks"]["PreToolUse"] for h in g["hooks"]]
+
+    def run_hook(self, command, project_dir, shell_command):
+        payload = json.dumps({"tool_name": "Bash", "cwd": str(project_dir), "tool_input": {"command": shell_command}})
+        return subprocess.run(["sh", "-c", command], input=payload, capture_output=True, text=True,
+                              env={**self.env(), "CLAUDE_PROJECT_DIR": str(project_dir)})
+
+    def test_the_copied_guards_block_and_allow_like_the_kitchen(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        self.propose_json(repo)
+        checkout = self.root / "checkout"
+        self.git(repo, "worktree", "add", "--quiet", str(checkout), BRANCH)
+        commands = self.hook_commands(repo)
+        self.assertEqual(len(commands), len(GUARDS))
+        push = next(c for c in commands if "deny-shared-push" in c)
+
+        blocked = self.run_hook(push, checkout, "git push origin main")
+        allowed = self.run_hook(push, checkout, "ls")
+
+        self.assertEqual(blocked.returncode, 2, blocked.stderr)
+        self.assertIn("Blocked by the kitchen hook deny-shared-push", blocked.stderr)
+        self.assertEqual(allowed.returncode, 0, allowed.stderr)
+
+    def test_a_missing_copy_blocks_instead_of_passing(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        self.propose_json(repo)
+        empty = self.root / "no-guards"
+        empty.mkdir()
+
+        result = self.run_hook(self.hook_commands(repo)[0], empty, "ls")
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("kitchen: guard missing", result.stderr)
+
+    def test_a_stale_copy_fails_the_check_and_is_not_overwritten(self):
+        files = {**PYTHON_FILES, **vendored_hooks()}
+        files[".kitchen/hooks/deny-shared-push"] += "# an older copy\n"
+        repo = self.make_repo("calc", files)
+
+        report = json.loads(subprocess.run([sys.executable, str(KITCHEN), "init", "--check", str(repo), "--json"],
+                                           capture_output=True, text=True, env=self.env()).stdout)
+        result = self.propose_json(repo)
+
+        verdict = next(m for m in report["must_haves"] if m["id"] == "agent-hooks")
+        self.assertEqual(verdict["status"], "FAIL")
+        self.assertIn("deny-shared-push differ from this kitchen's copy", verdict["proof"])
+        self.assertTrue(self.show(repo, BRANCH, ".kitchen/hooks/deny-shared-push").endswith("# an older copy\n"))
+        self.assertIn("agent-hooks", {p["id"] for p in result["proposals"]})
+
+    def test_existing_settings_get_a_proposal_not_an_edit(self):
+        files = {**PYTHON_FILES, ".claude/settings.json": '{"permissions": {"allow": []}}\n'}
+        repo = self.make_repo("calc", files)
+
+        result = self.propose_json(repo)
+
+        self.assertEqual(self.show(repo, BRANCH, ".claude/settings.json"), '{"permissions": {"allow": []}}\n')
+        text = next(p["text"] for p in result["proposals"] if p["id"] == "agent-hooks")
+        self.assertIn("kitchen left it alone", text)
+        self.assertIn("deny-shared-push", text)
+
+
+class Ask(ProposeFixture):
+    """`kitchen init` asks numbered questions in a terminal and writes only what was answered yes."""
+
+    def run_tty(self, argv, replies):
+        pid, fd = pty.fork()
+        if pid == 0:
+            os.execve(sys.executable, [sys.executable, str(KITCHEN), *argv], self.env())
+        output, pending = b"", list(replies)
+        while True:
+            ready, _, _ = select.select([fd], [], [], 60)
+            if not ready:
+                break
+            try:
+                data = os.read(fd, 4096)
+            except OSError:
+                break
+            if not data:
+                break
+            output += data
+            if output.rstrip(b" ").endswith(b">") and pending:
+                os.write(fd, (pending.pop(0) + "\n").encode())
+        _, status = os.waitpid(pid, 0)
+        return os.waitstatus_to_exitcode(status), output.decode(errors="replace"), pending
+
+    def config(self, name):
+        path = self.home / ".config" / "kitchen" / name
+        return path.read_text() if path.exists() else None
+
+    def test_answers_decide_what_is_written(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        # branch: yes; prove: no; personal: yes; the base is unknown (no origin/HEAD), so it is asked: dev
+        code, output, left = self.run_tty(["init", str(repo)], ["1", "2", "1", "dev"])
+        self.assertEqual((code, left), (0, []), output)
+        self.assertIn("1. Write the missing pieces on branch kitchen/init?", output)
+        self.assertIn("Which branch is the shared base", output)
+        self.assertTrue(self.git(repo, "rev-parse", "--verify", "--quiet", "refs/heads/kitchen/init"), output)
+        self.assertEqual(self.config("projects.txt"), f"{repo}\n")
+        self.assertEqual(self.config("integrate.toml"), '[projects.calc]\nbase = "dev"\nchecks = ["bin/check integrate"]\n')
+        self.assertIn("skipped    prove (answered no)", output)
+
+    def test_no_writes_nothing(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        code, output, left = self.run_tty(["init", str(repo)], ["2", "2"])  # branch: no; personal: no (prove is not asked)
+        self.assertEqual((code, left), (0, []), output)
+        self.assertEqual(self.git(repo, "branch", "--list", "kitchen/init").strip(), "")
+        self.assertIsNone(self.config("projects.txt"))
+        self.assertIsNone(self.config("integrate.toml"))
+
+    def test_yes_refuses_to_guess_an_unknown_base(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        result = subprocess.run([sys.executable, str(KITCHEN), "init", str(repo), "--yes"], capture_output=True, text=True, env=self.env())
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("pass --base", result.stderr)
+        self.assertIsNone(self.config("integrate.toml"))
+
+    def test_rerun_adds_the_personal_layer_once(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        self.propose(repo)
+        again = self.propose(repo)
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        self.assertEqual(self.config("projects.txt"), f"{repo}\n")
+        self.assertEqual(self.config("integrate.toml").count("[projects.calc]"), 1)
+
+    def test_an_unreadable_integrate_toml_is_an_error(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        path = self.home / ".config" / "kitchen" / "integrate.toml"
+        path.parent.mkdir(parents=True)
+        path.write_text("[projects\n")
+        result = self.propose(repo)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn("cannot parse", result.stderr)
+        self.assertEqual(path.read_text(), "[projects\n")
 
 
 class ReviewRound1(ProposeFixture):
@@ -499,8 +647,8 @@ class ReviewRound1(ProposeFixture):
 
     def test_filters_never_run_without_prove(self):  # P1-1
         repo = self.make_repo("calc", {**PYTHON_FILES, ".gitattributes": "*.py filter=probe\n*.md filter=probe\n"})
-        self.git(repo, "config", "filter.probe.smudge", 'touch "$ADOPT_MARKER"; cat')
-        self.git(repo, "config", "filter.probe.clean", 'touch "$ADOPT_MARKER"; cat')
+        self.git(repo, "config", "filter.probe.smudge", 'touch "$INIT_MARKER"; cat')
+        self.git(repo, "config", "filter.probe.clean", 'touch "$INIT_MARKER"; cat')
 
         result = self.propose_json(repo)
 
@@ -513,7 +661,7 @@ class ReviewRound1(ProposeFixture):
     def test_a_symlinked_kitchen_folder_is_refused_before_anything_is_touched(self):  # P1-2
         outside = self.root / "outside"
         outside.mkdir()
-        manifest = outside / "adopt.json"
+        manifest = outside / "init.json"
         manifest.write_text('{"files": {}, "owner": "keep"}\n')
         repo = self.make_repo("calc", {**PYTHON_FILES, "quality/baseline.json": "{}\n"})
         (repo / ".kitchen").symlink_to(outside, target_is_directory=True)
@@ -529,7 +677,7 @@ class ReviewRound1(ProposeFixture):
 
     def test_a_symbolic_proposal_branch_is_refused(self):  # P1-3
         repo = self.make_repo("calc", PYTHON_FILES)
-        self.git(repo, "symbolic-ref", "refs/heads/kitchen/adopt", "refs/heads/main")
+        self.git(repo, "symbolic-ref", "refs/heads/kitchen/init", "refs/heads/main")
         main = self.git(repo, "rev-parse", "main").strip()
 
         result = self.propose(repo)
@@ -537,7 +685,7 @@ class ReviewRound1(ProposeFixture):
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("symbolic", result.stderr)
         self.assertEqual(self.git(repo, "rev-parse", "main").strip(), main)
-        self.assertEqual(self.git(repo, "symbolic-ref", "refs/heads/kitchen/adopt").strip(), "refs/heads/main")
+        self.assertEqual(self.git(repo, "symbolic-ref", "refs/heads/kitchen/init").strip(), "refs/heads/main")
         self.assertEqual(self.git(repo, "status", "--porcelain"), "")
 
     def test_a_check_that_swallows_failures_and_fails_once_is_untrusted(self):  # P1-4
@@ -568,7 +716,7 @@ class ReviewRound1(ProposeFixture):
         for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
             with self.subTest(signal=signum.name):
                 pid_file.unlink(missing_ok=True)
-                process = subprocess.Popen([sys.executable, str(KITCHEN), "adopt", "--propose", "--prove", str(repo), "--json"],
+                process = subprocess.Popen([sys.executable, str(KITCHEN), "init", "--yes", "--base", "main", "--prove", str(repo), "--json"],
                                            env=self.env(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 for _ in range(400):
                     if pid_file.exists() and pid_file.read_text().strip():
@@ -589,34 +737,34 @@ class ReviewRound1(ProposeFixture):
 
     def test_an_owner_manifest_is_left_alone(self):  # P2-6
         owner = '{"files": {}, "owner": "keep"}\n'
-        repo = self.make_repo("calc", {**PYTHON_FILES, ".kitchen/adopt.json": owner})
+        repo = self.make_repo("calc", {**PYTHON_FILES, ".kitchen/init.json": owner})
 
         result = self.propose_json(repo)
 
-        self.assertEqual(self.show(repo, BRANCH, ".kitchen/adopt.json"), owner)
+        self.assertEqual(self.show(repo, BRANCH, ".kitchen/init.json"), owner)
         self.assertIn("bin/check", self.added(repo))
-        self.assertTrue(any(".kitchen/adopt.json" in note for note in result["notes"]), result["notes"])
+        self.assertTrue(any(".kitchen/init.json" in note for note in result["notes"]), result["notes"])
 
     def test_an_edited_kitchen_manifest_keeps_the_owner_fields(self):  # P2-6
         repo = self.make_repo("calc", {**PYTHON_FILES, "quality/baseline.json": "{}\n"})
         self.propose_json(repo)
         self.git(repo, "checkout", "-q", BRANCH)
-        data = json.loads((repo / ".kitchen" / "adopt.json").read_text())
+        data = json.loads((repo / ".kitchen" / "init.json").read_text())
         data["owner"] = "keep"
-        (repo / ".kitchen" / "adopt.json").write_text(json.dumps(data, indent=2) + "\n")
+        (repo / ".kitchen" / "init.json").write_text(json.dumps(data, indent=2) + "\n")
         self.git(repo, "rm", "-q", "quality/baseline.json")
         self.git(repo, "commit", "-qam", "owner edits")
         self.git(repo, "checkout", "-q", "main")
-        edited = self.show(repo, BRANCH, ".kitchen/adopt.json")
+        edited = self.show(repo, BRANCH, ".kitchen/init.json")
 
         result = self.propose_json(repo)
 
         self.assertIn(".kitchen/baseline.json", self.tree(repo, BRANCH), "the newly missing baseline was not written")
-        self.assertEqual(self.show(repo, BRANCH, ".kitchen/adopt.json"), edited)
-        self.assertTrue(any(".kitchen/adopt.json" in note for note in result["notes"]), result["notes"])
+        self.assertEqual(self.show(repo, BRANCH, ".kitchen/init.json"), edited)
+        self.assertTrue(any(".kitchen/init.json" in note for note in result["notes"]), result["notes"])
 
     def test_control_characters_in_paths_never_reach_generated_scripts(self):  # P2-7
-        folder = 'pkg\ntouch "$ADOPT_MARKER"\n#'
+        folder = 'pkg\ntouch "$INIT_MARKER"\n#'
         repo = self.make_repo("oddpath", {f"{folder}/package.json": '{"name": "x", "scripts": {"test": "true"}}\n'})
 
         self.propose_json(repo)

@@ -1,5 +1,6 @@
-kitchen adopt --propose <repo>  (ran no repository code)
-Branch kitchen/adopt @ 5b90cd2 (new), from 4ec6634; not pushed
+
+kitchen init <repo>  (ran no repository code)
+Branch kitchen/init @ <sha> (new), from 4ec6634; not pushed
 
 Measured by --check at 4ec6634 (that commit's tree; uncommitted changes are not part of the proposal)
   FAIL     check contract                     no bin/check and no .kitchen/checks.toml
@@ -11,8 +12,9 @@ Measured by --check at 4ec6634 (that commit's tree; uncommitted changes are not 
   FAIL     baseline ratchet                   no baseline file (*baseline*/*ratchet* data file, eslint-suppressions.json, .betterer.results)
   FAIL     skills in .claude/skills           no project skills under .agents/skills to link
   unknown  required status on shared branch   origin is not a GitHub remote, so protection cannot be read
+  FAIL     agent guards travel with the repo  no .kitchen/hooks/: teammates and cloud sessions run agents without the kitchen's guards
 
-Files on kitchen/adopt
+Files on kitchen/init
   written          decisions.md
        does: Dated decisions; `- [ ]` marks one the owner still owes, and `kitchen status` counts them.
        would block today: nothing; it lists 4 owed decisions for `kitchen status`
@@ -23,14 +25,19 @@ Files on kitchen/adopt
        does: gitleaks on the staged changes (fails with the install command when gitleaks is missing), then `bin/check commit` unless only documentation is staged. Inactive until `git config core.hooksPath .githooks` in each clone.
        would block today: not run: needs --prove, which runs repository code
   written          .agents/skills/verify-calc/SKILL.md
-       does: Skeleton of the project's verify skill from templates/verify: placeholders to fill, no bin/verify yet.
-       would block today: nothing: a skeleton
   written          .agents/skills/verify-calc/features/README.md
        does: Skeleton of the project's verify skill from templates/verify: placeholders to fill, no bin/verify yet.
        would block today: nothing: a skeleton
   written          .kitchen/baseline.json
        does: What --check measured, in measure-only mode: no gate reads it yet.
        would block today: nothing: measure-only
+  written          .kitchen/hooks/deny-no-verify
+  written          .kitchen/hooks/deny-recursive-rm
+  written          .kitchen/hooks/deny-shared-push
+  written          .kitchen/hooks/shellparse.py
+  written          .claude/settings.json
+       does: The kitchen's agent guards, copied into the repo so teammates and cloud sessions run them without installing the kitchen; .claude/settings.json runs each one before every Bash command in Claude Code.
+       would block today: agent commands that push to a shared branch, skip the repo's hooks, or rm -r outside the temp dir, in Claude Code sessions started at the repo root
 
 Proposals (not written: yours to apply)
   1. agents-md: AGENTS.md has 3 lines but names no verify command (a verify-<repo> skill, bin/check or bin/verify). Name the verify command in AGENTS.md (the verify-<repo> skill or bin/check).
@@ -38,19 +45,21 @@ Proposals (not written: yours to apply)
 
 Unverified
   `python3 -m unittest discover -s tests` (unittest: test files under tests/): detected, never run
-  bin/check integrate, nightly and verify-tree: never run by kitchen adopt
+  bin/check integrate, nightly and verify-tree: never run by kitchen init
   .githooks/pre-commit is inactive until `git config core.hooksPath .githooks` in each clone
   .githooks/pre-commit: gitleaks never ran
   verify-calc is a skeleton: placeholders, no bin/verify, no feature mapped; it proves nothing yet
+  .kitchen/hooks: Claude Code loads .claude/settings.json only in a session started at the repo root (measured)
+  Codex gets no project hooks from this branch: project hooks did not load in Codex 0.160 when measured; a Codex session has the guards only where `kitchen install` ran
   .kitchen/baseline.json is measure-only: no gate compares against it
   --check only reads lint configs and manifests; it never ran a linter, a build or a test
   required status on shared branch: unknown (origin is not a GitHub remote, so protection cannot be read)
 
 Readiness
-  files proposed              yes: 6 files on kitchen/adopt
+  files proposed              yes: 11 files on kitchen/init
   checks run green            not run: rerun with --prove (it runs repository code)
   negative control went red   not run: rerun with --prove (it runs repository code)
-  unattended-ready            not assessed: kitchen adopt does not assess unattended runs (sandbox, schedule, credentials)
+  unattended-ready            not assessed: kitchen init does not assess unattended runs (sandbox, schedule, credentials)
 
 Trust per piece
   not proved   bin/check: rerun with --prove
@@ -78,5 +87,8 @@ One-way doors: owner decisions, printed and never executed
        # origin is not a GitHub remote: replace OWNER/REPO
 
 Next (two-way, yours)
-  review the branch (`git diff HEAD...kitchen/adopt`), then push it yourself: `git push -u origin kitchen/adopt`
+  review the branch (`git diff HEAD...kitchen/init`), then push it yourself: `git push -u origin kitchen/init`
   after it merges, activate the hook in each clone: `git config core.hooksPath .githooks`
+added      <repo> to ~/.config/kitchen/projects.txt
+added      [projects.calc] to ~/.config/kitchen/integrate.toml (base main, checks bin/check integrate)
+skipped    prove (--yes never runs repository code: add --prove)

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Nightly guard: build, test and prove the tip of the project's branch.
+# Principles: `prove`, `truthful-state` (never green without steps), `owner-attention` (one issue while red).
 # Opens (or comments on) one GitHub issue when a step fails and closes it when the branch is green.
 # A red or incomplete run also shows a local notification (lib/kitchen/notify.py); a green one never does.
 # Every run that holds the lock is exactly one line in the nightly history read by `kitchen status`: "running"

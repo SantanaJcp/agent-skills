@@ -8,6 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from .common import home, projects
+from . import rules
 
 
 def skill_locations() -> list[tuple[str, Path]]:
@@ -84,14 +85,14 @@ def automations() -> list[dict]:
 
 def rule_files(repo_root: Path) -> list[dict]:
     h = home()
-    rules = []
+    files = []
     for path in (h / ".claude" / "CLAUDE.md", h / ".codex" / "AGENTS.md"):
-        rules.append({
+        files.append({
             "path": str(path),
             "exists": path.exists(),
-            "managed": path.is_symlink() and Path(os.path.realpath(path)).is_relative_to(repo_root),
+            "managed": rules.generated(path),  # written by `kitchen install` from the person's rules and PRINCIPLES.md
         })
-    return rules
+    return files
 
 
 def build(repo_root: Path) -> dict:

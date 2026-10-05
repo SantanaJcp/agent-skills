@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""PreToolUse guard: deny git commands that skip the repo's hooks (--no-verify, commit -n, a core.hooksPath override)."""
+"""PreToolUse guard: deny git commands that skip the repo's hooks (--no-verify, commit -n, a core.hooksPath override).
+
+Principles: `prove` (the repo's gate runs on every commit), `encode-lessons` (this rule used to be text)."""
 import os
 import sys
 

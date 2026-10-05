@@ -11,3 +11,5 @@ Wait, I don't follow. Re-explain your last message:
 - Use plain words. Define in a few words any term you cannot avoid.
 - Keep it to half the length of the original or less.
 - End with the one thing you need from me, if there is one.
+
+Principles (the kitchen's PRINCIPLES.md): `owner-attention`.

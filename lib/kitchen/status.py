@@ -1,5 +1,6 @@
 """`kitchen status`: where every project stands, read from git, gh, the nightly guard, the gardener's record and the
 journal. A fact it cannot read is `unknown`, never zero or none.
+Principles: `truthful-state`, `owner-attention` (--exceptions), `handoff` (owed decisions, checkpoints).
 
 `--exceptions` keeps only the lines that are not green: a project it cannot read, a nightly that is not green or is
 overdue, a gardener run that was refused, incomplete, overdue or not recorded on this machine, PRs or decisions it

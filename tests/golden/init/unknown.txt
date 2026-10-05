@@ -1,5 +1,5 @@
-kitchen adopt --check <repo>  (read-only: ran no repository code)
-HEAD 1887986
+kitchen init --check <repo>  (read-only: ran no repository code)
+HEAD <sha>
 
 Stacks
   unsupported  no .NET, Node or Python manifest
@@ -24,8 +24,9 @@ Must-haves
   FAIL     baseline ratchet                   no baseline file (*baseline*/*ratchet* data file, eslint-suppressions.json, .betterer.results)
   FAIL     skills in .claude/skills           no project skills under .agents/skills to link
   unknown  required status on shared branch   origin is not a GitHub remote, so protection cannot be read
+  FAIL     agent guards travel with the repo  no .kitchen/hooks/: teammates and cloud sessions run agents without the kitchen's guards
 
-Missing 9 of 9 must-haves (8 FAIL, 1 unknown)
+Missing 10 of 10 must-haves (9 FAIL, 1 unknown)
 Next steps (printed only; nothing was changed)
   1. Add an executable bin/check whose tier table declares commit, integrate, nightly and verify-tree (and prints them with --list), or declare those tiers in .kitchen/checks.toml.
   2. Add a tracked pre-commit hook that runs `bin/check commit`, then point core.hooksPath at its folder.
@@ -36,3 +37,4 @@ Next steps (printed only; nothing was changed)
   7. Record a baseline of today's violations and check it in a gate so the count can only go down.
   8. Keep project skills in .agents/skills/ (shared by Codex and Claude) and link them into .claude/skills/.
   9. Push to GitHub (or check the host's branch rules by hand); then rerun.
+  10. Copy the kitchen's hooks/ (deny-no-verify, deny-recursive-rm, deny-shared-push, shellparse.py) into .kitchen/hooks/ and run each guard from .claude/settings.json (kitchen init writes both when they are missing).
