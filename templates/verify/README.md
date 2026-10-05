@@ -1,4 +1,4 @@
-# verify-&lt;repo&gt; template
+# `verify-<repo>` template
 
 Every project gets one verification skill so every agent proves behavior the same way instead of improvising a script each session. It lives in the project, at `.agents/skills/verify-<repo>/`, because it knows how that app starts.
 
