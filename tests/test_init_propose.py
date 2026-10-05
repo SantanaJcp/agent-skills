@@ -604,6 +604,41 @@ class Refresh(ProposeFixture):
         again = self.propose_json(repo)
         self.assertEqual(self.state(again, ".kitchen/hooks/deny-shared-push"), "unchanged")
 
+    def owner_commit(self, repo, change):
+        checkout = self.root / "checkout"
+        self.git(repo, "worktree", "add", "--quiet", str(checkout), BRANCH)
+        change(checkout)
+        self.git(checkout, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "owner edit")
+        self.git(repo, "worktree", "remove", "--force", str(checkout))
+
+    def test_an_edited_manifest_vouches_for_nothing(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        self.init_with(self.older_kitchen(), repo)
+
+        def edit_copy_and_its_manifest_entry(checkout):
+            guard = checkout / ".kitchen" / "hooks" / "deny-shared-push"
+            guard.write_text(guard.read_text() + "# owner custom guard\n")
+            manifest_path = checkout / ".kitchen" / "init.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["files"][".kitchen/hooks/deny-shared-push"]["sha256"] = hashlib.sha256(guard.read_bytes()).hexdigest()
+            manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")  # its own sha256 is now stale
+        self.owner_commit(repo, edit_copy_and_its_manifest_entry)
+
+        result = self.propose_json(repo)
+
+        self.assertNotEqual(self.state(result, ".kitchen/hooks/deny-shared-push"), "refreshed")
+        self.assertTrue(self.show(repo, BRANCH, ".kitchen/hooks/deny-shared-push").endswith("# owner custom guard\n"))
+
+    def test_a_mode_change_is_the_owners_edit(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        self.init_with(self.older_kitchen(), repo)
+        self.owner_commit(repo, lambda checkout: (checkout / ".kitchen" / "hooks" / "deny-shared-push").chmod(0o644))
+
+        result = self.propose_json(repo)
+
+        self.assertNotEqual(self.state(result, ".kitchen/hooks/deny-shared-push"), "refreshed")
+        self.assertEqual(self.tree(repo, BRANCH)[".kitchen/hooks/deny-shared-push"][0], "100644")
+
     def test_an_edited_copy_is_left_alone(self):
         repo = self.make_repo("calc", PYTHON_FILES)
         self.init_with(self.older_kitchen(), repo)

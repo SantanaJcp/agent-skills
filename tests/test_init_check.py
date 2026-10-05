@@ -107,6 +107,7 @@ class InitFixture(unittest.TestCase):
         env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
         env.update({"HOME": str(self.home), "GIT_CONFIG_GLOBAL": str(self.home / ".gitconfig"), "GIT_CONFIG_NOSYSTEM": "1",
                     "INIT_MARKER": str(self.marker), "KITCHEN_GH": str(gh or self.root / "no-such-gh"),
+                    "KITCHEN_CONFIG": str(self.home / ".config" / "kitchen"), "KITCHEN_STATE": str(self.home / ".local" / "state" / "kitchen"),
                     "FAKE_GH_LOG": str(self.gh_log), "FAKE_GH_RESPONSES": str(self.gh_responses)})
         return env
 

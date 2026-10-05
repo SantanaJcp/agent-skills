@@ -945,7 +945,10 @@ def build(git: Git, root: Path, head: str, existing: str | None, branch: str | N
         notes.append(f"{BRANCH} does not contain HEAD ({head[:7]}); rebase it if the proposal should sit on today's HEAD")
 
     for p in paths:  # a copy of the kitchen's own file that kitchen wrote and nobody edited follows the kitchen
-        if states[p] == "unchanged" and pieces[p] in VENDORED and p in wanted:
+        expected_mode = ("100755" if wanted[p].mode & 0o111 else "100644") if p in wanted else None
+        if (states[p] == "unchanged" and pieces[p] in VENDORED and p in wanted
+                and manifest_state == "unchanged"  # only a manifest kitchen wrote, untouched, vouches for ownership
+                and repo.tree.get(p, ("", ""))[0] == expected_mode):  # a changed mode is the owner's edit too
             states[p] = "refresh"
     to_write = [wanted[p] for p in paths if states[p] in ("write", "refresh")]
     report_entry = manifest.get("report") if isinstance(manifest.get("report"), dict) else None
