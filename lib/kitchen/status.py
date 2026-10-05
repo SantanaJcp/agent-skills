@@ -2,8 +2,8 @@
 journal. A fact it cannot read is `unknown`, never zero or none.
 
 `--exceptions` keeps only the lines that are not green: a project it cannot read, a nightly that is not green or is
-overdue, a gardener run that was refused, incomplete or not recorded on this machine, PRs or decisions it could not
-read, owed decisions, and checkpoints that wait on the owner (blocked, decision), unattached ones included.
+overdue, a gardener run that was refused, incomplete, overdue or not recorded on this machine, PRs or decisions it
+could not read, owed decisions, and checkpoints that wait on the owner (blocked, decision), unattached ones included.
 
 A project whose gardener runs on another host says so in integrate.toml, `gardener = "remote:<host-label>"`: its
 gardener line is then informational, `remote (<host-label>): not read here`. Never green, never an exception.
@@ -25,6 +25,7 @@ from .common import git, git_common_dir, git_out, now, parse_ts, state_dir
 OWED_DECISION = re.compile(r"^\s*- \[ \]", re.MULTILINE)
 UNKNOWN = "unknown"  # a read failed: never shown as zero or none
 NIGHTLY_CADENCE = datetime.timedelta(hours=24)  # install-schedule runs the guard daily
+GARDENER_DUE = datetime.timedelta(days=8)  # install-schedule runs the gardener weekly; plus a day of grace
 # A night runs from noon to noon, local time: a manual run at 23:00 and the scheduled 02:00 run are one night.
 NOON = datetime.timedelta(hours=12)
 GARDENER_GREEN = ("published", "none")
@@ -78,7 +79,10 @@ def gardener(name: str, entry: dict, error: str | None) -> dict | None:
             return {"setting_error": f"gardener = {value!r} is not remote:<host-label> ({integrate.config_path()})"}
         return {"remote": remote.group(1)}
     runs = history("gardener", name)
-    return {**runs[-1], "age_seconds": age_seconds(runs[-1])} if runs else None
+    if not runs:
+        return None
+    age = age_seconds(runs[-1])
+    return {**runs[-1], "age_seconds": age, "overdue": UNKNOWN if age is None else age > GARDENER_DUE.total_seconds()}
 
 
 def pull_requests(repo: Path) -> dict:
@@ -295,12 +299,13 @@ def gardener_line(run: dict | None) -> str:
     mark = "✓" if gardener_green(run) else "✗"
     detail = f": {run['detail']}" if run.get("detail") else ""
     warnings = f" · warnings: {'; '.join(map(str, run['warnings']))}" if run.get("warnings") else ""
-    return f"gardener   {mark} {run.get('status')}{detail} · {duration(run['age_seconds'])} ago{warnings}"
+    overdue = f" · overdue: last record {duration(run['age_seconds'])} ago, cadence weekly plus a day" if run["overdue"] is True else ""
+    return f"gardener   {mark} {run.get('status')}{detail} · {duration(run['age_seconds'])} ago{overdue}{warnings}"
 
 
 def gardener_green(run: dict | None) -> bool:
-    """Green only for a good result whose time is known."""
-    return run is not None and run.get("status") in GARDENER_GREEN and run.get("age_seconds") is not None
+    """Green only for a good result whose time is known and that is not overdue (an unknown time shows as `unknown ago`)."""
+    return run is not None and run.get("status") in GARDENER_GREEN and run.get("overdue") is False
 
 
 def gardener_exception(run: dict | None) -> bool:

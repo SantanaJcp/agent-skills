@@ -329,6 +329,22 @@ class LogAndStatusTests(ProjectFixture):
         self.assertEqual(result.returncode, 1, result.stdout)
         self.assertIn("shop  gardener   ✗ published: https://example.test/pull/1 · unknown ago", result.stdout)
 
+    def test_a_local_gardener_record_older_than_a_week_and_a_day_is_overdue_unless_remote(self):
+        self.green_project()
+        old = [{"ts": ago(days=8, hours=1), "status": "published", "detail": "https://example.test/pull/1"}]
+        self.write_record("gardener", [{"ts": ago(days=7, hours=23), "status": "none", "detail": "no gardener branch was committed"}])
+        within = self.kitchen("status", "--exceptions")
+        self.write_record("gardener", old)
+        late = self.kitchen("status", "--exceptions")
+        self.configure_base("main", extra='gardener = "remote:build-host"\n')
+        remote = self.kitchen("status", "--exceptions")
+
+        self.assertEqual((within.returncode, within.stdout), (0, ""), within.stdout + within.stderr)
+        self.assertEqual(late.returncode, 1, late.stdout + late.stderr)
+        self.assertIn("shop  gardener   ✗ published: https://example.test/pull/1 · 8d 1h ago"
+                      " · overdue: last record 8d 1h ago, cadence weekly plus a day", late.stdout)
+        self.assertEqual((remote.returncode, remote.stdout), (0, ""), remote.stdout + remote.stderr)
+
     def test_journal_entries_with_an_unreadable_time_are_counted_never_dropped(self):
         project = self.make_project("shop")
         self.list_projects(project)
