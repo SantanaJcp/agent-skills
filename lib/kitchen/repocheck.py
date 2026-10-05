@@ -31,7 +31,11 @@ MUST_HAVES = (  # (id, label, the principle in PRINCIPLES.md it enforces)
     ("baseline-ratchet", "baseline ratchet", "prove"),
     ("skills-linked", "skills in .claude/skills", "handoff"),
     ("branch-protection", "required status on shared branch", "doors"),
+    ("agent-hooks", "agent guards travel with the repo", "doors"),
 )
+KITCHEN_HOOKS = Path(__file__).resolve().parents[2] / "hooks"
+VENDORED_HOOKS = ".kitchen/hooks"
+CLAUDE_SETTINGS = ".claude/settings.json"
 
 LOCKFILES = ("package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock", "bun.lockb")
 NODE_LINT = tuple(f"eslint.config.{ext}" for ext in ("js", "mjs", "cjs", "ts", "mts", "cts")) + (
@@ -594,6 +598,53 @@ def skills_linked(repo: Repo, skills: list[str]) -> dict:
                      next=f"Link them in this clone: mkdir -p .claude/skills; {commands}")
 
 
+def kitchen_guards() -> dict[str, str]:
+    """The guards this kitchen ships, plus the parser they load: name -> content. What a repo's copy is compared with."""
+    if not KITCHEN_HOOKS.is_dir():
+        return {}
+    names = sorted(p.name for p in KITCHEN_HOOKS.iterdir() if p.is_file() and "." not in p.name and os.access(p, os.X_OK))
+    return {name: (KITCHEN_HOOKS / name).read_text(encoding="utf-8") for name in names + ["shellparse.py"]}
+
+
+def guard_command(name: str) -> str:
+    """The project hook command: the repo's own copy, failing closed (exit 2 blocks) when the copy is missing."""
+    return (f'sh -c \'h="$CLAUDE_PROJECT_DIR/{VENDORED_HOOKS}/{name}"; [ -x "$h" ] || '
+            f'{{ echo "kitchen: guard missing: $h" >&2; exit 2; }}; exec "$h"\'')
+
+
+def claude_hook_commands(text: str | None) -> list[str] | None:
+    try:
+        data = json.loads(text) if text is not None else None
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    groups = (data.get("hooks") or {}).get("PreToolUse") or []
+    return [str(h.get("command", "")) for g in groups if isinstance(g, dict) for h in g.get("hooks") or [] if isinstance(h, dict)]
+
+
+def agent_hooks(repo: Repo) -> dict:
+    guards = kitchen_guards()
+    if not guards:
+        return criterion("unknown", f"this kitchen has no guards at {KITCHEN_HOOKS} to compare with")
+    refresh = (f"Copy the kitchen's hooks/ ({', '.join(guards)}) into {VENDORED_HOOKS}/ and run each guard from {CLAUDE_SETTINGS} "
+               "(kitchen init writes both when they are missing).")
+    missing = [n for n in guards if not repo.is_file(f"{VENDORED_HOOKS}/{n}")]
+    if len(missing) == len(guards):
+        return criterion("FAIL", f"no {VENDORED_HOOKS}/: teammates and cloud sessions run agents without the kitchen's guards", next=refresh)
+    stale = [n for n in guards if n not in missing and repo.read(f"{VENDORED_HOOKS}/{n}") != guards[n]]
+    commands = claude_hook_commands(repo.read(CLAUDE_SETTINGS))
+    unrun = [n for n in guards if not n.endswith(".py") and not any(f"{VENDORED_HOOKS}/{n}" in c for c in commands or [])]
+    problems = ([f"missing {', '.join(missing)}"] if missing else []) + ([f"{', '.join(stale)} differ from this kitchen's copy"] if stale else [])
+    if commands is None:
+        problems.append(f"{CLAUDE_SETTINGS} is missing or not JSON")
+    elif unrun:
+        problems.append(f"{CLAUDE_SETTINGS} does not run {', '.join(unrun)}")
+    if problems:
+        return criterion("FAIL", f"{VENDORED_HOOKS}: " + "; ".join(problems), next=refresh)
+    return criterion("PASS", f"{VENDORED_HOOKS} matches this kitchen's {len(guards)} files; {CLAUDE_SETTINGS} runs each guard")
+
+
 def gh_get(endpoint: str) -> tuple[object | None, str | None]:
     gh = os.environ.get("KITCHEN_GH") or "gh"
     env = {**os.environ, "GH_PROMPT_DISABLED": "1", "GH_NO_UPDATE_NOTIFIER": "1", "NO_COLOR": "1"}
@@ -670,6 +721,7 @@ def check(path: Path, branch: str | None = None, commit: str | None = None) -> d
         "baseline-ratchet": baseline_ratchet(repo, gates),
         "skills-linked": skills_linked(repo, skills),
         "branch-protection": branch_protection(repo, branch),
+        "agent-hooks": agent_hooks(repo),
     }
     must_haves = [{"id": key, "label": label, "principle": principle, **results[key]} for key, label, principle in MUST_HAVES]
     next_steps = [{"n": i, "id": m["id"], "step": m.get("next", ""), "one_way_door": bool(m.get("one_way_door"))}

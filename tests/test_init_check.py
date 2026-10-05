@@ -16,7 +16,17 @@ from pathlib import Path
 KITCHEN = Path(__file__).resolve().parent.parent / "bin" / "kitchen"
 GOLDEN = Path(__file__).resolve().parent / "golden" / "init"
 MUST_HAVE_IDS = ["check-contract", "pre-commit-hook", "agents-md", "verify-skill", "decisions",
-                 "secret-scan", "baseline-ratchet", "skills-linked", "branch-protection"]
+                 "secret-scan", "baseline-ratchet", "skills-linked", "branch-protection", "agent-hooks"]
+KITCHEN_HOOKS = KITCHEN.parent.parent / "hooks"
+GUARDS = ("deny-no-verify", "deny-recursive-rm", "deny-shared-push")
+
+
+def vendored_hooks():
+    """A repo's copy of the kitchen's guards, and a .claude/settings.json that runs each one."""
+    files = {f".kitchen/hooks/{name}": (KITCHEN_HOOKS / name).read_text() for name in GUARDS + ("shellparse.py",)}
+    hooks = [{"type": "command", "command": f".kitchen/hooks/{name}"} for name in GUARDS]
+    files[".claude/settings.json"] = json.dumps({"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": hooks}]}})
+    return files
 
 # Every executable a fixture ships touches $INIT_MARKER when run: init must never create it.
 RAN = 'touch "$INIT_MARKER"\n'
@@ -67,7 +77,8 @@ def complete_files():
         "tests/test_feature_map.py": "# Every route needs a row in the verify-shop feature map.\nMAP = '.agents/skills/verify-shop/features'\n",
         "pyproject.toml": "[project]\nname = \"shop\"\n\n[tool.ruff]\nline-length = 100\n",
         "src/app.py": "print('shop')\n",
-        ".gitignore": ".claude/\n",
+        ".gitignore": ".claude/skills/\n",
+        **vendored_hooks(),
     }
 
 
@@ -142,6 +153,8 @@ class InitFixture(unittest.TestCase):
     def assert_golden(self, name, repo, gh=None):
         result = self.init_check(repo, gh=gh)
         text = result.stdout.replace(str(repo), "<repo>")
+        head = subprocess.run(["git", "-C", str(repo), "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
+        text = text.replace(f"HEAD {head}", "HEAD <sha>") if head else text  # the complete fixture copies the kitchen's guards
         golden = GOLDEN / f"{name}.txt"
         if os.environ.get("KITCHEN_UPDATE_GOLDEN"):
             golden.parent.mkdir(parents=True, exist_ok=True)
@@ -166,7 +179,7 @@ class GoldenReports(InitFixture):
         self.assertEqual(list(report["stacks"]), ["dotnet"])
         self.assertEqual([(c["path"], c["stack"], c["lint"]["status"]) for c in report["components"]], [(".", "dotnet", "PASS")])
         self.assertEqual(self.statuses(report), {**{i: "FAIL" for i in MUST_HAVE_IDS}, "branch-protection": "unknown"})
-        self.assertEqual(result.returncode, 9)
+        self.assertEqual(result.returncode, 10)
 
     def test_typescript_monorepo(self):
         repo = self.make_repo("typescript", {
@@ -214,7 +227,7 @@ class GoldenReports(InitFixture):
         self.assertEqual((report["stack_status"], report["stacks"], report["components"]), ("unsupported", {}, []))
         self.assertEqual(report["unsupported"], ["go.mod"])
         self.assertIn("unsupported  no .NET, Node or Python manifest", result.stdout)
-        self.assertEqual(result.returncode, 9)
+        self.assertEqual(result.returncode, 10)
 
     def test_complete_repo_passes_every_must_have(self):
         repo = self.make_complete()

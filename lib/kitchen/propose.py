@@ -69,6 +69,8 @@ DOES = {
                        "unless only documentation is staged. Inactive until `git config core.hooksPath .githooks` in each clone.",
     "verify-skill": "Skeleton of the project's verify skill from templates/verify: placeholders to fill, no bin/verify yet.",
     "baseline-ratchet": "What --check measured, in measure-only mode: no gate reads it yet.",
+    "agent-hooks": "The kitchen's agent guards, copied into the repo so teammates and cloud sessions run them without installing the "
+                   "kitchen; .claude/settings.json runs each one before every Bash command in Claude Code.",
 }
 
 
@@ -372,6 +374,16 @@ def wanted_files(repo: repocheck.Repo, report: dict, name: str, doors: list[dict
                   File(f".agents/skills/verify-{name}/features/README.md", "verify-skill", template("init/features-README.md.tmpl"))]
     if status["baseline-ratchet"] != "PASS" and not repocheck.baseline_candidates(repo):
         files.append(File(BASELINE, "baseline-ratchet", baseline(report)))
+    if status["agent-hooks"] != "PASS":
+        guards = repocheck.kitchen_guards()
+        for name, content in guards.items():
+            path = f"{repocheck.VENDORED_HOOKS}/{name}"
+            if not repo.exists(path):
+                files.append(File(path, "agent-hooks", content, 0o644 if name.endswith(".py") else 0o755))
+        if not repo.exists(repocheck.CLAUDE_SETTINGS):
+            commands = [{"type": "command", "command": repocheck.guard_command(n), "timeout": 30} for n in guards if not n.endswith(".py")]
+            settings = {"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": commands}]}}
+            files.append(File(repocheck.CLAUDE_SETTINGS, "agent-hooks", json.dumps(settings, indent=2) + "\n"))
     return files
 
 
@@ -631,6 +643,9 @@ def blocks(piece: str, content: str | None, proof: dict | None) -> str:
     if piece == "decisions":
         owed = len(re.findall(r"^\s*- \[ \]", content or "", re.MULTILINE))
         return f"nothing; it lists {owed} owed decision{'s' if owed != 1 else ''} for `kitchen status`"
+    if piece == "agent-hooks":
+        return ("agent commands that push to a shared branch, skip the repo's hooks, or rm -r outside the temp dir, "
+                "in Claude Code sessions started at the repo root")
     if piece in ("verify-skill", "baseline-ratchet"):
         return "nothing: " + ("a skeleton" if piece == "verify-skill" else "measure-only")
     if proof is None:
@@ -701,7 +716,7 @@ def proposals(report: dict, states: dict[str, str], pieces: dict[str, str], name
         out.append({"id": key, "text": text})
     def existing(key: str) -> None:
         add(key, f"{status[key]['proof']}. {steps.get(key, '')}".strip())
-    for key in ("check-contract", "pre-commit-hook", "secret-scan", "agents-md", "verify-skill", "baseline-ratchet", "skills-linked"):
+    for key in ("check-contract", "pre-commit-hook", "secret-scan", "agents-md", "verify-skill", "baseline-ratchet", "skills-linked", "agent-hooks"):
         if status[key]["status"] == "PASS":
             continue
         if key == "check-contract" and "check-contract" not in ours:
@@ -724,6 +739,14 @@ def proposals(report: dict, states: dict[str, str], pieces: dict[str, str], name
                 existing(key)
         elif key in ("verify-skill", "baseline-ratchet") and key not in ours:
             existing(key)
+        elif key == "agent-hooks":
+            if "agent-hooks" not in ours:
+                existing(key)
+            elif repocheck.CLAUDE_SETTINGS not in states:  # it exists, so kitchen did not write it
+                commands = [{"type": "command", "command": repocheck.guard_command(n), "timeout": 30}
+                            for n in repocheck.kitchen_guards() if not n.endswith(".py")]
+                add(key, f"{repocheck.CLAUDE_SETTINGS} exists, so kitchen left it alone: add this group under hooks.PreToolUse: "
+                         + json.dumps({"matcher": "Bash", "hooks": commands}))
         elif key == "skills-linked":
             skills = report["agent_files"]["project_skills"] or ([f"verify-{name}"] if "verify-skill" in ours else [])
             if skills:
@@ -751,6 +774,10 @@ def unverified(report: dict, states: dict[str, str], pieces: dict[str, str], com
             out.append(f"{HOOK}: gitleaks never ran")
     if any(pieces.get(p) == "verify-skill" and s in OURS for p, s in states.items()):
         out.append(f"verify-{name} is a skeleton: placeholders, no bin/verify, no feature mapped; it proves nothing yet")
+    if any(pieces.get(p) == "agent-hooks" and s in OURS for p, s in states.items()):
+        out.append(f"{repocheck.VENDORED_HOOKS}: Claude Code loads {repocheck.CLAUDE_SETTINGS} only in a session started at the repo root (measured)")
+        out.append("Codex gets no project hooks from this branch: project hooks did not load in Codex 0.160 when measured; "
+                   "a Codex session has the guards only where `kitchen install` ran")
     if states.get(BASELINE) in OURS:
         out.append(f"{BASELINE} is measure-only: no gate compares against it")
     if report["components"]:
