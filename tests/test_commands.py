@@ -758,6 +758,55 @@ class IntegrateTests(ProjectFixture):
         self.assertNotIn("pull", subprocess.run(["git", "-C", str(self.source), "for-each-ref"], capture_output=True, text=True).stdout)
 
 
+class ModelsTests(KitchenFixture):
+    def test_an_unset_role_fails_with_the_command_that_sets_it(self):
+        result = self.kitchen("models", "get", "reviewer", "--author", "claude")
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("not configured", result.stderr)
+        self.assertIn("kitchen models set reviewer --author claude", result.stderr)
+
+    def test_set_then_get_and_the_cli_call(self):
+        set_ = self.kitchen("models", "set", "reviewer", "--author", "claude", "--provider", "codex", "--model", "gpt-x",
+                            "--effort", "low", "--tier", "standard")
+        self.assertEqual(set_.returncode, 0, set_.stderr)
+
+        got = self.kitchen("models", "get", "reviewer", "--author", "claude", "--json")
+        call = self.kitchen("models", "get", "reviewer", "--author", "claude", "--command")
+
+        self.assertEqual(json.loads(got.stdout), {"provider": "codex", "model": "gpt-x", "effort": "low", "tier": "standard"})
+        self.assertEqual(call.stdout.strip(), "codex exec --skip-git-repo-check -s read-only -m gpt-x "
+                                              "-c 'model_reasoning_effort=\"low\"' -c 'service_tier=\"default\"'")
+
+    def test_a_reviewer_on_the_authors_own_provider_is_refused(self):
+        result = self.kitchen("models", "set", "reviewer", "--author", "codex", "--provider", "codex", "--model", "default",
+                              "--effort", "low", "--tier", "standard")
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("the author's model does not check its own work", result.stderr)
+        self.assertFalse((self.home / "config" / "models.toml").exists())
+
+    def test_the_claude_cli_cannot_take_the_fast_tier(self):
+        self.kitchen("models", "set", "reviewer", "--author", "codex", "--provider", "claude", "--model", "default",
+                     "--effort", "low", "--tier", "fast")
+
+        result = self.kitchen("models", "get", "reviewer", "--author", "codex", "--command")
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("no flag for the fast tier", result.stderr)
+
+    def test_the_listing_shows_every_role_and_keeps_other_entries(self):
+        self.kitchen("models", "set", "worker", "--provider", "claude", "--model", "default", "--effort", "high", "--tier", "standard")
+        self.kitchen("models", "set", "reviewer", "--author", "claude", "--provider", "codex", "--model", "default",
+                     "--effort", "low", "--tier", "fast")
+
+        out = self.kitchen("models").stdout
+
+        self.assertIn("worker                   claude default · effort high · tier standard", out)
+        self.assertIn("reviewer for claude work codex default · effort low · tier fast", out)
+        self.assertIn("verifier for codex work  not configured", out)
+
+
 class InventoryTests(ProjectFixture):
     def add_user_skill(self, base, name, body):
         folder = self.home / base / name

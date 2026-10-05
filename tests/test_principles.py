@@ -18,7 +18,7 @@ CONTROLS = sorted(
     [*REPO.glob("hooks/deny-*"), *REPO.glob("skills/*/SKILL.md")]
     + [REPO / "automation" / "bin" / name for name in ("nightly-guard", "weekly-gardener", "weekly-retro")]
     + [REPO / "lib" / "kitchen" / f"{name}.py" for name in
-       ("agent_hooks", "credentials", "init", "integrate", "journal", "propose", "repocheck", "rules", "status", "transcripts")]
+       ("agent_hooks", "credentials", "init", "integrate", "journal", "models", "propose", "repocheck", "rules", "status", "transcripts")]
 )
 DECLARATION = re.compile(r"Principles(?: \([^)]*\))?:\s*(.+)")
 NAME = re.compile(r"`([a-z][a-z-]*)`")

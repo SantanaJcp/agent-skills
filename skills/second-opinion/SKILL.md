@@ -1,6 +1,6 @@
 ---
 name: second-opinion
-description: "Cross-model review of a diff before merge, or of a whole setup in design-review mode: reviewers run on the other model's CLI, on two separate axes (standards and the request), and the lead triages every finding into act on, consider, noted or dismissed. Use before merging or opening a PR, when I ask for a review, and always when a change touches auth, tenant scope, sync, data or migrations."
+description: "Cross-model review of a diff before merge, or of a whole setup in design-review mode: reviewers run on the other model (your `kitchen models` reviewer, through T3's delegate_task or the other CLI), on two separate axes (standards and the request), and the lead triages every finding into act on, consider, noted or dismissed. Use before merging or opening a PR, when I ask for a review, and always when a change touches auth, tenant scope, sync, data or migrations."
 ---
 
 # second-opinion
@@ -37,10 +37,11 @@ Auth, tenant scope, sync, data and migrations always get the Skeptic, whatever t
 
 ## 3. Run on the other model
 
-Never use a same-model subagent as a reviewer; that defeats the purpose.
+Never use a same-model subagent as a reviewer; that defeats the purpose. The reviewer model is the person's own setup: `kitchen models get reviewer --author <claude|codex>` (the author's family). Not configured, refused or unreachable: stop BLOCKED with that error. No other model stands in.
 
-- From Claude: `codex exec --skip-git-repo-check -s read-only -o "$DIR/<lens>.md" "<prompt>"`
-- From Codex: `claude -p "<prompt>" > "$DIR/<lens>.md"`
+- **T3 Code** (`delegate_task` is available): one async `delegate_task` per lens, role `review`, a distinct `clientRequestId` each. Target: the instance in `orchestrator_capabilities` whose `driverKind` is the provider (`codex`, or `claudeAgent` for claude); the model id (omit it for `default`); the effort option (`reasoningEffort` on Codex, `effort` on Claude); the tier (`serviceTier` `default` or `priority` on Codex; `fastMode` on Claude). Save each result to `$DIR/<lens>.md`.
+- **Claude Code or Codex CLI**: `$(kitchen models get reviewer --author <a> --command) "<prompt>"`, adding `-o "$DIR/<lens>.md"` for codex or `> "$DIR/<lens>.md"` for claude.
+- **Anywhere the other provider cannot be reached** (a cloud session without it): BLOCKED; say which provider was missing.
 
 Build each prompt from [reviewer-prompt.md](reviewer-prompt.md). Before reading, confirm every output file exists and is not empty. A missing review is a gap, not a pass.
 
@@ -71,6 +72,6 @@ For permissions, publication, migrations, or verification changes, test the crit
 
 ## Reply
 
-Verdict in one line; author model and review route (direct, or reviewers on which CLI); Act on; Consider; Noted; Dismissed; Merge danger; reviewers run (CLI, model, output files). Change no code during the review unless I asked you to resolve the findings.
+Verdict in one line; author model and review route (direct, or reviewers on which CLI); Act on; Consider; Noted; Dismissed; Merge danger; reviewers run (route: delegate_task or CLI; provider, model, effort, tier; output files). Change no code during the review unless I asked you to resolve the findings.
 
 Principles (the kitchen's PRINCIPLES.md): `cross-review`, `evidence`, `no-fallbacks`.
