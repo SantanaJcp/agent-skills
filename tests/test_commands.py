@@ -822,16 +822,33 @@ class ModelsTests(KitchenFixture):
         self.assertEqual(result.returncode, 1)
         self.assertIn("no flag for the fast tier", result.stderr)
 
-    def test_the_listing_shows_every_role_and_keeps_other_entries(self):
-        self.kitchen("models", "set", "worker", "--provider", "claude", "--model", "default", "--effort", "high", "--tier", "standard")
+    def test_the_listing_shows_the_reviewer_for_each_author(self):
         self.kitchen("models", "set", "reviewer", "--author", "claude", "--provider", "codex", "--model", "default",
                      "--effort", "low", "--tier", "fast")
 
         out = self.kitchen("models").stdout
 
-        self.assertIn("worker                   claude default · effort high · tier standard", out)
         self.assertIn("reviewer for claude work codex default · effort low · tier fast", out)
-        self.assertIn("verifier for codex work  not configured", out)
+        self.assertIn("reviewer for codex work  not configured", out)
+
+    def test_roles_nothing_reads_are_refused(self):
+        result = self.kitchen("models", "set", "worker", "--author", "claude", "--provider", "codex", "--model", "default",
+                              "--effort", "low", "--tier", "standard")
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("invalid choice: 'worker'", result.stderr)
+
+    def test_set_refuses_to_drop_tables_it_does_not_read(self):
+        config = self.home / "config" / "models.toml"
+        config.parent.mkdir(parents=True)
+        config.write_text('[worker]\nprovider = "claude"\nmodel = "default"\neffort = "high"\ntier = "standard"\n')
+
+        result = self.kitchen("models", "set", "reviewer", "--author", "claude", "--provider", "codex", "--model", "default",
+                              "--effort", "low", "--tier", "standard")
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("tables kitchen does not read (worker)", result.stderr)
+        self.assertIn("[worker]", config.read_text())
 
 
 class InventoryTests(ProjectFixture):
