@@ -1,4 +1,5 @@
 """`kitchen init`: write only what a repo is missing, on branch kitchen/init, never pushed.
+Principles: `doors` (never pushed, never overwrites), `isolate` (plumbing only; one ref move), `prove` (--prove).
 
 The proposal stage of `kitchen init`, built from git objects only: no worktree, no checkout, no write to the owner's checkout or index.
 It runs `--check` on the commit the branch starts from (`kitchen/init` when it exists, else HEAD), reading files

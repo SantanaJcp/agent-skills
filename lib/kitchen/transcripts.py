@@ -1,4 +1,5 @@
 """`kitchen retro`: my own prompts from Claude Code and Codex transcripts, for the retro skill to read.
+Principles: `encode-lessons` (find the repeated corrections), `truthful-state` (a count built on automated messages is fake).
 
 A retro counts interventions, so every message is classified by provenance first: who or what typed it.
 Signals come from the transcript formats themselves, not from guessing at wording:

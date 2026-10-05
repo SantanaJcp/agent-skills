@@ -1,7 +1,8 @@
 """Which test modules a commit needs: `kitchen check --fast` runs only those; plain `kitchen check` runs them all.
 
-Lint and the public-safety scan always run. The automation suite (about 95 s) runs only when a staged path
-can change it; the other modules (about 15 s) run unless every staged path is documentation.
+Lint and the public-safety scan always run, and so does the principles suite (under a second): PRINCIPLES.md and the
+skills are documentation, and a renamed principle must still fail the commit. The automation suite (about 95 s) runs
+only when a staged path can change it; the other modules (about 15 s) run unless every staged path is documentation.
 """
 from __future__ import annotations
 
@@ -10,6 +11,7 @@ import subprocess
 from pathlib import Path
 
 AUTOMATION_SUITE = "tests/test_automation.py"
+PRINCIPLES_SUITE = "tests/test_principles.py"
 AUTOMATION_TRIGGERS = ("automation/", "lib/")
 
 
@@ -45,7 +47,9 @@ def select(modules: list[str], staged: list[str]) -> tuple[list[str], list[tuple
     other = any(not is_docs(p) and not p.startswith("automation/") for p in staged)
     run, skipped = [], []
     for module in modules:
-        if module == AUTOMATION_SUITE:
+        if module == PRINCIPLES_SUITE:
+            needed, why = True, ""
+        elif module == AUTOMATION_SUITE:
             needed, why = automation, "no staged path under automation/, lib/ or tests/test_automation.py"
         else:
             needed, why = other, "the staged paths are documentation or automation only"

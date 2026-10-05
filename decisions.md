@@ -1,0 +1,21 @@
+# Decisions
+
+One entry per decision: date, decision, scope, when to revisit. `- [ ]` marks a decision the owner still owes (`kitchen status` counts them); close it as `- [x]` with the date and the answer.
+
+## Owed
+
+- [ ] Require a status check on `main` with a ruleset (one-way door; `kitchen init --check .` prints the command).
+
+## Decided
+
+- 2026-10-05. **Principles, not more skills.** The kitchen's direction lives in one file, `PRINCIPLES.md`: what we do and why, so an agent can decide the way the owner would. Scope: the whole kitchen. Revisit when a principle has no control and no "rule only" note.
+- 2026-10-05. **All 24 pstack principles are folded in** under the kitchen's 13, by their own names, plus a 13th principle, `design`, for the code-design ones. Scope: `PRINCIPLES.md`. Revisit when pstack changes its list.
+- 2026-10-05. **Two conflicts settled in favor of the owner's rules:** a legacy path is deleted in the same change only when no behavior anyone relies on is lost (published contracts stay one-way doors); "never block on the human" never covers one-way doors or anything published or sent to people. Scope: `no-fallbacks`, `owner-attention`, `doors`.
+- 2026-10-05. **The index goes in the AGENTS.md every agent reads.** `kitchen install` writes `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md` from the person's own rules plus one line per principle; the detail stays in `PRINCIPLES.md`, read on demand. Codex reads one global file and has no include, so the file is generated, not linked. Scope: install, doctor. Revisit if Codex gains includes.
+- 2026-10-05. **Each person has their own rules.** `kitchen install --rules <file>|global|none`, remembered in `~/.config/kitchen/rules.txt`; the kitchen's `global/AGENTS.md` are its owner's rules, the default when nobody chose. Scope: install, for teammates. Revisit when a teammate installs.
+- 2026-10-05. **pstack's mechanical checks hang on steps that already run** (the reviewer lenses of `second-opinion`, `find-the-cause`, `retro`); no new skill or step. Scope: skills.
+- 2026-10-05. **`kitchen adopt` became `kitchen init`, per repo, never automatic.** It checks, asks numbered questions with recommendations (a terminal), or takes `--yes`/`--prove`/`--base` (an agent), then writes the shared layer on branch `kitchen/init` and the personal layer in `~/.config/kitchen`. `install` offers it for all listed repos, one, or none. Scope: `kitchen init`, `kitchen install`.
+- 2026-10-05. **Agent hooks travel with the repo** (option A): `kitchen init` proposes a copy under `.kitchen/hooks/` with project hook configs, so teammates and cloud sessions get the guards without installing the kitchen; `init --check` reports a stale copy. Scope: `kitchen init`. Revisit after measuring the cloud environments.
+- 2026-10-05. **Models per role are each person's setup**, never fixed in a repo. A model that is not available fails when used, with the role and model named; no other model stands in. Scope: `kitchen models`, `second-opinion`.
+- 2026-10-05. **Not exclusive to T3 Code.** Everything must work in the Claude Code and Codex CLIs, in T3 Code and in cloud sessions; T3's tools are one transport among several. Scope: the whole kitchen.
+- 2026-10-05. **p3-stack is not installed.** Its ideas were read; re-evaluate in a few weeks. Scope: the kitchen.

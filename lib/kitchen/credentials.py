@@ -1,4 +1,6 @@
-"""Credential shapes shared by `kitchen check` (refuse to publish) and `kitchen retro` (redact)."""
+"""Credential shapes shared by `kitchen check` (refuse to publish) and `kitchen retro` (redact).
+
+Principles: `doors` (a published secret cannot be unpublished)."""
 from __future__ import annotations
 
 import re

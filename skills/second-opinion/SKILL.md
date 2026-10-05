@@ -49,7 +49,8 @@ Build each prompt from [reviewer-prompt.md](reviewer-prompt.md). Before reading,
 You hold the full context; the reviewers saw a diff or a file list. For every finding, trace the code: a hypothetical input the callers can never pass is not a finding. Every finding you keep carries:
 
 - its **axis**: Standards, Request or (design and design+diff reviews) Design;
-- its **evidence**: measured (the command you ran and what came out) or inferred (the `file:line` you read).
+- its **evidence**: measured (the command you ran and what came out) or inferred (the `file:line` you read);
+- its **principle**, when one applies: the PRINCIPLES.md id it breaks.
 
 Then place it in exactly one bucket:
 
@@ -71,3 +72,5 @@ For permissions, publication, migrations, or verification changes, test the crit
 ## Reply
 
 Verdict in one line; author model and review route (direct, or reviewers on which CLI); Act on; Consider; Noted; Dismissed; Merge danger; reviewers run (CLI, model, output files). Change no code during the review unless I asked you to resolve the findings.
+
+Principles (the kitchen's PRINCIPLES.md): `cross-review`, `evidence`, `no-fallbacks`.

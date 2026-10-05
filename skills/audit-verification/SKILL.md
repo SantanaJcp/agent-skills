@@ -45,3 +45,5 @@ A feature can be in the inventory, driven, and still asserted by nothing. Report
 ## Reply
 
 Outcome; audited profile; inventory drift (fixed or found); features driven and unreachable ones with their prerequisite; features without a real assertion; product gaps and any XFAIL added; and each control run: command, expected, actual.
+
+Principles (the kitchen's PRINCIPLES.md): `prove`, `truthful-state`.

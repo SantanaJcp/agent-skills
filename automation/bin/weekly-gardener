@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Weekly gardener: one unattended Claude Code run that opens at most one small, verified PR.
+# Principles: `doors` (a PR, never a merge), `prove` (the job reruns the checks), `isolate` (a sealed sandbox).
 # Skips while a previous gardener PR is still open, so reviews never pile up.
 # Generation and publication are separate:
 #   1. Claude runs sealed: no gh, no tokens, no SSH, no git credentials, push URL refused; its Bash runs in

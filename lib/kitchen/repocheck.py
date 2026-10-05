@@ -1,4 +1,5 @@
 """`kitchen init --check`: what a repo still needs for an agent loop that can be trusted. Read-only.
+Principles: `truthful-state` (unknown never counts as PASS); each must-have names its own principle in MUST_HAVES.
 
 It reads files and git metadata, plus GET-only `gh api` calls with a timeout when gh is installed.
 It never runs repository code: no hooks, no package scripts, no `bin/check`. Every criterion is
@@ -20,16 +21,16 @@ MAX_READ_BYTES = 1_000_000
 GH_TIMEOUT_SECONDS = 15
 NOT_A_REPO = 64  # outside 0..len(MUST_HAVES), so it never reads as a count of missing must-haves
 
-MUST_HAVES = (
-    ("check-contract", "check contract"),
-    ("pre-commit-hook", "pre-commit hook active"),
-    ("agents-md", "AGENTS.md"),
-    ("verify-skill", "verify skill + map guard"),
-    ("decisions", "decisions.md"),
-    ("secret-scan", "secret scan in hook"),
-    ("baseline-ratchet", "baseline ratchet"),
-    ("skills-linked", "skills in .claude/skills"),
-    ("branch-protection", "required status on shared branch"),
+MUST_HAVES = (  # (id, label, the principle in PRINCIPLES.md it enforces)
+    ("check-contract", "check contract", "prove"),
+    ("pre-commit-hook", "pre-commit hook active", "prove"),
+    ("agents-md", "AGENTS.md", "small-owned"),
+    ("verify-skill", "verify skill + map guard", "prove"),
+    ("decisions", "decisions.md", "handoff"),
+    ("secret-scan", "secret scan in hook", "doors"),
+    ("baseline-ratchet", "baseline ratchet", "prove"),
+    ("skills-linked", "skills in .claude/skills", "handoff"),
+    ("branch-protection", "required status on shared branch", "doors"),
 )
 
 LOCKFILES = ("package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock", "bun.lockb")
@@ -670,7 +671,7 @@ def check(path: Path, branch: str | None = None, commit: str | None = None) -> d
         "skills-linked": skills_linked(repo, skills),
         "branch-protection": branch_protection(repo, branch),
     }
-    must_haves = [{"id": key, "label": label, **results[key]} for key, label in MUST_HAVES]
+    must_haves = [{"id": key, "label": label, "principle": principle, **results[key]} for key, label, principle in MUST_HAVES]
     next_steps = [{"n": i, "id": m["id"], "step": m.get("next", ""), "one_way_door": bool(m.get("one_way_door"))}
                   for i, m in enumerate((m for m in must_haves if m["status"] != "PASS"), start=1)]
     for m in must_haves:

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""PreToolUse guard: deny recursive `rm` outside the temp dir; point to the Trash instead."""
+"""PreToolUse guard: deny recursive `rm` outside the temp dir; point to the Trash instead.
+
+Principles: `doors` (a deletion outside git cannot be undone)."""
 import os
 import sys
 import tempfile

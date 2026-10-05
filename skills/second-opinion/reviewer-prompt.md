@@ -22,12 +22,12 @@ Report separate sections:
 ## Request: what the request asked for that is missing or partial, what the work does that nobody asked for, and what looks implemented but wrong; quote the request.
 ## Design (design and design+diff reviews only): where the structure fails its goal.
 
-Every finding must cite file:line and a concrete path to failure: the input, state or sequence that breaks it. No path, no finding. Label each finding measured (give the command and its result) or inferred (from reading). Mark a finding BLOCKER when it must stop the merge. Say "no findings" when there are none; do not fill space with style preferences.
+Every finding must cite file:line and a concrete path to failure: the input, state or sequence that breaks it. No path, no finding. Label each finding measured (give the command and its result) or inferred (from reading), and name the principle it breaks when one applies (an id from the kitchen's PRINCIPLES.md, such as `prove` or `no-fallbacks`). Mark a finding BLOCKER when it must stop the merge. Say "no findings" when there are none; do not fill space with style preferences.
 Length: about 400 words for a small diff; longer only when the findings need it.
 ```
 
 ## Lenses
 
-- **Skeptic**: correctness and completeness. What inputs, states or orderings break this? Which error paths are swallowed? What does the author believe that is not proven? Where does "it worked once" pass for verification?
+- **Skeptic**: correctness and completeness. What inputs, states or orderings break this? Which error paths are swallowed? What does the author believe that is not proven? Where does "it worked once" pass for verification? For each new or changed test: would it still pass if every function it imports returned `undefined`, or if the fix were reverted? Flag weak assertions, mock-only tests, expectations recomputed the way the code does, pinned constants and fixtures asserting fixtures.
 - **Architect**: structural fit. Does the design serve the stated goal? Where does responsibility leak across boundaries? Which assumptions about scale, concurrency or ordering break first?
-- **Minimalist**: necessity. What can be deleted without losing the goal? Which abstraction has a single call site? What flexibility has no second use case?
+- **Minimalist**: necessity. What can be deleted without losing the goal? Which abstraction has a single call site? What flexibility has no second use case? Can a new reader answer "where does X come from?" and "what can change X?" in under 30 seconds, or does it take more than three files or layers?

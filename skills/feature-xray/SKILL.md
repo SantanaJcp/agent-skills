@@ -27,3 +27,5 @@ Temporary fixtures are allowed when you own them alone: a scratch file, a temp d
 - **Map**: table of component → role → `file:line`.
 - **Findings**: each with its evidence label and location, worst first.
 - **Decisions**: numbered, each with your recommended option, its cost, and whether it is a one-way or two-way door.
+
+Principles (the kitchen's PRINCIPLES.md): `evidence`, `owner-attention`.

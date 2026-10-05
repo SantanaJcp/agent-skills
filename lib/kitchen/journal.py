@@ -1,4 +1,6 @@
-"""`kitchen log`: checkpoints that autonomous agents leave for `kitchen status`."""
+"""`kitchen log`: checkpoints that autonomous agents leave for `kitchen status`.
+
+Principles: `handoff`, `owner-attention` (blocked and decision notify)."""
 from __future__ import annotations
 
 import json

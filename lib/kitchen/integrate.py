@@ -1,4 +1,5 @@
 """`kitchen integrate`: prove that branches work together, not just one by one.
+Principles: `isolate` (a disposable clone, exact SHAs), `prove`, `truthful-state` (a recorded PASS binds to SHAs and checks).
 
 Given a repo, a base and an ordered list of branches (or `pr:<n>` heads), it merges them in order onto the base
 in a disposable clone and runs the project's check commands after every merge. The verdict is bound to the exact

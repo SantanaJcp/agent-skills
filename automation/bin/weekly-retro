@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Weekly retro: one unattended Claude Code run of the retro skill over the last week of transcripts.
 # It only writes a report with proposals; nothing is applied.
+# Principles: `encode-lessons`.
 # Usage: weekly-retro
 set -euo pipefail
 

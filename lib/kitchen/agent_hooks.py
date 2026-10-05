@@ -1,4 +1,5 @@
 """Agent hooks: merge the guards in hooks/ into Claude Code and Codex as PreToolUse hooks on Bash.
+Principles: `encode-lessons` (rules that became guards), `no-fallbacks` (a file it cannot parse is refused).
 
 Both tools read the same shape (hooks.PreToolUse[] of {matcher, hooks: [{type: command, command, timeout}]}):
 Claude Code from ~/.claude/settings.json, Codex from ~/.codex/hooks.json. The kitchen owns only the handlers whose

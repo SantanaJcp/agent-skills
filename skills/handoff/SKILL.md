@@ -24,3 +24,5 @@ Reference specs, PRs, commits and logs by path or URL instead of copying them. R
 ## For the receiving agent
 
 Before trusting the handoff, re-measure the state block: `git rev-parse HEAD`, `git status`, the PR list. Report any difference before continuing.
+
+Principles (the kitchen's PRINCIPLES.md): `handoff`, `evidence`.
