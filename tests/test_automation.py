@@ -670,6 +670,8 @@ class GardenerPublicationTests(AutomationFixture):
         argv = args.read_text().splitlines()
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertIn("--strict-mcp-config", argv)
+        # neither the user's interactive hooks nor the project's checked-in settings load; --settings carries the sandbox
+        self.assertEqual(argv[argv.index("--setting-sources") + 1], "local")
         settings = json.loads(Path(argv[argv.index("--settings") + 1]).read_text())
         sandbox = settings["sandbox"]
         self.assertEqual((sandbox["enabled"], sandbox["failIfUnavailable"], sandbox["allowUnsandboxedCommands"]), (True, True, False))
