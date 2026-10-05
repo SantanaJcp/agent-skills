@@ -53,7 +53,8 @@ PROVE_TIMEOUT_SECONDS = 900
 GITLEAKS_TIMEOUT_SECONDS = 120
 TAIL_LINES = 12
 CONTROL_FILE = "kitchen-init-control.md"
-OURS = ("written", "unchanged", "edited by owner")
+OURS = ("written", "refreshed", "unchanged", "edited by owner")
+VENDORED = ("agent-hooks", "principles")  # copies of the kitchen's own files: refreshed when kitchen wrote them and nobody edited them
 GENERATOR = "kitchen init"
 CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
@@ -69,6 +70,7 @@ DOES = {
                        "unless only documentation is staged. Inactive until `git config core.hooksPath .githooks` in each clone.",
     "verify-skill": "Skeleton of the project's verify skill from templates/verify: placeholders to fill, no bin/verify yet.",
     "baseline-ratchet": "What --check measured, in measure-only mode: no gate reads it yet.",
+    "principles": "The kitchen's PRINCIPLES.md, so an agent with only this repo (a teammate, a cloud session) knows what we do and why.",
     "agent-hooks": "The kitchen's agent guards, copied into the repo so teammates and cloud sessions run them without installing the "
                    "kitchen; .claude/settings.json runs each one before every Bash command in Claude Code.",
 }
@@ -378,12 +380,16 @@ def wanted_files(repo: repocheck.Repo, report: dict, name: str, doors: list[dict
         guards = repocheck.kitchen_guards()
         for name, content in guards.items():
             path = f"{repocheck.VENDORED_HOOKS}/{name}"
-            if not repo.exists(path):
+            if not repo.exists(path) or repo.read(path) != content:  # missing, or a copy init may refresh
                 files.append(File(path, "agent-hooks", content, 0o644 if name.endswith(".py") else 0o755))
         if not repo.exists(repocheck.CLAUDE_SETTINGS):
             commands = [{"type": "command", "command": repocheck.guard_command(n), "timeout": 30} for n in guards if not n.endswith(".py")]
             settings = {"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": commands}]}}
             files.append(File(repocheck.CLAUDE_SETTINGS, "agent-hooks", json.dumps(settings, indent=2) + "\n"))
+    if status["principles"] != "PASS" and repocheck.KITCHEN_PRINCIPLES.is_file():
+        content = repocheck.KITCHEN_PRINCIPLES.read_text(encoding="utf-8")
+        if not repo.exists(repocheck.VENDORED_PRINCIPLES) or repo.read(repocheck.VENDORED_PRINCIPLES) != content:
+            files.append(File(repocheck.VENDORED_PRINCIPLES, "principles", content))
     return files
 
 
@@ -643,6 +649,8 @@ def blocks(piece: str, content: str | None, proof: dict | None) -> str:
     if piece == "decisions":
         owed = len(re.findall(r"^\s*- \[ \]", content or "", re.MULTILINE))
         return f"nothing; it lists {owed} owed decision{'s' if owed != 1 else ''} for `kitchen status`"
+    if piece == "principles":
+        return "nothing: agents read it once AGENTS.md or CLAUDE.md names it"
     if piece == "agent-hooks":
         return ("agent commands that push to a shared branch, skip the repo's hooks, or rm -r outside the temp dir, "
                 "in Claude Code sessions started at the repo root")
@@ -707,7 +715,7 @@ def readiness(states: dict[str, str], written: int, proof: dict | None) -> dict:
             "unattended_ready": {"state": "not assessed", "detail": "kitchen init does not assess unattended runs (sandbox, schedule, credentials)"}}
 
 
-def proposals(report: dict, states: dict[str, str], pieces: dict[str, str], name: str) -> list[dict]:
+def proposals(report: dict, states: dict[str, str], pieces: dict[str, str], name: str, repo: repocheck.Repo) -> list[dict]:
     status = {m["id"]: m for m in report["must_haves"]}
     steps = {s["id"]: s["step"] for s in report["next_steps"]}
     ours = {pieces[p] for p, s in states.items() if s in OURS}
@@ -716,7 +724,8 @@ def proposals(report: dict, states: dict[str, str], pieces: dict[str, str], name
         out.append({"id": key, "text": text})
     def existing(key: str) -> None:
         add(key, f"{status[key]['proof']}. {steps.get(key, '')}".strip())
-    for key in ("check-contract", "pre-commit-hook", "secret-scan", "agents-md", "verify-skill", "baseline-ratchet", "skills-linked", "agent-hooks"):
+    for key in ("check-contract", "pre-commit-hook", "secret-scan", "agents-md", "verify-skill", "baseline-ratchet", "skills-linked",
+                "agent-hooks", "principles"):
         if status[key]["status"] == "PASS":
             continue
         if key == "check-contract" and "check-contract" not in ours:
@@ -739,6 +748,12 @@ def proposals(report: dict, states: dict[str, str], pieces: dict[str, str], name
                 existing(key)
         elif key in ("verify-skill", "baseline-ratchet") and key not in ours:
             existing(key)
+        elif key == "principles":
+            copy = repocheck.VENDORED_PRINCIPLES
+            if states.get(copy) in ("exists", "edited by owner"):
+                add(key, f"{copy} is not kitchen's copy, so kitchen left it alone: replace it with the kitchen's PRINCIPLES.md")
+            if not any(copy in (repo.read(name) or "") for name in ("AGENTS.md", "CLAUDE.md")):
+                add(key, f"add this line to AGENTS.md (kitchen writes no prose there): {repocheck.PRINCIPLES_POINTER}")
         elif key == "agent-hooks":
             if "agent-hooks" not in ours:
                 existing(key)
@@ -841,7 +856,7 @@ def render(result: dict, markdown: bool = False) -> str:
         if following and (following["piece"], following["state"], following["blocks"]) == (f["piece"], f["state"], f["blocks"]):
             continue  # one piece, several files: say what it does once, under its last file
         out.sub(f"does: {f['does']}")
-        if f["state"] in ("written", "unchanged"):
+        if f["state"] in ("written", "refreshed", "unchanged"):
             out.sub(f"would block today: {f['blocks']}")
     out.head("Proposals (not written: yours to apply)")
     if not result["proposals"]:
@@ -929,7 +944,13 @@ def build(git: Git, root: Path, head: str, existing: str | None, branch: str | N
     if existing and git.run(root, "merge-base", "--is-ancestor", head, existing).returncode != 0:
         notes.append(f"{BRANCH} does not contain HEAD ({head[:7]}); rebase it if the proposal should sit on today's HEAD")
 
-    to_write = [wanted[p] for p in paths if states[p] == "write"]
+    for p in paths:  # a copy of the kitchen's own file that kitchen wrote and nobody edited follows the kitchen
+        expected_mode = ("100755" if wanted[p].mode & 0o111 else "100644") if p in wanted else None
+        if (states[p] == "unchanged" and pieces[p] in VENDORED and p in wanted
+                and manifest_state == "unchanged"  # only a manifest kitchen wrote, untouched, vouches for ownership
+                and repo.tree.get(p, ("", ""))[0] == expected_mode):  # a changed mode is the owner's edit too
+            states[p] = "refresh"
+    to_write = [wanted[p] for p in paths if states[p] in ("write", "refresh")]
     report_entry = manifest.get("report") if isinstance(manifest.get("report"), dict) else None
     report_now = classify(git, repo, REPORT, report_entry) if to_write else "skip"
     write_manifest = bool(to_write) and manifest_state in ("absent", "unchanged")
@@ -945,7 +966,7 @@ def build(git: Git, root: Path, head: str, existing: str | None, branch: str | N
         pieces_commit = commit_files(git, root, start, [(f.path, f.content.encode(), "100755" if f.mode & 0o111 else "100644") for f in to_write],
                                      f"kitchen init: propose the missing pieces\n\n{listing}\n", scratch / "index")
         for f in to_write:
-            states[f.path] = "written"
+            states[f.path] = "refreshed" if states[f.path] == "refresh" else "written"
 
     proof = None
     if run_proof:
@@ -953,7 +974,7 @@ def build(git: Git, root: Path, head: str, existing: str | None, branch: str | N
 
     files = []
     for p in paths:
-        content = wanted[p].content if states[p] == "written" else (repo.read(p) if repo.is_file(p) else None)
+        content = wanted[p].content if states[p] in ("written", "refreshed") else (repo.read(p) if repo.is_file(p) else None)
         files.append({"path": p, "piece": pieces[p], "state": states[p], "does": DOES.get(pieces[p], ""),
                       "blocks": blocks(pieces[p], content, proof)})
     next_steps = []
@@ -974,7 +995,7 @@ def build(git: Git, root: Path, head: str, existing: str | None, branch: str | N
         "ran_repository_code": run_proof,
         "must_haves": [{"id": m["id"], "label": m["label"], "status": m["status"], "proof": m["proof"]} for m in report["must_haves"]],
         "files": files,
-        "proposals": proposals(report, states, pieces, name),
+        "proposals": proposals(report, states, pieces, name, repo),
         "unverified": unverified(report, states, pieces, commands, proof, name),
         "readiness": readiness(states, len(to_write), proof),
         "trust": trust_lines(states, pieces, proof, proof["check_present"] if proof else repo.is_file(CHECK) or CHECK in [f.path for f in to_write]),

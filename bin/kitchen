@@ -208,22 +208,11 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         elif link not in wanted:
             failures.append(f"stale link {link}: its source is no longer an installable skill; run `bin/kitchen install`")
 
+    failures += rules.freshness(h, REPO)
     try:
         choice = rules.configured()
-        expected = rules.render(REPO, rules.resolve(choice, REPO))
-    except rules.RulesError as error:
-        failures.append(str(error))
-        choice, expected = None, None
-    for target in rules_targets(h):
-        if expected is None:
-            continue
-        if not (target.exists() or target.is_symlink()):
-            failures.append(f"missing rules file {target}: run `bin/kitchen install`")
-        elif not rules.generated(target):
-            failures.append(f"{target} was not written by this kitchen's install"
-                            + (" (it is the old link to global/AGENTS.md)" if owned(target) else "") + "; run `bin/kitchen install`")
-        elif target.read_text(encoding="utf-8") != expected:
-            failures.append(f"{target} is stale: its rules or PRINCIPLES.md changed since install; run `bin/kitchen install`")
+    except rules.RulesError:
+        choice = None  # freshness above already reported it
     for author in models.PROVIDERS:
         try:
             models.get("reviewer", author)
@@ -444,6 +433,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         print(f"No projects: list one path per line in {common.config_dir() / 'projects.txt'}, or pass paths.")
         return 1
     report = status.build(repos, since)
+    report["rules"] = rules.freshness(home(), REPO)
     if args.exceptions:
         lines = status.exceptions(report)
         if lines:

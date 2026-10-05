@@ -33,10 +33,15 @@ MUST_HAVES = (  # (id, label, the principle in PRINCIPLES.md it enforces)
     ("skills-linked", "skills in .claude/skills", "handoff"),
     ("branch-protection", "required status on shared branch", "doors"),
     ("agent-hooks", "agent guards travel with the repo", "doors"),
+    ("principles", "principles travel with the repo", "handoff"),
 )
 KITCHEN_HOOKS = Path(__file__).resolve().parents[2] / "hooks"
 VENDORED_HOOKS = ".kitchen/hooks"
 CLAUDE_SETTINGS = ".claude/settings.json"
+KITCHEN_PRINCIPLES = Path(__file__).resolve().parents[2] / "PRINCIPLES.md"
+VENDORED_PRINCIPLES = ".kitchen/PRINCIPLES.md"
+PRINCIPLES_POINTER = (f"Principles: `{VENDORED_PRINCIPLES}` says what we do and why. "
+                      "When no rule here settles a decision, read it and decide the way it points.")
 
 LOCKFILES = ("package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock", "bun.lockb")
 NODE_LINT = tuple(f"eslint.config.{ext}" for ext in ("js", "mjs", "cjs", "ts", "mts", "cts")) + (
@@ -677,6 +682,26 @@ def agent_hooks(repo: Repo) -> dict:
     return criterion("PASS", f"{VENDORED_HOOKS} matches this kitchen's {len(guards)} files; {CLAUDE_SETTINGS} runs each guard")
 
 
+def principles(repo: Repo) -> dict:
+    """An agent with only this repo (a teammate, a cloud session) reads the principles: a copy identical to this
+    kitchen's, named in AGENTS.md (Codex) or CLAUDE.md (Claude Code)."""
+    if not KITCHEN_PRINCIPLES.is_file():
+        return criterion("unknown", f"this kitchen has no {KITCHEN_PRINCIPLES.name} to compare with")
+    pointer = f"add this line to AGENTS.md: {PRINCIPLES_POINTER}"
+    if not repo.is_file(VENDORED_PRINCIPLES):
+        return criterion("FAIL", f"no {VENDORED_PRINCIPLES}: an agent with only this repo never sees the principles",
+                         next=f"Copy the kitchen's PRINCIPLES.md to {VENDORED_PRINCIPLES} (kitchen init writes it), then {pointer}")
+    problems = []
+    if repo.read(VENDORED_PRINCIPLES) != KITCHEN_PRINCIPLES.read_text(encoding="utf-8"):
+        problems.append("differs from this kitchen's copy")
+    if not any(VENDORED_PRINCIPLES in (repo.read(name) or "") for name in ("AGENTS.md", "CLAUDE.md")):
+        problems.append("neither AGENTS.md nor CLAUDE.md names it, so no agent opens it")
+    if problems:
+        return criterion("FAIL", f"{VENDORED_PRINCIPLES}: " + "; ".join(problems),
+                         next=f"Refresh {VENDORED_PRINCIPLES} with kitchen init; " + pointer)
+    return criterion("PASS", f"{VENDORED_PRINCIPLES} matches this kitchen's; named in the agent instructions")
+
+
 def gh_get(endpoint: str) -> tuple[object | None, str | None]:
     gh = os.environ.get("KITCHEN_GH") or "gh"
     env = {**os.environ, "GH_PROMPT_DISABLED": "1", "GH_NO_UPDATE_NOTIFIER": "1", "NO_COLOR": "1"}
@@ -754,6 +779,7 @@ def check(path: Path, branch: str | None = None, commit: str | None = None) -> d
         "skills-linked": skills_linked(repo, skills),
         "branch-protection": branch_protection(repo, branch),
         "agent-hooks": agent_hooks(repo),
+        "principles": principles(repo),
     }
     must_haves = [{"id": key, "label": label, "principle": principle, **results[key]} for key, label, principle in MUST_HAVES]
     next_steps = [{"n": i, "id": m["id"], "step": m.get("next", ""), "one_way_door": bool(m.get("one_way_door"))}

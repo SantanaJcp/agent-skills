@@ -130,3 +130,23 @@ def ask(current: Path, kitchen_rules: Path) -> str:
         if reply.startswith(("/", "~")):
             return reply
         print("   type the absolute path of your rules file" if reply == "2" else "   answer 1 or 3, or type an absolute path")
+
+
+def freshness(home: Path, repo: Path) -> list[str]:
+    """What is wrong with the installed rule files, compared with what `kitchen install` would write now; empty when fresh.
+    Read by `doctor` and by `status`, so an edited rule or principle that never reached the agents shows up."""
+    try:
+        expected = render(repo, resolve(configured(), repo))
+    except RulesError as error:
+        return [str(error)]
+    problems = []
+    for target in targets(home):
+        if expected is None:
+            continue
+        if not (target.exists() or target.is_symlink()):
+            problems.append(f"missing rules file {target}: run `kitchen install`")
+        elif not generated(target):
+            problems.append(f"{target} was not written by this kitchen's install; run `kitchen install`")
+        elif target.read_text(encoding="utf-8") != expected:
+            problems.append(f"{target} is stale: its rules or PRINCIPLES.md changed since install; run `kitchen install`")
+    return problems

@@ -26,8 +26,9 @@ Must-haves
   FAIL     skills in .claude/skills           no project skills under .agents/skills to link
   unknown  required status on shared branch   origin is not a GitHub remote, so protection cannot be read
   FAIL     agent guards travel with the repo  no .kitchen/hooks/: teammates and cloud sessions run agents without the kitchen's guards
+  FAIL     principles travel with the repo    no .kitchen/PRINCIPLES.md: an agent with only this repo never sees the principles
 
-Missing 9 of 10 must-haves (8 FAIL, 1 unknown)
+Missing 10 of 11 must-haves (9 FAIL, 1 unknown)
 Next steps (printed only; nothing was changed)
   1. Add an executable bin/check whose tier table declares commit, integrate, nightly and verify-tree (and prints them with --list), or declare those tiers in .kitchen/checks.toml.
   2. Add a tracked pre-commit hook that runs `bin/check commit`, then point core.hooksPath at its folder.
@@ -38,3 +39,4 @@ Next steps (printed only; nothing was changed)
   7. Keep project skills in .agents/skills/ (shared by Codex and Claude) and link them into .claude/skills/.
   8. Push to GitHub (or check the host's branch rules by hand); then rerun.
   9. Copy the kitchen's hooks/ (deny-no-verify, deny-recursive-rm, deny-shared-push, shellparse.py) into .kitchen/hooks/ and run each guard from .claude/settings.json (kitchen init writes both when they are missing).
+  10. Copy the kitchen's PRINCIPLES.md to .kitchen/PRINCIPLES.md (kitchen init writes it), then add this line to AGENTS.md: Principles: `.kitchen/PRINCIPLES.md` says what we do and why. When no rule here settles a decision, read it and decide the way it points.

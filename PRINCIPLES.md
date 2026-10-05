@@ -127,7 +127,7 @@ Every brief stands alone: goal, scope, exact branch or SHA, how to verify, and a
 
 - **Why:** the next agent has no memory of this conversation, and asking a decision already made spends the owner's attention twice. Past transcripts are the process materialized (the video); the `retro` skill mines them.
 - **When:** delegating, ending a session, taking a decision.
-- **Enforced by:** `init` criteria `decisions` and `skills-linked`; `status` shows owed decisions and checkpoints; the `handoff` skill.
+- **Enforced by:** `init` criteria `decisions`, `skills-linked` and `principles` (a copy of this file in the repo, named in its AGENTS.md, for agents that only have the repo); `status` shows owed decisions, checkpoints, and rule files that went stale after install; the `handoff` skill.
 
 ## 13. Make the right thing the easy thing (`design`)
 
