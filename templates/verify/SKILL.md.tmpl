@@ -36,6 +36,8 @@ $V sql "<query>" --expect "<rows>"
 $V diff <before> <after>    # ignores volatile fields: <list>
 ```
 
+UI surfaces are driven through `$V` too, so the gate is the same everywhere. In T3 Code an agent may also look at them with `preview_*` (web) or `device_*` (mobile) and keep the recording as evidence; that is extra proof, never a replacement for `$V prove`.
+
 ## Clean up
 
 ```bash
