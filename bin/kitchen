@@ -396,6 +396,17 @@ def cmd_inventory(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_adopt(args: argparse.Namespace) -> int:
+    from kitchen import adopt  # local import: keeps this subcommand out of the shared import line
+    try:
+        report = adopt.check(Path(args.path), args.branch)
+    except adopt.NotARepo as error:
+        print(f"FAIL  {error}", file=sys.stderr)
+        return adopt.NOT_A_REPO
+    print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else adopt.render(report))
+    return report["missing"]
+
+
 def cmd_retro(args: argparse.Namespace) -> int:
     prompts, coverage = transcripts.collect(common.parse_since(args.since), args.tool, args.match, args.include_automated)
     if args.json:
@@ -457,6 +468,14 @@ def main() -> int:
     inv = sub.add_parser("inventory", help="skills, rule files and automations the agents can see, and their drift")
     inv.add_argument("--json", action="store_true")
     inv.set_defaults(func=cmd_inventory)
+
+    adopt = sub.add_parser("adopt", help="what a repo is missing for a trustworthy agent loop (read-only with --check)")
+    adopt.add_argument("path", help="repository to inspect")
+    adopt.add_argument("--check", action="store_true", required=True,
+                       help="read-only: run no repository code, print PASS/FAIL/unknown per criterion; exit code = must-haves not PASS")
+    adopt.add_argument("--branch", help="shared branch to read for a required status (default: the GitHub default branch)")
+    adopt.add_argument("--json", action="store_true")
+    adopt.set_defaults(func=cmd_adopt)
 
     retro = sub.add_parser("retro", help="my prompts from Claude Code and Codex transcripts")
     retro.add_argument("--since", default="7d")
