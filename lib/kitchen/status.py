@@ -6,7 +6,8 @@ overdue, a gardener run that was refused, incomplete, overdue or not recorded on
 could not read, owed decisions, and checkpoints that wait on the owner (blocked, decision), unattached ones included.
 
 Each of nightly, gardener and decisions is configured only by explicit config, never guessed from the records:
-- the nightly, by the project's automation env, `<config>/automation/<project>.env`, the file the jobs source;
+- the nightly, by a `GUARD_STEPS` array with at least one step in the project's automation env,
+  `<config>/automation/<project>.env`, the file the jobs source (a gardener-only host sets `GUARD_STEPS=()`);
 - the gardener, by `GARDENER_VERIFY_STEPS` in that env, or a `gardener` key in the project's integrate.toml entry;
 - decisions, by a `base` in that entry.
 One that is not configured shows an informational `not configured` line: never green, never an exception. One that is
@@ -37,9 +38,108 @@ GARDENER_DUE = datetime.timedelta(days=8)  # install-schedule runs the gardener 
 NOON = datetime.timedelta(hours=12)
 GARDENER_GREEN = ("published", "none")
 REMOTE = re.compile(r"remote:(\S+)")
-# An assignment the gardener job reads when it sources the env; a commented-out line configures nothing.
-GARDENER_STEPS = re.compile(r"^[ \t]*(?:(?:export|declare|typeset|readonly)(?:[ \t]+-\w+)*[ \t]+)?GARDENER_VERIFY_STEPS\+?=",
-                            re.MULTILINE)
+
+
+def assignment(name: str) -> re.Pattern:
+    """An assignment the jobs read when they source the env; a commented-out line configures nothing."""
+    return re.compile(rf"^[ \t]*(?:(?:export|declare|typeset|readonly)(?:[ \t]+-\w+)*[ \t]+)?{name}(\+?)=", re.MULTILINE)
+
+
+GARDENER_STEPS = assignment("GARDENER_VERIFY_STEPS")
+GUARD_STEPS = assignment("GUARD_STEPS")
+
+
+def skip_quoted(text: str, i: int) -> int:
+    """The index after the quoted string that starts at text[i]; -1 when it never closes."""
+    quote, i = text[i], i + 1
+    while i < len(text):
+        if quote == '"' and text[i] == "\\":
+            i += 2
+            continue
+        if text[i] == quote:
+            return i + 1
+        i += 1
+    return -1
+
+
+def skip_group(text: str, i: int, opening: str, closing: str) -> int:
+    """The index after the group whose `opening` is text[i], as in `$(...)` or `${...}`; -1 when it never closes."""
+    depth = 0
+    while i < len(text):
+        if text[i] in "'\"":
+            i = skip_quoted(text, i)
+            if i < 0:
+                return -1
+            continue
+        depth += 1 if text[i] == opening else -1 if text[i] == closing else 0
+        i += 1
+        if depth == 0:
+            return i
+    return -1
+
+
+# Inside double quotes, the expansions that can yield no word at all.
+QUOTED_LIST = re.compile(r"\$\{[^}]*\[@\]|\$@")
+
+
+def array_words(text: str, i: int) -> tuple[int, int] | None:
+    """The words of the bash array body opened at text[i], read as bash reads them (quotes, `$(...)`, backslashes,
+    comments, line continuations): how many surely make one element, and how many come from expansions that may make
+    none. None when it never closes."""
+    sure = maybe = 0
+    word = None  # None between words, else whether the current word surely makes an element
+    i += 1
+    while i < len(text):
+        c = text[i]
+        if c in " \t\n)":
+            if word is not None:
+                sure, maybe = (sure + 1, maybe) if word else (sure, maybe + 1)
+            word = None
+            if c == ")":
+                return sure, maybe
+            i += 1
+            continue
+        if text.startswith("\\\n", i):  # a line continuation: bash removes it
+            i += 2
+            continue
+        if c == "#" and word is None:
+            end = text.find("\n", i)
+            i = len(text) if end < 0 else end
+            continue
+        word = True if word is None else word
+        if c in "'\"":
+            close = skip_quoted(text, i)
+            if close > 0 and c == '"' and QUOTED_LIST.search(text, i, close):
+                word = False
+            i = close
+        elif c == "$" and text.startswith(("$(", "${"), i):
+            word, i = False, skip_group(text, i + 1, text[i + 1], ")" if text[i + 1] == "(" else "}")
+        elif c == "`":
+            close = text.find("`", i + 1)
+            word, i = False, (close + 1 if close >= 0 else -1)
+        elif c == "$":
+            word, i = False, i + 1
+        else:
+            i += 2 if c == "\\" else 1
+        if i < 0:
+            return None
+    return None
+
+
+def steps(text: str, pattern: re.Pattern) -> tuple[int, int] | None:
+    """The elements the env leaves in the array after all its assignments in order (`=` resets, `+=` appends): how
+    many surely exist, and how many come from expansions that may yield none. None when one cannot be parsed.
+    A scalar assignment is one element, as bash makes it."""
+    sure = maybe = 0
+    for match in pattern.finditer(text):
+        if text.startswith("(", match.end()):
+            found = array_words(text, match.end())
+            if found is None:
+                return None
+        else:
+            found = (1, 0)
+        sure, maybe = (sure + found[0], maybe + found[1]) if match.group(1) else found
+    return sure, maybe
 
 
 def gh_timeout() -> int:
@@ -269,8 +369,18 @@ def nightly_state(env: dict, run: dict | None, head: str | None, up, repo: Path,
     """The nightly's last run, or that it is configured with no run recorded, or that it is not configured at all."""
     if not env["exists"]:
         return {"not_configured": f"no {env['path']}"}
+    if env["error"]:
+        return {"setting_error": env["error"]}
+    count = steps(env["text"], GUARD_STEPS)
+    if count is None:
+        return {"setting_error": f"cannot parse GUARD_STEPS in {env['path']}"}
+    sure, maybe = count
+    if not sure and maybe:
+        return {"setting_error": f"cannot tell whether GUARD_STEPS in {env['path']} holds a step: only expansions"}
+    if not sure:
+        return {"not_configured": f"GUARD_STEPS is empty or unset in {env['path']}"}
     if run is None:
-        return {"no_record": f"configured in {env['path']}"}
+        return {"no_record": f"GUARD_STEPS in {env['path']}"}
     return {**run, "matches": nightly_match(run, head, up), "behind": behind_base(repo, run, base)}
 
 
@@ -308,6 +418,8 @@ def nightly_line(run: dict) -> str:
         return f"nightly    not configured ({run['not_configured']})"
     if "no_record" in run:
         return f"nightly    ✗ no record ({run['no_record']})"
+    if "setting_error" in run:
+        return f"nightly    {UNKNOWN}: {run['setting_error']}"
     mark = "✓" if nightly_green(run) else "✗"  # an overdue green is not green now
     failed = f" (failed: {run['failed_step']})" if run.get("failed_step") else ""
     matches = f" (= {run['matches']})" if run.get("matches") else ""

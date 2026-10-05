@@ -388,7 +388,7 @@ class LogAndStatusTests(ProjectFixture):
 
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
         self.assertEqual(result.stdout.splitlines(), [
-            f"shop  nightly    ✗ no record (configured in {env})",
+            f"shop  nightly    ✗ no record (GUARD_STEPS in {env})",
             f"shop  gardener   ✗ no record on this host (GARDENER_VERIFY_STEPS in {env}; if it runs on another host,"
             f" set gardener = \"remote:<host-label>\" in {self.home / 'config' / 'integrate.toml'})",
             "shop  decisions  unknown: cannot resolve origin/nowhere in this repo",
@@ -413,6 +413,63 @@ class LogAndStatusTests(ProjectFixture):
         self.assertIn("  nightly    ✓ green", configured)
         self.assertIn("  gardener   ✓ published", configured)
         self.assertIn("  decisions  no decisions.md at main", configured)
+
+    def test_an_empty_guard_steps_leaves_the_nightly_not_configured_on_a_gardener_only_host(self):
+        project = self.make_project("shop")
+        self.fake("gh", "echo '[]'")
+        self.configure_base("main")
+        env = self.configure_automation(text='GUARD_STEPS=()\nGARDENER_VERIFY_STEPS=("tests|true")\n')
+        self.list_projects(project)
+
+        result = self.kitchen("status", "--exceptions")
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertEqual(result.stdout.splitlines(), [
+            f"shop  gardener   ✗ no record on this host (GARDENER_VERIFY_STEPS in {env}; if it runs on another host,"
+            f" set gardener = \"remote:<host-label>\" in {self.home / 'config' / 'integrate.toml'})",
+        ])
+        self.assertIn(f"  nightly    not configured (GUARD_STEPS is empty or unset in {env})", self.kitchen("status").stdout)
+
+    def test_the_nightly_is_configured_only_by_a_guard_steps_array_with_a_step_as_bash_reads_it(self):
+        project = self.make_project("shop")
+        self.list_projects(project)
+        configured, absent, unknown = "  nightly    ✗ no record (GUARD_STEPS in", "  nightly    not configured (GUARD_STEPS is empty", \
+            "  nightly    unknown: cannot tell whether GUARD_STEPS"
+        # Element counts checked with bash: `source <env>; echo ${#GUARD_STEPS[@]}`.
+        cases = {
+            "": absent,                                                                    # 0
+            "GUARD_LABEL=\"nightly-guard\"\n": absent,                                    # 0
+            '# GUARD_STEPS=("tests|true")\n': absent,                                       # 0
+            'GUARD_STEPS=(\n  # "tests|true"\n)\n': absent,                                # 0
+            'GUARD_STEPS=("tests|true")\nGUARD_STEPS=()\n': absent,                         # 0
+            'GUARD_STEPS=( \\\n)\n': absent,                                              # 0: a line continuation
+            'GUARD_STEPS=(   # name|command, run in order\n  "build|make build"  # first\n  "tests|make test"\n)\n': configured,  # 2
+            'GUARD_STEPS=()\nGUARD_STEPS+=("tests|true")\n': configured,                   # 1
+            'GUARD_STEPS=("tests|true")\nGUARD_STEPS+=()\n': configured,                   # 1: += appends
+            'export GUARD_STEPS=(\'tests|echo ")"\')\n': configured,                       # 1
+            'GUARD_STEPS=("$(printf tests)|true")\n': configured,                           # 1: quoted, one word
+            'GUARD_STEPS=("tests|make test DIR=$HOME")\n': configured,                      # 1
+            'GUARD_STEPS=("${COMMON[@]}" "tests|true")\n': configured,                      # 1 with COMMON=()
+            "GUARD_STEPS=\n": configured,                                                  # 1: a scalar is one element
+            "GUARD_STEPS=($(true))\n": unknown,                                            # 0
+            "GUARD_STEPS=($STEPS)\n": unknown,                                             # 0 with STEPS unset
+            "GUARD_STEPS=(`printf x`)\n": unknown,                                         # 1, same shape as the line above
+            'GUARD_STEPS=("${COMMON[@]}")\n': unknown,                                      # 0 with COMMON=()
+        }
+        for text, expected in cases.items():
+            with self.subTest(text=text):
+                self.configure_automation(text=text)
+                self.assertIn(expected, self.kitchen("status").stdout)
+
+    def test_a_guard_steps_array_it_cannot_parse_is_unknown_never_not_configured(self):
+        project = self.make_project("shop")
+        self.list_projects(project)
+        env = self.configure_automation(text='GUARD_STEPS=(\n  "tests|true"\n')
+
+        result = self.kitchen("status", "--exceptions")
+
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn(f"shop  nightly    unknown: cannot parse GUARD_STEPS in {env}", result.stdout)
 
     def test_an_env_without_gardener_verify_steps_configures_the_nightly_but_not_the_gardener(self):
         self.green_project()
