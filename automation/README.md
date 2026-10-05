@@ -4,8 +4,8 @@ Scheduled jobs that keep a project honest without anyone asking.
 
 | Job | When (default) | What it does |
 |---|---|---|
-| `bin/nightly-guard <project>` | daily 02:00 | Runs the project's steps on a dedicated clone of the shared branch. One GitHub issue while it is red, closed when green; a local notification when red or incomplete. Every run lands exactly once in `~/.local/state/kitchen/nightly/<project>.jsonl` for `kitchen status`. |
-| `bin/weekly-gardener <project>` | Monday 06:00 | One unattended Claude Code run that commits at most one small, verified change on a local branch; the job then publishes it as a PR if it passes its own checks. Skips while the last one is still open. Every run lands once in `~/.local/state/kitchen/gardener/<project>.jsonl`; a local notification when refused or incomplete. |
+| `bin/nightly-guard <project>` | daily 02:00 | Runs the project's steps on a dedicated clone of the shared branch. One GitHub issue while it is red, closed when green; a local notification when red or incomplete. Every run that holds the project lock lands exactly once in `~/.local/state/kitchen/nightly/<project>.jsonl` for `kitchen status`. |
+| `bin/weekly-gardener <project>` | Monday 06:00 | One unattended Claude Code run that commits at most one small, verified change on a local branch; the job then publishes it as a PR if it passes its own checks. Skips while the last one is still open. Every run that holds the project lock lands once in `~/.local/state/kitchen/gardener/<project>.jsonl`; a local notification when refused or incomplete. |
 | `bin/weekly-retro` | Monday 07:00 | Runs the `retro` skill over the week's transcripts and writes a report of proposals. Applies nothing. |
 
 Schedule them with `bin/install-schedule <project>` and `bin/install-schedule --retro`: launchd on macOS, systemd user timers on Linux. `bin/install-schedule --gardener <project>` schedules the gardener alone, for a machine that runs only it.
@@ -39,7 +39,7 @@ METRICS_CMD="python3 scripts/metrics.py --json"   # optional; snapshot per run i
 QUALITY_CMD="python3 scripts/metrics.py"          # optional; what the gardener measures with
 BASELINE_FILE="scripts/metrics.json"             # optional
 HOOKS_PATH="scripts/hooks"             # optional; the project's hooks folder, kept working in the clone
-LOCK_WAIT_SECONDS=3600                 # optional; how long a job waits for the other one before "skipped: busy"
+LOCK_WAIT_SECONDS=3600                 # optional; how long a job waits for the other one before it skips as busy
 GARDENER_MAX_CHANGED_LINES=400         # optional; larger gardener diffs are not published
 GARDENER_PROTECTED_PATHS=(".github/*")  # optional; shell patterns the gardener may not touch
 GARDENER_SANDBOX_DOMAINS=("api.nuget.org") # optional; domains the gardener's Bash may reach (default: none)
@@ -65,14 +65,13 @@ NET_TIMEOUT_SECONDS=600                # optional; deadline for clone, fetch and
 
 ## Nightly record
 
-One JSON line per run: `ts`, `started`, `sha` (full 40 characters), `status`, `failed_step`, `cleanup`, `metrics`, `warnings`, `run_id`, `log`. The line is written as `running` when the run starts and replaced when it ends.
+One JSON line per run: `ts`, `started`, `sha` (full 40 characters), `status`, `failed_step`, `cleanup`, `metrics`, `warnings`, `run_id`, `log`. The line is written as `running` when the run holds the lock and replaced when it ends. A run skipped as busy never held the lock, so it only logs: it writes no record, and can neither mask the result of the run that held the lock nor race its writes. A night without a recorded run shows as `overdue` in `kitchen status`.
 
 | `status` | Meaning |
 |---|---|
 | `green` / `red` | The steps' verdict. Problems around it (`cleanup failed`, `metrics failed`, `issue report failed`) go to `warnings` and never change the verdict. |
 | `running` | The run is in progress. |
 | `incomplete` | Interrupted, aborted or timed out before a verdict; `failed_step` names the phase (a step, `sync`, `lock`, or `config` when no step ran because `GUARD_STEPS` is empty or unset). A `running` line left by a run killed with SIGKILL is closed as `incomplete` (`failed_step: killed`) by the next run. |
-| `skipped: busy` | The other job of the project held the clone for `LOCK_WAIT_SECONDS`. |
 
 Trial runs (`GUARD_ONLY=...`) are neither recorded nor reported.
 
@@ -85,7 +84,7 @@ One JSON line per run in `~/.local/state/kitchen/gardener/<project>.jsonl`: `ts`
 | `published` | The PR's URL. |
 | `none` | Why nothing was published: no gardener branch, or a gardener PR still open. |
 | `refused` | Why the job refused to publish, for example `no independent verification configured`. |
-| `incomplete` | A prerequisite failed (Docker, srt, node, a private `/tmp`, `GARDENER_PREPARE_CMD`), claude failed, or the run was aborted or interrupted. A `running` line left by a killed run is closed as `incomplete` by the next one. |
+| `incomplete` | A prerequisite failed (Docker, srt, node, a private `/tmp`, `GARDENER_PREPARE_CMD`), claude failed, the run was aborted or interrupted, or processes it started survived TERM and KILL (`warnings` names them). A `running` line left by a killed run is closed as `incomplete` by the next one. |
 
 `kitchen status` reads only this machine's record and shows `unknown` without one. Where the gardener runs on another host, set `gardener = "remote:<host-label>"` in the project's `integrate.toml` entry: the line then says `remote (<host-label>): not read here`, never green and never an exception.
 
@@ -95,7 +94,7 @@ One JSON line per run in `~/.local/state/kitchen/gardener/<project>.jsonl`: `ts`
 
 ## Guarantees
 
-- Jobs work in their own clone; your checkout is never touched. One job at a time per project: each job runs under `lib/supervise.py`, which holds the project lock and runs the job in its own process group. When the job ends, however it ends, the group is stopped, then every process that still has its working directory or an open file in the clone or the gardener's work dirs (found with `lsof`, which also catches descendants that left the group with `setsid`) gets TERM, then KILL. If any survive, the run is recorded `incomplete` with `failed_step: survivors <pids>` and the project stays busy until they exit. Do not keep a shell or editor open inside the automation clone: the job stops it.
+- Jobs work in their own clone; your checkout is never touched. One job at a time per project: each job runs under `lib/supervise.py`, which holds the project lock and runs the job in its own process group. When the job ends, however it ends, the group is stopped, then every process that still has its working directory or an open file in the clone or the gardener's work dirs (found with `lsof`, which also catches descendants that left the group with `setsid`) gets TERM, then KILL. If any survive, the run's line in its own record (the nightly's or the gardener's) is marked `incomplete`, with `failed_step: survivors <pids>` and a warning naming them, and the project stays busy until they exit. Do not keep a shell or editor open inside the automation clone: the job stops it.
 - Every gh call and every clone, fetch and push has a deadline, so a hung network call cannot hold a run or its record.
 - A pre-push hook in the clone refuses pushes to `dev`, `main`, `master` and `$BRANCH`. The project's own hooks (`HOOKS_PATH`, or the hooks path the project configured in the clone) keep running next to it.
 - The gardener's agent runs sealed. Its environment is an allowlist (`env -i` plus `HOME`, `USER`, `LOGNAME`, `SHELL`, `TMPDIR`, `LANG`, `LC_*`, `TERM`, the job's own variables, `GARDENER_ENV_PASS`, and `ANTHROPIC_API_KEY`/`CLAUDE_CODE_OAUTH_TOKEN` only when set, because claude then needs them to log in). Claude Code re-applies the user's shell startup files to every Bash command, which would bring back their exports, functions and aliases. On macOS the shell is therefore zsh with an empty `ZDOTDIR`. On Linux it is bash, an owner's choice for a host without zsh: `~/.bashrc` then reaches the agent's Bash, and only the sandbox keeps credentials and the network out. Toolchain variables the build needs go in `GARDENER_ENV_PASS`. No `gh` (a shim refuses every call), `GIT_SSH_COMMAND` and askpass refuse, git credential helpers cleared, `origin`'s push URL refused, no MCP servers.

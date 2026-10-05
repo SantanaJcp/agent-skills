@@ -2,15 +2,17 @@
 # Nightly guard: build, test and prove the tip of the project's branch.
 # Opens (or comments on) one GitHub issue when a step fails and closes it when the branch is green.
 # A red or incomplete run also shows a local notification (lib/kitchen/notify.py); a green one never does.
-# Every run is exactly one line in the nightly history read by `kitchen status`: "running" from the start,
-# replaced when the run ends, however it ends:
+# Every run that holds the lock is exactly one line in the nightly history read by `kitchen status`: "running"
+# from the start, replaced when the run ends, however it ends:
 #   green / red          the steps' verdict; problems around it (cleanup, metrics, issue report) go to "warnings"
 #   incomplete           interrupted or aborted before a verdict; failed_step names the phase. A "running" line
 #                        left by a run killed with SIGKILL is closed as incomplete by the next run.
-#   skipped: busy        another job of this project held the clone for LOCK_WAIT_SECONDS
+# A run skipped as busy (another job of this project held the clone for LOCK_WAIT_SECONDS) never held the lock:
+# it only logs and writes no record, so it can neither mask the result of the run that held the lock nor race that
+# run's own writes to the record. A night with no run at all shows as `overdue` in `kitchen status`.
 # Usage: nightly-guard <project>
 # Trial run (neither recorded nor reported): GUARD_ONLY="build,fast-tests" nightly-guard <project>
-source "$(dirname "$0")/../lib/common.sh" "$1"
+source "$(dirname "$0")/../lib/common.sh" "$1" nightly
 
 STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%S+00:00)"
 RUN_LOG="$LOG_DIR/guard-$RUN_ID.log"
@@ -108,7 +110,7 @@ finish() {
   case "$VERDICT" in green|red) [ "$STARTED" = 1 ] && record_metrics ;; esac
   if [ -n "$TRIAL" ]; then
     log "trial run (GUARD_ONLY=$TRIAL): not recorded in the nightly history, issue left as is"
-  else
+  elif [ "$VERDICT" != "skipped: busy" ]; then
     case "$VERDICT" in
       red) report_failure "$FAILED" "$SHA" "$FAILED_LOG" || warn "issue report failed" ;;
       green) report_green "$SHA" || warn "issue report failed" ;;
@@ -139,7 +141,7 @@ log "guard start: project=$PROJECT branch=$BRANCH"
 PHASE="lock"
 if [ "$LOCK_STATE" = busy ]; then
   VERDICT="skipped: busy"
-  log "guard skipped: busy (another job of $PROJECT held the clone for ${LOCK_WAIT_SECONDS:-3600}s)"
+  log "guard skipped: busy (another job of $PROJECT held the clone for ${LOCK_WAIT_SECONDS:-3600}s); not recorded"
   exit 75
 fi
 if [ -z "$TRIAL" ]; then

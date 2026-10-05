@@ -4,6 +4,7 @@ import json
 import os
 import platform
 import random
+import re
 import shutil
 import string
 import signal
@@ -112,6 +113,21 @@ class AutomationFixture(unittest.TestCase):
 
     def origin_branches(self):
         return self.git(self.origin, "for-each-ref", "--format=%(refname:short)", "refs/heads/").splitlines()
+
+    def write_script(self, name, body):
+        path = Path(self.tmp.name) / name
+        path.write_text(textwrap.dedent(body))
+        return path
+
+    def assert_dead(self, pid):
+        end = time.monotonic() + 5
+        while time.monotonic() < end:
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                return
+            time.sleep(0.05)
+        self.fail(f"process {pid} is still running")
 
     def commit_to_origin(self, files):
         for name, (text, mode) in files.items():
@@ -322,7 +338,7 @@ class NightlyGuardTests(AutomationFixture):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertFalse(evil.exists())
 
-    def test_busy_project_lock_skips_the_run_and_records_it(self):
+    def test_busy_project_lock_skips_the_run_and_only_logs_it(self):
         marker = Path(self.tmp.name) / "ran"
         self.configure([f"step|touch {marker}"])
         lock = self.state / "automation" / "shop" / "job.lock"
@@ -333,8 +349,25 @@ class NightlyGuardTests(AutomationFixture):
             result = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1", LOCK_WAIT_SECONDS="1", LOCK_POLL_SECONDS="0.1")
 
         self.assertEqual(result.returncode, 75, result.stdout)
-        self.assertEqual(self.nightly()[-1]["status"], "skipped: busy")
+        self.assertIn("guard skipped: busy", result.stdout)
+        self.assertFalse((self.state / "nightly" / "shop.jsonl").exists())
         self.assertFalse(marker.exists())
+
+    def test_a_busy_skip_never_rewrites_the_record_of_the_run_holding_the_lock(self):
+        self.configure(["ok|true"])
+        record = self.state / "nightly" / "shop.jsonl"
+        record.parent.mkdir(parents=True)
+        active = {"ts": "2026-10-05T02:00:00+00:00", "status": "running", "failed_step": None, "run_id": "active"}
+        record.write_text(json.dumps(active) + "\n")
+        lock = self.state / "automation" / "shop" / "job.lock"
+        lock.parent.mkdir(parents=True)
+
+        with open(lock, "w") as held:
+            fcntl.flock(held, fcntl.LOCK_EX)
+            result = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1", LOCK_WAIT_SECONDS="1", LOCK_POLL_SECONDS="0.1")
+
+        self.assertEqual(result.returncode, 75, result.stdout)
+        self.assertEqual(self.nightly(), [active])
 
     def test_missing_docker_fails_the_run(self):
         self.configure(["ok|true"], needs_docker=1)
@@ -366,16 +399,6 @@ class NightlyGuardTests(AutomationFixture):
         step = (f"slow|echo \\$PPID > {files['job']}; (while :; do date >> {files['out']}; sleep 0.1; done) & "
                 f"echo \\$! > {files['worker']}; sleep 30")
         return step, files
-
-    def assert_dead(self, pid):
-        end = time.monotonic() + 5
-        while time.monotonic() < end:
-            try:
-                os.kill(pid, 0)
-            except ProcessLookupError:
-                return
-            time.sleep(0.05)
-        self.fail(f"process {pid} is still running")
 
     def test_killing_the_job_stops_its_workers_before_the_lock_is_released(self):
         step, files = self.background_worker_step()
@@ -423,7 +446,7 @@ class NightlyGuardTests(AutomationFixture):
 
         self.assertEqual(busy.returncode, 75, busy.stdout)
         self.assertEqual(free.returncode, 0, free.stdout)
-        self.assertEqual([r["status"] for r in self.nightly()], ["incomplete", "skipped: busy", "green"])
+        self.assertEqual([r["status"] for r in self.nightly()], ["incomplete", "green"])
 
     def test_runs_started_in_the_same_second_keep_their_own_records(self):
         self.fake("date", '[ "$2" = "+%Y%m%dT%H%M%SZ" ] && { echo 20260101T000000Z; exit 0; }; exec /bin/date "$@"')
@@ -482,11 +505,6 @@ class NightlyGuardTests(AutomationFixture):
         self.assertLess(time.monotonic() - started, 12, result.stdout)
         run = self.nightly()[-1]
         self.assertEqual((run["status"], run["failed_step"]), ("incomplete", "sync"))
-
-    def write_script(self, name, body):
-        path = Path(self.tmp.name) / name
-        path.write_text(textwrap.dedent(body))
-        return path
 
     def test_setsid_descendant_holding_the_clone_is_stopped_before_the_lock_is_released(self):
         pidfile = Path(self.tmp.name) / "escaped.pid"
@@ -557,7 +575,7 @@ class NightlyGuardTests(AutomationFixture):
         self.assertTrue(runs[0]["failed_step"].startswith("survivors "), runs[0])
         self.assertEqual(busy.returncode, 75, busy.stdout)
         self.assertEqual(free.returncode, 0, free.stdout)
-        self.assertEqual([r["status"] for r in runs], ["incomplete", "skipped: busy", "green"])
+        self.assertEqual([r["status"] for r in runs], ["incomplete", "green"])
 
 class GardenerTests(AutomationFixture):
     def test_claude_failure_is_the_job_status_and_cleanup_still_runs(self):
@@ -618,6 +636,44 @@ class GardenerTests(AutomationFixture):
 
         self.assertEqual(result.returncode, 75, result.stdout)
         self.assertEqual(self.gardener(), [refused])
+
+
+    def test_survivors_of_a_gardener_run_mark_the_gardener_record_incomplete(self):
+        pidfile = Path(self.tmp.name) / "respawner.pid"
+        script = self.write_script("respawn.py", """\
+            import os, sys, time
+            work = os.path.dirname(os.environ["GARDENER_SUMMARY_FILE"])  # the run's work dir, watched by the supervisor
+            if os.fork() == 0:
+                os.setsid()
+                os.chdir("/")  # the respawner itself holds nothing in the watched dirs
+                open(sys.argv[1], "w").write(str(os.getpid()))
+                while True:  # every holder killed comes straight back
+                    child = os.fork()
+                    if child == 0:
+                        os.chdir(work)
+                        held = open("held.txt", "w")
+                        time.sleep(60)
+                        os._exit(0)
+                    os.waitpid(child, 0)
+            while not os.path.exists(sys.argv[1]):
+                time.sleep(0.01)
+            time.sleep(0.2)
+            """)
+        self.configure_publishing()
+        self.fake("claude", f'echo "claude" >> "$CALLS"; python3 {script} {pidfile}')
+        try:
+            result = self.run_job("weekly-gardener", "shop", KITCHEN_STOP_GRACE_SECONDS="0.5")
+        finally:
+            respawner = int(pidfile.read_text())
+            os.killpg(respawner, signal.SIGKILL)
+        self.assert_dead(respawner)
+
+        runs = self.gardener()
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(len(runs), 1, runs)
+        self.assertEqual(runs[0]["status"], "incomplete", runs[0])
+        self.assertTrue(any(re.fullmatch(r"survivors [0-9 ]+ still held files in the clone after TERM and KILL", w)
+                            for w in runs[0]["warnings"]), runs[0])
 
 
 class GardenerPublicationTests(AutomationFixture):
