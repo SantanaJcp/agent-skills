@@ -5,9 +5,11 @@ import json
 import os
 from pathlib import Path
 
+from . import notify
 from .common import git_common_dir, git_out, now, parse_ts, state_dir
 
 STATUSES = ("note", "done", "blocked", "decision")
+OWNER_STATUSES = ("blocked", "decision")  # checkpoints that wait on the owner: notified, and exceptions in status
 
 
 def journal_path() -> Path:
@@ -43,6 +45,14 @@ def write(message: str, status: str, cwd: Path) -> dict:
     return entry
 
 
+def notify_owner(entry: dict) -> str | None:
+    """A local notification for a checkpoint that waits on the owner. Returns why it was not shown, if it was not."""
+    if entry["status"] not in OWNER_STATUSES:
+        return None
+    code, text = notify.notify(f"kitchen: {entry['status']} in {Path(entry['repo']).name}", f"[{entry['agent']}] {entry['message']}")
+    return None if code == notify.SHOWN else text
+
+
 def belongs(entry: dict, project: str | None, repo: str | None) -> bool:
     """An entry belongs to a repo by git common dir, so checkpoints logged from a worktree roll up.
     Entries written before the common dir was recorded fall back to their toplevel path."""
@@ -62,9 +72,9 @@ def read(since=None, project: str | None = None, repo: str | None = None) -> lis
             entry = json.loads(line)
         except json.JSONDecodeError as error:
             raise RuntimeError(f"{journal_path()}:{number} is not valid JSON: {error}") from error
-        ts = parse_ts(entry.get("ts", ""))
-        if since and (ts is None or ts < since):
-            continue
+        ts = parse_ts(str(entry.get("ts", "")))
+        if since and ts is not None and ts < since:
+            continue  # an entry whose time cannot be read cannot be placed outside the window: it is kept
         if (project or repo) and not belongs(entry, project, repo):
             continue
         entries.append(entry)

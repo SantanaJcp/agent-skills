@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Nightly guard: build, test and prove the tip of the project's branch.
 # Opens (or comments on) one GitHub issue when a step fails and closes it when the branch is green.
+# A red or incomplete run also shows a local notification (lib/kitchen/notify.py); a green one never does.
 # Every run is exactly one line in the nightly history read by `kitchen status`: "running" from the start,
 # replaced when the run ends, however it ends:
 #   green / red          the steps' verdict; problems around it (cleanup, metrics, issue report) go to "warnings"
@@ -112,6 +113,10 @@ finish() {
       red) report_failure "$FAILED" "$SHA" "$FAILED_LOG" || warn "issue report failed" ;;
       green) report_green "$SHA" || warn "issue report failed" ;;
     esac
+    case "$VERDICT" in
+      red|incomplete) notify "kitchen nightly: $PROJECT $VERDICT" "failed: ${FAILED:-unknown} on ${SHA:0:8} (run $RUN_ID)" ||
+        warn "not notified: see the log" ;;
+    esac
     record_nightly "$VERDICT" "$FAILED" "$CLEANUP" "$METRICS" "$SHA" "$RUN_ID" "$RUN_LOG" "$STARTED_AT" ${WARNINGS[@]+"${WARNINGS[@]}"} ||
       log "FAILED to write the nightly record $NIGHTLY_RECORD"
   fi
@@ -157,18 +162,29 @@ if [ "${NEEDS_DOCKER:-0}" = 1 ] && ! ensure_docker; then
   exit 1
 fi
 
+# Each step runs strict (bash -e -o pipefail): `false; true` and `false | true` fail it. A run in which no step
+# ran proves nothing: it is recorded incomplete (failed_step "config"), never green.
 verdict="green"
+ran=0
 for entry in ${GUARD_STEPS[@]+"${GUARD_STEPS[@]}"}; do
   name="${entry%%|*}"; cmd="${entry#*|}"
   if [ -n "$TRIAL" ] && [[ ",$TRIAL," != *",$name,"* ]]; then continue; fi
   step_log="$LOG_DIR/guard-$RUN_ID-$name.log"
   PHASE="$name"
   STARTED=1
+  ran=$((ran + 1))
   log "step $name"
-  if ! bash -c "$cmd" > "$step_log" 2>&1; then
+  if ! bash -e -o pipefail -c "$cmd" > "$step_log" 2>&1; then
     log "step $name FAILED (log $step_log)"
     verdict="red"; FAILED="$name"; FAILED_LOG="$step_log"
     break
   fi
 done
+if [ "$ran" = 0 ]; then
+  PHASE="config"
+  FAILED="config"
+  log "no guard step ran: GUARD_STEPS is empty or unset${TRIAL:+, or GUARD_ONLY=$TRIAL names none of its steps} in $CONFIG"
+  warn "no guard step configured"
+  exit 2
+fi
 VERDICT="$verdict"

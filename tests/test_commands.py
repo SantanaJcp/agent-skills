@@ -1,17 +1,49 @@
+import datetime
 import json
+import os
 import subprocess
+import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
-from tests.test_kitchen import KitchenFixture
+from tests.test_kitchen import KITCHEN, KitchenFixture
 
 
 def git(repo, *args):
     subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True)
 
 
+def local_ts(days_ago, hour=3, minute=0):
+    """A timestamp `days_ago` days back at a local hour, as the nightly writes it."""
+    day = datetime.datetime.now().astimezone() - datetime.timedelta(days=days_ago)
+    return day.replace(hour=hour, minute=minute, second=0, microsecond=0).isoformat()
+
+
+def ago(**delta):
+    return (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(**delta)).isoformat(timespec="seconds")
+
+
 class ProjectFixture(KitchenFixture):
-    extra_env = {"KITCHEN_AGENT": "claude", "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
+    """Fake notifiers on PATH record what would be shown: a test never pops a real notification."""
+
+    def setUp(self):
+        super().setUp()
+        self.fakebin = Path(self.tmp.name) / "fakebin"
+        self.fakebin.mkdir()
+        self.notified = Path(self.tmp.name) / "notified.log"
+        for notifier in ("osascript", "notify-send"):
+            self.fake(notifier, f'echo "$(basename "$0") $*" >> "{self.notified}"')
+        self.extra_env = {"KITCHEN_AGENT": "claude", "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
+                          "GIT_COMMITTER_EMAIL": "t@t", "PATH": f"{self.fakebin}{os.pathsep}{os.environ['PATH']}"}
+
+    def fake(self, name, body):
+        path = self.fakebin / name
+        path.write_text(f"#!/usr/bin/env bash\n{body}\n")
+        path.chmod(0o755)
+
+    def notifications(self):
+        return self.notified.read_text().splitlines() if self.notified.exists() else []
 
     def make_project(self, name="shop"):
         project = self.home / "work" / name
@@ -25,6 +57,24 @@ class ProjectFixture(KitchenFixture):
     def list_projects(self, *paths):
         (self.home / "config").mkdir(exist_ok=True)
         (self.home / "config" / "projects.txt").write_text("# projects\n" + "\n".join(str(p) for p in paths) + "\n")
+
+    def configure_base(self, base, project="shop", extra=""):
+        (self.home / "config").mkdir(exist_ok=True)
+        (self.home / "config" / "integrate.toml").write_text(f'[projects.{project}]\nbase = "{base}"\nchecks = ["true"]\n{extra}')
+
+    def commit(self, project, name, text, message="change"):
+        (project / name).write_text(text)
+        git(project, "add", name)
+        git(project, "commit", "-q", "-m", message)
+        return self.rev(project, "HEAD")
+
+    def rev(self, project, ref):
+        return subprocess.run(["git", "-C", str(project), "rev-parse", ref], capture_output=True, text=True, check=True).stdout.strip()
+
+    def write_record(self, kind, runs, project="shop"):
+        folder = self.home / "state" / kind
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / f"{project}.jsonl").write_text("".join(json.dumps(r) + "\n" for r in runs))
 
 
 class LogAndStatusTests(ProjectFixture):
@@ -43,7 +93,8 @@ class LogAndStatusTests(ProjectFixture):
         project = self.make_project()
         self.kitchen("log", "step one done", "--status", "done", cwd=project)
         self.kitchen("log", "needs the prod password", "--status", "blocked", cwd=project)
-        (project / "decisions.md").write_text("- [x] 2026-10-01 use uuids later\n- [ ] keep the old route?\n- [ ] drop the table?\n")
+        self.commit(project, "decisions.md", "- [x] 2026-10-01 use uuids later\n- [ ] keep the old route?\n- [ ] drop the table?\n")
+        self.configure_base("main")
         self.list_projects(project)
 
         out = self.kitchen("status").stdout
@@ -56,13 +107,16 @@ class LogAndStatusTests(ProjectFixture):
         project = self.make_project("shop")
         nightly = self.home / "state" / "nightly"
         nightly.mkdir(parents=True)
-        runs = [{"ts": "t1", "sha": "a", "status": "red", "failed_step": "tests"}, {"ts": "t2", "sha": "b", "status": "green"}, {"ts": "t3", "sha": "c", "status": "green"}]
+        t3 = ago(hours=2)
+        runs = [{"ts": local_ts(2), "sha": "a", "status": "red", "failed_step": "tests"}, {"ts": local_ts(1), "sha": "b", "status": "green"},
+                {"ts": t3, "sha": "c", "status": "green"}]
         (nightly / "shop.jsonl").write_text("".join(json.dumps(r) + "\n" for r in runs))
 
         out = self.kitchen("status", str(project)).stdout
 
-        self.assertIn("✓ green at t3 on c", out)
-        self.assertIn("green streak 2", out)
+        self.assertIn(f"green at {t3} on c", out)  # not ✓: short SHAs and no base leave the distance to the base unknown
+        self.assertIn("green streak 2 nights", out)
+        self.assertNotIn("overdue", out)
 
     def test_status_shows_unknown_when_git_status_fails(self):
         project = self.make_project()
@@ -130,6 +184,225 @@ class LogAndStatusTests(ProjectFixture):
         self.assertIn("gone  ✗ path does not exist", out)
 
 
+    def test_status_reads_decisions_from_the_base_ref_and_names_it(self):
+        project = self.make_project("shop")
+        git(project, "checkout", "-q", "-b", "dev")
+        dev = self.commit(project, "decisions.md", "- [ ] keep the old route?\n- [ ] drop the table?\n")
+        git(project, "checkout", "-q", "main")
+        self.configure_base("dev")
+
+        out = self.kitchen("status", str(project)).stdout
+
+        self.assertIn(f"decisions  2 owed by you (read from dev @ {dev[:8]})", out)
+
+    def test_status_without_a_base_reports_decisions_unknown_instead_of_reading_the_checkout(self):
+        project = self.make_project("shop")
+        (project / "decisions.md").write_text("- [ ] keep the old route?\n")
+
+        out = self.kitchen("status", str(project)).stdout
+
+        self.assertIn("decisions  unknown: no base for 'shop'", out)
+
+    def test_status_shows_how_far_the_nightly_sha_is_behind_the_base(self):
+        project = self.make_project("shop")
+        tested = self.rev(project, "HEAD")
+        for number in range(3):
+            self.commit(project, f"f{number}", "x\n")
+        self.configure_base("main")
+        self.write_record("nightly", [{"ts": ago(hours=1), "sha": tested, "status": "green"}])
+
+        out = self.kitchen("status", str(project)).stdout
+
+        self.assertIn("3 behind main", out)
+
+    def test_status_shows_entries_of_no_listed_project_as_unattached(self):
+        project = self.make_project("shop")
+        other = self.make_project("lab")
+        self.kitchen("log", "logged outside any repo", "--status", "blocked", cwd=self.home)
+        self.kitchen("log", "logged in an unlisted repo", cwd=other)
+        self.kitchen("log", "logged in shop", cwd=project)
+        self.list_projects(project)
+
+        out = self.kitchen("status").stdout
+
+        unattached = out[out.index("unattached"):]
+        self.assertIn("unattached  2 entries, 1 blocked", unattached)
+        self.assertIn("logged outside any repo", unattached)
+        self.assertIn("logged in an unlisted repo", unattached)
+        self.assertNotIn("logged in shop", unattached)
+
+    def test_status_bounds_the_gh_call_and_prints_unknown_when_it_times_out(self):
+        project = self.make_project("shop")
+        self.fake("gh", "sleep 10; echo '[]'")
+
+        result = self.kitchen("status", str(project), env_extra={"KITCHEN_GH_TIMEOUT_SECONDS": "1"})
+
+        self.assertIn("PRs        unknown: gh timed out after 1s", result.stdout)
+        self.assertNotIn("PRs        none", result.stdout)
+
+    def test_status_counts_the_green_streak_in_nights_and_marks_an_old_nightly_overdue(self):
+        project = self.make_project("shop")
+        runs = [{"ts": local_ts(4), "sha": "a", "status": "red", "failed_step": "tests"},
+                {"ts": local_ts(3), "sha": "b", "status": "green"},
+                {"ts": local_ts(2, hour=3), "sha": "c", "status": "green"},
+                {"ts": local_ts(2, hour=5), "sha": "c", "status": "green"}]  # a rerun the same night
+        self.write_record("nightly", runs)
+
+        out = self.kitchen("status", str(project)).stdout
+
+        self.assertIn("green streak 2 nights", out)
+        self.assertIn("overdue", out)
+        self.assertIn("nightly    ✗ green at", out)
+
+    def test_status_shows_the_gardeners_last_result_and_its_age(self):
+        project = self.make_project("shop")
+        before = self.kitchen("status", str(project)).stdout
+        self.write_record("gardener", [{"ts": ago(days=8), "status": "published", "detail": "https://example.test/pull/1"},
+                                       {"ts": ago(hours=2, minutes=5), "status": "refused", "detail": "no independent verification configured"}])
+
+        after = self.kitchen("status", str(project)).stdout
+
+        self.assertIn("gardener   unknown: no local record", before)
+        self.assertIn("gardener   ✗ refused: no independent verification configured · 2h 5m ago", after)
+
+    def green_project(self):
+        project = self.make_project("shop")
+        self.fake("gh", "echo '[]'")
+        self.configure_base("main")
+        self.write_record("nightly", [{"ts": ago(hours=1), "sha": self.rev(project, "HEAD"), "status": "green"}])
+        self.write_record("gardener", [{"ts": ago(days=1), "status": "published", "detail": "https://example.test/pull/1"}])
+        self.list_projects(project)
+        return project
+
+    def test_status_exceptions_prints_only_non_green_lines_and_exits_1_when_any(self):
+        project = self.green_project()
+        green = self.kitchen("status", "--exceptions")
+        self.write_record("nightly", [{"ts": ago(hours=1), "sha": self.rev(project, "HEAD"), "status": "red", "failed_step": "tests"}])
+        self.kitchen("log", "needs the prod password", "--status", "blocked", cwd=self.home)
+
+        red = self.kitchen("status", "--exceptions")
+
+        self.assertEqual((green.returncode, green.stdout), (0, ""), green.stderr)
+        self.assertEqual(red.returncode, 1, red.stdout + red.stderr)
+        lines = red.stdout.splitlines()
+        self.assertTrue(any(line.startswith("shop  nightly    ✗ red") for line in lines), red.stdout)
+        self.assertTrue(any(line.startswith("unattached") and "needs the prod password" in line for line in lines), red.stdout)
+        for green_line in ("PRs", "gardener", "decisions", "journal window"):
+            self.assertNotIn(green_line, red.stdout)
+
+    def test_a_remote_gardener_is_informational_never_green_and_never_an_exception(self):
+        self.green_project()
+        (self.home / "state" / "gardener" / "shop.jsonl").unlink()
+        self.configure_base("main", extra='gardener = "remote:build-host"\n')
+
+        remote = self.kitchen("status", "--exceptions")
+        out = self.kitchen("status").stdout
+        self.configure_base("main", extra='gardener = "elsewhere"\n')
+        malformed = self.kitchen("status", "--exceptions")
+        self.configure_base("main")
+        local = self.kitchen("status", "--exceptions")
+
+        self.assertEqual((remote.returncode, remote.stdout), (0, ""), remote.stdout + remote.stderr)
+        self.assertIn("  gardener   remote (build-host): not read here", out)
+        self.assertNotIn("✓", out[out.index("gardener"):].splitlines()[0])
+        self.assertEqual(malformed.returncode, 1, malformed.stdout)
+        self.assertIn("shop  gardener   unknown: gardener = 'elsewhere'", malformed.stdout)
+        self.assertEqual(local.returncode, 1, local.stdout)
+        self.assertIn("shop  gardener   unknown: no local record", local.stdout)
+
+    def test_a_nightly_whose_sha_is_not_in_the_repo_is_not_green(self):
+        self.green_project()
+        self.write_record("nightly", [{"ts": ago(hours=1), "sha": "f" * 40, "status": "green"}])
+
+        result = self.kitchen("status", "--exceptions")
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("shop  nightly    ✗ green", result.stdout)
+        self.assertIn("behind base: unknown", result.stdout)
+
+    def test_a_gardener_record_with_an_unreadable_time_is_not_green(self):
+        self.green_project()
+        self.write_record("gardener", [{"ts": "yesterday", "status": "published", "detail": "https://example.test/pull/1"}])
+
+        result = self.kitchen("status", "--exceptions")
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("shop  gardener   ✗ published: https://example.test/pull/1 · unknown ago", result.stdout)
+
+    def test_journal_entries_with_an_unreadable_time_are_counted_never_dropped(self):
+        project = self.make_project("shop")
+        self.list_projects(project)
+        (self.home / "state").mkdir(exist_ok=True)
+        entry = {"ts": "not a time", "repo": str(self.home), "project": None, "agent": "claude", "status": "blocked", "message": "clock broke"}
+        (self.home / "state" / "log.jsonl").write_text(json.dumps(entry) + "\n")
+
+        out = self.kitchen("status").stdout
+
+        self.assertIn("unattached  1 entries, 1 blocked, 1 with unknown time", out)
+        self.assertIn("clock broke", out)
+
+    def test_log_notifies_only_blocked_and_decision_checkpoints_redacted(self):
+        project = self.make_project("shop")
+        secret = "tok" + "en=" + "abcd1234efgh5678"
+
+        for message, state in (("step one done", "done"), (f"needs the prod {secret}", "blocked"), ("route a or b?", "decision")):
+            self.assertEqual(self.kitchen("log", message, "--status", state, cwd=project).returncode, 0)
+
+        sent = self.notifications()
+        self.assertEqual(len(sent), 2, sent)
+        self.assertIn("blocked", sent[0])
+        self.assertIn("[REDACTED]", sent[0])
+        self.assertNotIn("abcd1234efgh5678", sent[0])
+        self.assertIn("route a or b?", sent[1])
+
+
+class NotifyTests(unittest.TestCase):
+    """One local notifier for every exception; nothing leaves the machine."""
+
+    def notify(self, system, found, returncode=0):
+        sys.path.insert(0, str(KITCHEN.parent.parent / "lib"))
+        try:
+            from kitchen import notify
+        finally:
+            sys.path.pop(0)
+        calls = []
+
+        def run(argv, **kwargs):
+            calls.append(argv)
+            return subprocess.CompletedProcess(argv, returncode, "", "it broke\n")
+
+        with mock.patch.object(notify.platform, "system", return_value=system), \
+                mock.patch.object(notify.shutil, "which", side_effect=lambda name: f"/bin/{name}" if name in found else None), \
+                mock.patch.object(notify.subprocess, "run", side_effect=run):
+            code, text = notify.notify("kitchen nightly: shop red", "pass" + "word=hunter2hunter2 in the log")
+        return code, text, calls
+
+    def test_macos_uses_display_notification_with_the_text_as_arguments(self):
+        code, _, calls = self.notify("Darwin", {"osascript"})
+
+        self.assertEqual(code, 0)
+        self.assertEqual(calls[0][0], "/bin/osascript")
+        self.assertIn("display notification (item 2 of argv) with title (item 1 of argv)", calls[0])
+        self.assertEqual(calls[0][-2:], ["kitchen nightly: shop red", "[REDACTED] in the log"])
+
+    def test_linux_uses_notify_send_when_present(self):
+        code, _, calls = self.notify("Linux", {"notify-send"})
+
+        self.assertEqual((code, calls), (0, [["/bin/notify-send", "kitchen nightly: shop red", "[REDACTED] in the log"]]))
+
+    def test_without_a_notifier_it_says_so_and_sends_nothing(self):
+        code, text, calls = self.notify("Linux", set())
+
+        self.assertEqual((code, calls), (2, []))
+        self.assertIn("no notifier available", text)
+        self.assertNotIn("hunter2", text)
+
+    def test_a_failing_notifier_is_reported(self):
+        code, text, _ = self.notify("Darwin", {"osascript"}, returncode=1)
+
+        self.assertEqual(code, 1)
+        self.assertIn("it broke", text)
+
 class IntegrateTests(ProjectFixture):
     """A source repo where feature-a and feature-b each pass alone and break together."""
 
@@ -186,6 +459,47 @@ class IntegrateTests(ProjectFixture):
         self.assertEqual(after.returncode, 1, after.stdout)
         self.assertIn("stale: feature-a", after.stdout)
 
+    def test_a_recorded_pass_is_reused_only_while_the_configured_checks_are_unchanged(self):
+        self.integrate("feature-a")
+        self.configure(f"checks = [{json.dumps(self.CHECK)}, \"true\"]")
+        changed = self.integrate("feature-a", "--recorded")
+        self.configure(f"checks = [{json.dumps(self.CHECK)}]")
+        restored = self.integrate("feature-a", "--recorded")
+
+        self.assertEqual(changed.returncode, 1, changed.stdout)
+        self.assertIn("the check configuration changed", changed.stdout)
+        self.assertEqual(restored.returncode, 0, restored.stdout)
+
+    def test_without_a_base_integrate_fails_instead_of_using_origin_main(self):
+        git(self.source, "update-ref", "refs/remotes/origin/main", self.sha("main"))
+        (self.home / "config" / "integrate.toml").write_text(f"[projects.shop]\nchecks = [{json.dumps(self.CHECK)}]\n")
+
+        results = [self.integrate("feature-a"), self.integrate("feature-a", "--recorded")]
+
+        for result in results:
+            self.assertEqual(result.returncode, 1, result.stdout)
+            self.assertIn("no base for 'shop'", result.stdout)
+        self.assertEqual(self.integrate("feature-a", "--base", "main").returncode, 0)
+
+    def test_a_recorded_pass_is_not_reused_once_the_configured_path_changes(self):
+        tools = {}
+        for name, code in (("good", 0), ("bad", 1)):
+            folder = self.home / name
+            folder.mkdir()
+            (folder / "shop-check").write_text(f"#!/bin/sh\nexit {code}\n")
+            (folder / "shop-check").chmod(0o755)
+            tools[name] = folder
+        self.configure(f'checks = ["shop-check"]\npath = ["{tools['good']}"]')
+        self.assertEqual(self.integrate("feature-a").returncode, 0)
+        self.configure(f'checks = ["shop-check"]\npath = ["{tools['bad']}"]')
+
+        recorded = self.integrate("feature-a", "--recorded")
+        real = self.integrate("feature-a")
+
+        self.assertEqual(real.returncode, 1, real.stdout)
+        self.assertEqual(recorded.returncode, 1, recorded.stdout)
+        self.assertIn("stale: the check configuration changed", recorded.stdout)
+
     def test_a_merge_conflict_fails_at_that_branch(self):
         for name in ("c1", "c2"):
             git(self.source, "checkout", "-q", "-b", name, "main")
@@ -201,7 +515,7 @@ class IntegrateTests(ProjectFixture):
     def test_missing_check_config_fails_instead_of_passing(self):
         (self.home / "config" / "integrate.toml").unlink()
 
-        result = self.integrate("feature-a")
+        result = self.integrate("feature-a", "--base", "main")
 
         self.assertEqual(result.returncode, 1)
         self.assertIn("no check commands", result.stdout)

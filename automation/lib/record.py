@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""The nightly history `kitchen status` reads: one JSON line per run, rewritten in place by run_id.
+"""The nightly and gardener histories `kitchen status` reads: one JSON line per run, rewritten in place by run_id.
 
   record.py <file> write <status> <failed_step> <cleanup> <metrics> <sha> <run_id> <log> <started> [warning...]
+  record.py <file> gardener <status> <detail> <run_id> <log> <started> [warning...]
   record.py <file> close-stale <current-run-id>
   record.py <file> mark-survivors <run-id> <pids>
 
@@ -59,10 +60,15 @@ def main() -> int:
                                        f"survivors {pids} still held files in the clone after TERM and KILL"])
         save(path, entries)
         return 0
-    status, failed, cleanup, metrics, sha, run_id, log, started, *warnings = args
-    entry = {"ts": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"), "started": started,
-             "sha": sha or None, "status": status, "failed_step": failed or None, "cleanup": cleanup,
-             "metrics": metrics, "warnings": warnings, "run_id": run_id, "log": log}
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+    if action == "gardener":
+        status, detail, run_id, log, started, *warnings = args
+        entry = {"ts": now, "started": started, "status": status, "detail": detail or None, "warnings": warnings,
+                 "run_id": run_id, "log": log}
+    else:
+        status, failed, cleanup, metrics, sha, run_id, log, started, *warnings = args
+        entry = {"ts": now, "started": started, "sha": sha or None, "status": status, "failed_step": failed or None,
+                 "cleanup": cleanup, "metrics": metrics, "warnings": warnings, "run_id": run_id, "log": log}
     for index, existing in enumerate(entries):
         if isinstance(existing, dict) and existing.get("run_id") == run_id:
             entries[index] = entry

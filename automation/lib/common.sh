@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Shared helpers for kitchen automation jobs. Usage: source common.sh <project>
 # Config: ${KITCHEN_CONFIG:-~/.config/kitchen}/automation/<project>.env (private, never in this repo)
-# State:  ${KITCHEN_STATE:-~/.local/state/kitchen}/automation/<project>/ and nightly/<project>.jsonl
+# State:  ${KITCHEN_STATE:-~/.local/state/kitchen}/automation/<project>/, nightly/<project>.jsonl and gardener/<project>.jsonl
 set -euo pipefail
 # Jobs only ever work on their own clone; a GIT_DIR inherited from a git hook would redirect them.
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_PREFIX GIT_NAMESPACE
@@ -20,7 +20,8 @@ CLONE_DIR="$STATE_DIR/clone"
 LOG_DIR="$STATE_DIR/logs"
 HISTORY_DIR="$STATE_DIR/history"
 NIGHTLY_RECORD="$STATE_ROOT/nightly/$PROJECT.jsonl"
-mkdir -p "$LOG_DIR" "$HISTORY_DIR" "$(dirname "$NIGHTLY_RECORD")"
+GARDENER_RECORD="$STATE_ROOT/gardener/$PROJECT.jsonl"
+mkdir -p "$LOG_DIR" "$HISTORY_DIR" "$(dirname "$NIGHTLY_RECORD")" "$(dirname "$GARDENER_RECORD")"
 
 # launchd starts with a bare PATH. The shims go first so the gh wrapper wins;
 # the wrapper calls the real gh found without the shims.
@@ -56,6 +57,10 @@ warn() { WARNINGS+=("$1"); log "WARNING: $1"; }
 
 # Secrets out of anything that leaves the machine (stdin to stdout).
 redact() { python3 "$KITCHEN_AUTOMATION/lib/redact.py"; }
+
+# A local notification for an exception (never call it on green): redacted, shown on this machine only.
+# Returns non-zero, saying why on stderr, when it was not shown, also when the platform has no notifier.
+notify() { python3 "$KITCHEN_AUTOMATION/lib/notify.py" "$1" "$2"; }
 
 # A dedicated clone at the tip of $BRANCH; the developer's checkout is never touched.
 # Destructive (reset and clean): call it only while holding the project lock. Hooks stay off until the
@@ -135,5 +140,12 @@ record_nightly() { # status failed_step cleanup metrics sha run_id log started [
   python3 "$KITCHEN_AUTOMATION/lib/record.py" "$NIGHTLY_RECORD" write "$@"
 }
 
+# The gardener's history: one line per run, its result published / none / refused / incomplete (or running).
+record_gardener() { # status detail run_id log started [warning...]
+  python3 "$KITCHEN_AUTOMATION/lib/record.py" "$GARDENER_RECORD" gardener "$@"
+}
+
 # Closes "running" lines left by runs that were killed; only called while holding the project lock.
-close_stale_records() { python3 "$KITCHEN_AUTOMATION/lib/record.py" "$NIGHTLY_RECORD" close-stale "$1"; }
+close_stale_records() { # current-run-id [record, default the nightly's]
+  python3 "$KITCHEN_AUTOMATION/lib/record.py" "${2:-$NIGHTLY_RECORD}" close-stale "$1"
+}

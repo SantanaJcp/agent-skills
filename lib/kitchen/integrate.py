@@ -2,15 +2,19 @@
 
 Given a repo, a base and an ordered list of branches (or `pr:<n>` heads), it merges them in order onto the base
 in a disposable clone and runs the project's check commands after every merge. The verdict is bound to the exact
-SHA vector (base first, then each branch), so a PASS says nothing once any of those HEADs moves.
+SHA vector (base first, then each branch) and to a digest of everything that decides what runs (the check commands,
+`path`, the base and every other key of the project's entry), so a PASS says nothing once any of those changes.
 
-Check commands live outside the repo, in ~/.config/kitchen/integrate.toml:
+Check commands and the base live outside the repo, in ~/.config/kitchen/integrate.toml:
   [projects.agent-skills]
+  base = "origin/main"
   checks = ["bin/kitchen check"]
+There is no default base: without `base` there or --base, integrate fails.
 Nothing it runs inherits GIT_* (or KITCHEN_REPO): a caller inside a git hook must not leak into the clone.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -23,6 +27,7 @@ from pathlib import Path
 from .common import config_dir, now, state_dir
 
 FIXED_DATE = "2000-01-01T00:00:00+00:00"  # merge commits are deterministic for a given SHA vector
+NOT_EXECUTION = ("gardener",)  # keys of a project's entry that only `kitchen status` reads
 
 
 class IntegrateError(Exception):
@@ -63,6 +68,20 @@ def configured_base(project: str) -> str | None:
     if not path.is_file():
         return None
     return tomllib.loads(path.read_text(encoding="utf-8")).get("projects", {}).get(project, {}).get("base")
+
+
+def base_for(project: str, override: str | None) -> str:
+    """The ref to merge onto: --base, else the project's `base`. Never a guessed default."""
+    base = override or configured_base(project)
+    if not base:
+        raise IntegrateError(f"no base for {project!r}: pass --base or set base = \"<ref>\" under [projects.{project}] in {config_path()}")
+    return base
+
+
+def execution_digest(config: dict, base: str) -> str:
+    """What decides what a run executes: the config it used (checks, path, any other key) and the base ref."""
+    material = {key: value for key, value in config.items() if key not in NOT_EXECUTION} | {"base": base}
+    return hashlib.sha256(json.dumps(material, sort_keys=True, default=str).encode("utf-8")).hexdigest()
 
 
 def resolve(repo: Path, ref: str) -> str:
@@ -113,6 +132,7 @@ def integrate(repo: Path, base: str, refs: list[str], project: str, checks_overr
             config = {"checks": checks_override} if checks_override else project_config(project)
             env = clean_env(config.get("path"))
             record["checks"] = config["checks"]
+            record["execution_digest"] = execution_digest(config, base)
             record["base"]["sha"] = resolve(repo, base)
             # Every ref of the source (heads, remote-tracking, tags) so any resolvable SHA is present.
             subprocess.run(["git", "init", "-q", str(clone)], check=True, capture_output=True, env=env)
@@ -156,19 +176,25 @@ def integrate(repo: Path, base: str, refs: list[str], project: str, checks_overr
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
-def recorded(repo: Path, base: str, refs: list[str], project: str) -> tuple[bool, str]:
-    """Is there a PASS for the SHAs these refs point to right now? Any moved HEAD invalidates it."""
+def recorded(repo: Path, base: str, refs: list[str], project: str, checks_override: list[str] | None = None) -> tuple[bool, str]:
+    """Is there a PASS for the SHAs these refs point to right now, run with the checks configured right now?
+    Any moved HEAD or changed check configuration invalidates it; a record without an execution digest proves nothing."""
     repo = repo.resolve()
     try:
         current = [resolve(repo, base)] + [resolve(repo, ref) for ref in refs]
+        digest = execution_digest({"checks": checks_override} if checks_override else project_config(project), base)
     except IntegrateError as error:
         return False, str(error)
     history = records_path(project)
     runs = [json.loads(line) for line in history.read_text(encoding="utf-8").splitlines() if line.strip()] if history.is_file() else []
     same_refs = [r for r in runs if r.get("base", {}).get("ref") == base and [b["ref"] for b in r.get("branches", [])] == refs]
-    for run in reversed(same_refs):
-        if run.get("vector") == current:
+    same_vector = [r for r in same_refs if r.get("vector") == current]
+    for run in reversed(same_vector):
+        if run.get("execution_digest") == digest:
             return run["status"] == "PASS", f"{run['status']} at {run['ts']} on {vector_text(current)}"
+    if same_vector:
+        last = same_vector[-1]
+        return False, f"stale: the check configuration changed (checks, path, base or another key) since the {last['status']} at {last['ts']} on {vector_text(current)}"
     if same_refs and same_refs[-1].get("vector"):
         last = same_refs[-1]
         moved = [f"{ref} {old[:8]}→{new[:8]}" for ref, old, new in zip([base] + refs, last["vector"], current) if old != new]
