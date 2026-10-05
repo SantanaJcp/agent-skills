@@ -1,9 +1,9 @@
 kitchen adopt --propose <repo>  (ran no repository code)
-Branch kitchen/adopt @ 9fcf853 (new), from 4ec6634; not pushed
+Branch kitchen/adopt @ 5b90cd2 (new), from 4ec6634; not pushed
 
-Measured by --check at 4ec6634
+Measured by --check at 4ec6634 (that commit's tree; uncommitted changes are not part of the proposal)
   FAIL     check contract                     no bin/check and no .kitchen/checks.toml
-  FAIL     pre-commit hook active             no <repo>/.git/hooks/pre-commit (core.hooksPath unset, default hooks dir)
+  FAIL     pre-commit hook active             no .git/hooks/pre-commit (core.hooksPath unset, default hooks dir)
   FAIL     AGENTS.md                          AGENTS.md has 3 lines but names no verify command (a verify-<repo> skill, bin/check or bin/verify)
   FAIL     verify skill + map guard           no .agents/skills/verify-*/SKILL.md
   FAIL     decisions.md                       no decisions.md at the repo root

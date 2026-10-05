@@ -9,10 +9,12 @@ import json
 import os
 import re
 import shutil
+import signal
 import stat
 import subprocess
 import sys
 import textwrap
+import time
 import unittest
 from pathlib import Path
 
@@ -489,6 +491,141 @@ class Prove(ProposeFixture):
                                 capture_output=True, text=True, env=self.env())
         self.assertEqual(result.returncode, 2)
         self.assertIn("--prove needs --propose", result.stderr)
+
+
+
+class ReviewRound1(ProposeFixture):
+    """One test per finding of the first review of PR #35; each was red at 1520825."""
+
+    def test_filters_never_run_without_prove(self):  # P1-1
+        repo = self.make_repo("calc", {**PYTHON_FILES, ".gitattributes": "*.py filter=probe\n*.md filter=probe\n"})
+        self.git(repo, "config", "filter.probe.smudge", 'touch "$ADOPT_MARKER"; cat')
+        self.git(repo, "config", "filter.probe.clean", 'touch "$ADOPT_MARKER"; cat')
+
+        result = self.propose_json(repo)
+
+        self.assertFalse(self.marker.exists(), "a filter of the target repo ran during --propose")
+        self.assertFalse(result["ran_repository_code"])
+        self.assertIn("bin/check", self.added(repo))
+        prove = self.propose(repo, "--prove")
+        self.assertIn("filters", prove.stderr)
+
+    def test_a_symlinked_kitchen_folder_is_refused_before_anything_is_touched(self):  # P1-2
+        outside = self.root / "outside"
+        outside.mkdir()
+        manifest = outside / "adopt.json"
+        manifest.write_text('{"files": {}, "owner": "keep"}\n')
+        repo = self.make_repo("calc", {**PYTHON_FILES, "quality/baseline.json": "{}\n"})
+        (repo / ".kitchen").symlink_to(outside, target_is_directory=True)
+        self.git(repo, "add", ".kitchen")
+        self.git(repo, "commit", "-qm", "symlink")
+
+        result = self.propose(repo)
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("symlink", result.stderr)
+        self.assertEqual(manifest.read_text(), '{"files": {}, "owner": "keep"}\n')
+        self.assertIsNone(self.branch_sha(repo))
+
+    def test_a_symbolic_proposal_branch_is_refused(self):  # P1-3
+        repo = self.make_repo("calc", PYTHON_FILES)
+        self.git(repo, "symbolic-ref", "refs/heads/kitchen/adopt", "refs/heads/main")
+        main = self.git(repo, "rev-parse", "main").strip()
+
+        result = self.propose(repo)
+
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn("symbolic", result.stderr)
+        self.assertEqual(self.git(repo, "rev-parse", "main").strip(), main)
+        self.assertEqual(self.git(repo, "symbolic-ref", "refs/heads/kitchen/adopt").strip(), "refs/heads/main")
+        self.assertEqual(self.git(repo, "status", "--porcelain"), "")
+
+    def test_a_check_that_swallows_failures_and_fails_once_is_untrusted(self):  # P1-4
+        check = "#!/bin/sh\npython3 -m unittest discover -s tests || true\nmkdir .check-once\n"
+        repo = self.make_repo("calc", {**PYTHON_FILES, "bin/check": check}, executable=("bin/check",))
+
+        result = self.propose_json(repo, "--prove", code=1)
+
+        trust = {t["path"]: t for t in result["trust"]}
+        self.assertEqual(trust["bin/check"]["state"], "untrusted")
+        self.assertIn("not stable", trust["bin/check"]["why"])
+        self.assertNotEqual(result["readiness"]["checks_run_green"]["state"], "yes")
+
+    def test_red_that_never_names_the_broken_file_is_untrusted(self):  # P1-4
+        repo = self.make_repo("calc", {**PYTHON_FILES, "bin/check": "#!/bin/sh\ngit diff --quiet\n"}, executable=("bin/check",))
+
+        result = self.propose_json(repo, "--prove", code=1)
+
+        trust = {t["path"]: t for t in result["trust"]}
+        self.assertEqual(trust["bin/check"]["state"], "untrusted")
+        self.assertIn("never names tests/test_calc.py", trust["bin/check"]["why"])
+        self.assertEqual(result["readiness"]["negative_control_went_red"]["state"], "no")
+
+    def test_a_signal_stops_the_check_and_removes_the_worktree(self):  # P1-5
+        pid_file = Path(f"{self.marker}.pid")
+        check = f'#!/bin/sh\necho $$ > "{pid_file}"\nsleep 120\n'
+        repo = self.make_repo("calc", {**PYTHON_FILES, "bin/check": check}, executable=("bin/check",))
+        for signum in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+            with self.subTest(signal=signum.name):
+                pid_file.unlink(missing_ok=True)
+                process = subprocess.Popen([sys.executable, str(KITCHEN), "adopt", "--propose", "--prove", str(repo), "--json"],
+                                           env=self.env(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                for _ in range(400):
+                    if pid_file.exists() and pid_file.read_text().strip():
+                        break
+                    time.sleep(0.05)
+                self.assertTrue(pid_file.exists(), "bin/check never started")
+                process.send_signal(signum)
+                process.communicate(timeout=30)
+                pid = int(pid_file.read_text())
+                alive = subprocess.run(["kill", "-0", str(pid)], capture_output=True).returncode == 0
+                if alive:
+                    os.kill(pid, signal.SIGKILL)
+                self.assertFalse(alive, "the check kept running after kitchen was stopped")
+                self.assertEqual(process.returncode, 128 + signum)
+                listing = self.git(repo, "worktree", "list", "--porcelain").splitlines()
+                self.assertEqual([line for line in listing if line.startswith("worktree ")], [f"worktree {repo}"])
+                self.assertEqual(os.listdir(self.tmpdir), [])
+
+    def test_an_owner_manifest_is_left_alone(self):  # P2-6
+        owner = '{"files": {}, "owner": "keep"}\n'
+        repo = self.make_repo("calc", {**PYTHON_FILES, ".kitchen/adopt.json": owner})
+
+        result = self.propose_json(repo)
+
+        self.assertEqual(self.show(repo, BRANCH, ".kitchen/adopt.json"), owner)
+        self.assertIn("bin/check", self.added(repo))
+        self.assertTrue(any(".kitchen/adopt.json" in note for note in result["notes"]), result["notes"])
+
+    def test_an_edited_kitchen_manifest_keeps_the_owner_fields(self):  # P2-6
+        repo = self.make_repo("calc", {**PYTHON_FILES, "quality/baseline.json": "{}\n"})
+        self.propose_json(repo)
+        self.git(repo, "checkout", "-q", BRANCH)
+        data = json.loads((repo / ".kitchen" / "adopt.json").read_text())
+        data["owner"] = "keep"
+        (repo / ".kitchen" / "adopt.json").write_text(json.dumps(data, indent=2) + "\n")
+        self.git(repo, "rm", "-q", "quality/baseline.json")
+        self.git(repo, "commit", "-qam", "owner edits")
+        self.git(repo, "checkout", "-q", "main")
+        edited = self.show(repo, BRANCH, ".kitchen/adopt.json")
+
+        result = self.propose_json(repo)
+
+        self.assertIn(".kitchen/baseline.json", self.tree(repo, BRANCH), "the newly missing baseline was not written")
+        self.assertEqual(self.show(repo, BRANCH, ".kitchen/adopt.json"), edited)
+        self.assertTrue(any(".kitchen/adopt.json" in note for note in result["notes"]), result["notes"])
+
+    def test_control_characters_in_paths_never_reach_generated_scripts(self):  # P2-7
+        folder = 'pkg\ntouch "$ADOPT_MARKER"\n#'
+        repo = self.make_repo("oddpath", {f"{folder}/package.json": '{"name": "x", "scripts": {"test": "true"}}\n'})
+
+        self.propose_json(repo)
+
+        check = self.show(repo, BRANCH, "bin/check")
+        self.assertFalse([line for line in check.splitlines() if line.lstrip().startswith("touch")], check)
+        self.git(repo, "checkout", "-q", BRANCH)
+        subprocess.run([str(repo / "bin" / "check"), "commit"], cwd=repo, env=self.env(), capture_output=True)
+        self.assertFalse(self.marker.exists(), "a path injected a command into bin/check")
 
 
 if __name__ == "__main__":

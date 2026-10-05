@@ -401,8 +401,8 @@ def cmd_adopt(args: argparse.Namespace) -> int:
     try:
         if args.propose:
             if args.prove:
-                print("kitchen adopt --prove RUNS REPOSITORY CODE: bin/check commit, the commands it calls and the proposed hook, "
-                      "in a temporary worktree of the target repo.", file=sys.stderr)
+                print("kitchen adopt --prove RUNS REPOSITORY CODE in a temporary worktree of the target repo: its checkout may run "
+                      "the repo's git filters, then bin/check commit, the commands it calls and the proposed hook run.", file=sys.stderr)
             result = propose.propose(Path(args.path), args.branch, args.prove, log=lambda line: print(line, file=sys.stderr))
             if args.json:
                 print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -416,6 +416,10 @@ def cmd_adopt(args: argparse.Namespace) -> int:
     except propose.ProposeError as error:
         print(f"FAIL  {error}", file=sys.stderr)
         return 1
+    except propose.Interrupted as error:
+        print(f"FAIL  interrupted by {error}: stopped the running check's process group and removed the temporary worktree",
+              file=sys.stderr)
+        return 128 + error.signum
     print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else adopt.render(report))
     return report["missing"]
 
