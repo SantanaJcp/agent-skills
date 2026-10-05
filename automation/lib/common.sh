@@ -52,6 +52,17 @@ LOCK_STATE="$KITCHEN_LOCK_STATE"
 RUN_ID="$KITCHEN_RUN_ID"
 unset KITCHEN_LOCK_STATE KITCHEN_RUN_ID
 
+# A step is name|command with both parts non-blank. An empty command would pass for free: `bash -c ""`
+# exits 0, so a step list holding one proves nothing. Prints each malformed entry, one per line.
+malformed_steps() { # entries...
+  local entry name cmd
+  for entry in "$@"; do
+    if [[ "$entry" != *"|"* ]]; then printf '%s\n' "${entry:-<empty>}"; continue; fi
+    name="${entry%%|*}"; cmd="${entry#*|}"
+    if [ -z "${name//[[:space:]]/}" ] || [ -z "${cmd//[[:space:]]/}" ]; then printf '%s\n' "$entry"; fi
+  done
+}
+
 log() { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
 
 # A deadline for anything that waits on the network (gh goes through the bounded gh shim).

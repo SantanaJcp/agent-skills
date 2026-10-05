@@ -166,6 +166,14 @@ fi
 
 # Each step runs strict (bash -e -o pipefail): `false; true` and `false | true` fail it. A run in which no step
 # ran proves nothing: it is recorded incomplete (failed_step "config"), never green.
+bad_steps="$(malformed_steps ${GUARD_STEPS[@]+"${GUARD_STEPS[@]}"})"
+if [ -n "$bad_steps" ]; then
+  PHASE="config"
+  FAILED="config"
+  log "GUARD_STEPS has a step that is not name|command with both parts: $(printf '%s' "$bad_steps" | tr '\n' ';') in $CONFIG"
+  warn "malformed guard step"
+  exit 2
+fi
 verdict="green"
 ran=0
 for entry in ${GUARD_STEPS[@]+"${GUARD_STEPS[@]}"}; do
