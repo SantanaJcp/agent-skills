@@ -1,0 +1,82 @@
+kitchen adopt --propose <repo>  (ran no repository code)
+Branch kitchen/adopt @ 5b90cd2 (new), from 4ec6634; not pushed
+
+Measured by --check at 4ec6634 (that commit's tree; uncommitted changes are not part of the proposal)
+  FAIL     check contract                     no bin/check and no .kitchen/checks.toml
+  FAIL     pre-commit hook active             no .git/hooks/pre-commit (core.hooksPath unset, default hooks dir)
+  FAIL     AGENTS.md                          AGENTS.md has 3 lines but names no verify command (a verify-<repo> skill, bin/check or bin/verify)
+  FAIL     verify skill + map guard           no .agents/skills/verify-*/SKILL.md
+  FAIL     decisions.md                       no decisions.md at the repo root
+  FAIL     secret scan in hook                no active pre-commit hook, so no secret scan runs
+  FAIL     baseline ratchet                   no baseline file (*baseline*/*ratchet* data file, eslint-suppressions.json, .betterer.results)
+  FAIL     skills in .claude/skills           no project skills under .agents/skills to link
+  unknown  required status on shared branch   origin is not a GitHub remote, so protection cannot be read
+
+Files on kitchen/adopt
+  written          decisions.md
+       does: Dated decisions; `- [ ]` marks one the owner still owes, and `kitchen status` counts them.
+       would block today: nothing; it lists 4 owed decisions for `kitchen status`
+  written          bin/check
+       does: The one check contract: tiers commit, integrate, nightly and verify-tree, filled from the manifests; `--list` prints them.
+       would block today: not run: needs --prove, which runs repository code
+  written          .githooks/pre-commit
+       does: gitleaks on the staged changes (fails with the install command when gitleaks is missing), then `bin/check commit` unless only documentation is staged. Inactive until `git config core.hooksPath .githooks` in each clone.
+       would block today: not run: needs --prove, which runs repository code
+  written          .agents/skills/verify-calc/SKILL.md
+       does: Skeleton of the project's verify skill from templates/verify: placeholders to fill, no bin/verify yet.
+       would block today: nothing: a skeleton
+  written          .agents/skills/verify-calc/features/README.md
+       does: Skeleton of the project's verify skill from templates/verify: placeholders to fill, no bin/verify yet.
+       would block today: nothing: a skeleton
+  written          .kitchen/baseline.json
+       does: What --check measured, in measure-only mode: no gate reads it yet.
+       would block today: nothing: measure-only
+
+Proposals (not written: yours to apply)
+  1. agents-md: AGENTS.md has 3 lines but names no verify command (a verify-<repo> skill, bin/check or bin/verify). Name the verify command in AGENTS.md (the verify-<repo> skill or bin/check).
+  2. skills-linked: link the project skills in each clone: mkdir -p .claude/skills && ln -s ../../.agents/skills/verify-calc .claude/skills/verify-calc
+
+Unverified
+  `python3 -m unittest discover -s tests` (unittest: test files under tests/): detected, never run
+  bin/check integrate, nightly and verify-tree: never run by kitchen adopt
+  .githooks/pre-commit is inactive until `git config core.hooksPath .githooks` in each clone
+  .githooks/pre-commit: gitleaks never ran
+  verify-calc is a skeleton: placeholders, no bin/verify, no feature mapped; it proves nothing yet
+  .kitchen/baseline.json is measure-only: no gate compares against it
+  --check only reads lint configs and manifests; it never ran a linter, a build or a test
+  required status on shared branch: unknown (origin is not a GitHub remote, so protection cannot be read)
+
+Readiness
+  files proposed              yes: 6 files on kitchen/adopt
+  checks run green            not run: rerun with --prove (it runs repository code)
+  negative control went red   not run: rerun with --prove (it runs repository code)
+  unattended-ready            not assessed: kitchen adopt does not assess unattended runs (sandbox, schedule, credentials)
+
+Trust per piece
+  not proved   bin/check: rerun with --prove
+  not proved   .githooks/pre-commit: rerun with --prove
+  untrusted    .agents/skills/verify-calc/SKILL.md: a skeleton: nothing to run until bin/verify exists and its own negative control goes red
+  measure-only .kitchen/baseline.json: not a gate, so there is nothing to prove
+
+One-way doors: owner decisions, printed and never executed
+  1. Ruleset on the default branch: block deletion and force-push, require a pull request. Recommended: yes.
+     $ gh api -X POST repos/OWNER/REPO/rulesets --input - <<'JSON'
+       {"name": "default branch", "target": "branch", "enforcement": "active", "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}}, "rules": [{"type": "deletion"}, {"type": "non_fast_forward"}, {"type": "pull_request", "parameters": {"required_approving_review_count": 0, "dismiss_stale_reviews_on_push": false, "require_code_owner_review": false, "require_last_push_approval": false, "required_review_thread_resolution": false}}]}
+       JSON
+       # origin is not a GitHub remote: replace OWNER/REPO
+  2. Required status check on that ruleset: a CI job named `check` that runs `bin/check integrate`. Recommended: yes, once that CI job has run green, so the rule never blocks every merge.
+     $ gh api repos/OWNER/REPO/rulesets   # the id of the ruleset from the decision above
+       gh api -X PUT repos/OWNER/REPO/rulesets/RULESET_ID --input - <<'JSON'
+       {"name": "default branch", "target": "branch", "enforcement": "active", "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}}, "rules": [{"type": "deletion"}, {"type": "non_fast_forward"}, {"type": "pull_request", "parameters": {"required_approving_review_count": 0, "dismiss_stale_reviews_on_push": false, "require_code_owner_review": false, "require_last_push_approval": false, "required_review_thread_resolution": false}}, {"type": "required_status_checks", "parameters": {"strict_required_status_checks_policy": false, "required_status_checks": [{"context": "check"}]}}]}
+       JSON
+       # origin is not a GitHub remote: replace OWNER/REPO
+  3. Schedule the nightly tier on a host with the kitchen's automation. Recommended: yes, once `bin/check nightly` is green by hand.
+     $ # in ~/.config/kitchen/automation/calc.env: GUARD_STEPS=("check|bin/check nightly")
+       automation/bin/install-schedule calc   # from the kitchen checkout
+  4. Credentials for unattended pushes (the gardener): a fine-grained token limited to this repo. Recommended: not yet: unattended-ready is not assessed.
+     $ # create it at https://github.com/settings/personal-access-tokens/new: repository OWNER/REPO, Contents and Pull requests read and write; keep it on the host, never in the repo
+       # origin is not a GitHub remote: replace OWNER/REPO
+
+Next (two-way, yours)
+  review the branch (`git diff HEAD...kitchen/adopt`), then push it yourself: `git push -u origin kitchen/adopt`
+  after it merges, activate the hook in each clone: `git config core.hooksPath .githooks`

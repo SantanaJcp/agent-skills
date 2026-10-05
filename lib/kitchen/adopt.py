@@ -109,19 +109,68 @@ def criterion(status: str, proof: str, **extra) -> dict:
     return {"status": status, "proof": proof, **extra}
 
 
+REGULAR_MODES = ("100644", "100755")
+
+
+def read_tree(root: Path, commit: str) -> dict[str, tuple[str, str]]:
+    """{path: (mode, object sha)} for every non-tree entry of a commit: blobs, symlinks (120000), submodules (160000)."""
+    listing = run_git(root, "ls-tree", "-r", "-z", "--full-tree", commit)
+    if listing is None:
+        raise NotARepo(f"git ls-tree {commit} failed in {root}")
+    entries = {}
+    for record in filter(None, listing.split(b"\0")):
+        meta, _, name = record.partition(b"\t")
+        mode, _, sha = meta.decode().split(" ")
+        entries[os.fsdecode(name)] = (mode, sha)
+    return entries
+
+
 class Repo:
-    def __init__(self, path: Path):
+    """A repo read from its checkout, or with `commit`, from that commit's tree: nothing is checked out.
+
+    In tree mode, files and contents come from git objects; what is per clone (the active hook, `.claude/skills`
+    links, the git config) is still read from the checkout at `root`."""
+
+    def __init__(self, path: Path, commit: str | None = None):
         top = run_git(path, "rev-parse", "--show-toplevel") if path.is_dir() else None
         if top is None:
             raise NotARepo(f"{path} is not a git repository")
         self.root = Path(top.decode().strip())
-        listing = run_git(self.root, "ls-files", "-z", "-co", "--exclude-standard")
-        if listing is None:
-            raise NotARepo(f"git ls-files failed in {self.root}")
-        names = {os.fsdecode(raw) for raw in listing.split(b"\0") if raw}
-        self.files = sorted(n for n in names if not VENDORED & set(PurePosixPath(n).parts[:-1]) and (self.root / n).is_file())
+        self.commit = None
+        self.tree: dict[str, tuple[str, str]] = {}
+        if commit:
+            sha = run_git(self.root, "rev-parse", "--verify", "--quiet", f"{commit}^{{commit}}")
+            if sha is None:
+                raise NotARepo(f"{commit} is not a commit in {self.root}")
+            self.commit = sha.decode().strip()
+            self.tree = read_tree(self.root, self.commit)
+            names = {n for n, (mode, _) in self.tree.items() if mode in REGULAR_MODES}
+        else:
+            listing = run_git(self.root, "ls-files", "-z", "-co", "--exclude-standard")
+            if listing is None:
+                raise NotARepo(f"git ls-files failed in {self.root}")
+            names = {n for n in (os.fsdecode(raw) for raw in listing.split(b"\0") if raw) if (self.root / n).is_file()}
+        self.files = sorted(n for n in names if not VENDORED & set(PurePosixPath(n).parts[:-1]))
         self.fileset = set(self.files)
         self._cache: dict[str, str | None] = {}
+
+    def is_file(self, rel: str) -> bool:
+        if self.commit:
+            return self.tree.get(rel, ("", ""))[0] in REGULAR_MODES
+        return (self.root / rel).is_file()
+
+    def is_executable(self, rel: str) -> bool:
+        if self.commit:
+            return self.tree.get(rel, ("", ""))[0] == "100755"
+        return os.access(self.root / rel, os.X_OK)
+
+    def exists(self, rel: str) -> bool:
+        if self.commit:
+            return rel in self.tree or any(name.startswith(rel + "/") for name in self.tree)
+        return (self.root / rel).exists()
+
+    def head(self) -> str | None:
+        return self.commit[:7] if self.commit else self.git("rev-parse", "--short", "HEAD")
 
     def git(self, *args: str) -> str | None:
         out = run_git(self.root, *args)
@@ -129,10 +178,13 @@ class Repo:
 
     def read(self, rel: str) -> str | None:
         if rel not in self._cache:
-            path = self.root / rel
             text = None
-            if path.is_file():
-                with open(path, "rb") as handle:
+            if self.commit:
+                if self.is_file(rel):
+                    blob = run_git(self.root, "cat-file", "blob", self.tree[rel][1])
+                    text = blob[:MAX_READ_BYTES].decode("utf-8", errors="replace") if blob is not None else None
+            elif (self.root / rel).is_file():
+                with open(self.root / rel, "rb") as handle:
                     text = handle.read(MAX_READ_BYTES).decode("utf-8", errors="replace")
             self._cache[rel] = text
         return self._cache[rel]
@@ -257,7 +309,7 @@ def hook_state(repo: Repo) -> dict:
         "pre_commit": repo.display(pre_commit),
         "exists": pre_commit.is_file(),
         "active": pre_commit.is_file() and os.access(pre_commit, os.X_OK),
-        "managers": [m for m in (".githooks", ".husky", ".pre-commit-config.yaml") if (repo.root / m).exists()],
+        "managers": [m for m in (".githooks", ".husky", ".pre-commit-config.yaml") if repo.exists(m)],
         "_path": pre_commit,
     }
 
@@ -361,21 +413,19 @@ def toml_tiers(data: dict) -> set[str]:
 
 def check_contract(repo: Repo) -> dict:
     reasons: list[str] = []
-    script = repo.root / "bin" / "check"
-    if script.is_file():
-        tiers = declared_tiers(read_absolute(script))
+    if repo.is_file("bin/check"):
+        tiers = declared_tiers(repo.read("bin/check") or "")
         missing = [t for t in TIERS if t not in tiers]
-        if not os.access(script, os.X_OK):
+        if not repo.is_executable("bin/check"):
             reasons.append("bin/check is not executable")
         elif missing:
             reasons.append(f"bin/check declares no tier table entry for {', '.join(missing)} (it is read, never run)")
         else:
             lines = ", ".join(f"{t}:{tiers[t]}" for t in TIERS)
             return criterion("PASS", f"bin/check (executable) declares {', '.join(TIERS)} at lines {lines}")
-    toml = repo.root / ".kitchen" / "checks.toml"
-    if toml.is_file():
+    if repo.is_file(".kitchen/checks.toml"):
         try:
-            tiers = toml_tiers(tomllib.loads(read_absolute(toml)))
+            tiers = toml_tiers(tomllib.loads(repo.read(".kitchen/checks.toml") or ""))
         except tomllib.TOMLDecodeError as error:
             reasons.append(f".kitchen/checks.toml does not parse: {error}")
         else:
@@ -492,7 +542,7 @@ def secret_scan(repo: Repo, hooks: dict) -> dict:
     return criterion("FAIL", "no active pre-commit hook, so no secret scan runs", next=step)
 
 
-def baseline_ratchet(repo: Repo, gates: list[tuple[str, str]]) -> dict:
+def baseline_candidates(repo: Repo) -> list[str]:
     def is_baseline(rel: str) -> bool:
         path = PurePosixPath(rel)
         if TEST_DIRS & {p.lower() for p in path.parts[:-1]}:
@@ -500,7 +550,11 @@ def baseline_ratchet(repo: Repo, gates: list[tuple[str, str]]) -> dict:
         if path.name in ("eslint-suppressions.json", ".betterer.results"):
             return True
         return bool(re.search(r"baseline|ratchet", path.name, re.IGNORECASE)) and path.suffix in (".json", ".toml", ".yml", ".yaml", ".txt", ".csv", ".xml")
-    candidates = [f for f in repo.files if is_baseline(f)]
+    return [f for f in repo.files if is_baseline(f)]
+
+
+def baseline_ratchet(repo: Repo, gates: list[tuple[str, str]]) -> dict:
+    candidates = baseline_candidates(repo)
     if not candidates:
         return criterion("FAIL", "no baseline file (*baseline*/*ratchet* data file, eslint-suppressions.json, .betterer.results)",
                          next="Record a baseline of today's violations and check it in a gate so the count can only go down.")
@@ -598,8 +652,8 @@ def branch_protection(repo: Repo, branch: str | None) -> dict:
 
 # ---- report -------------------------------------------------------------------------------------
 
-def check(path: Path, branch: str | None = None) -> dict:
-    repo = Repo(path.resolve())
+def check(path: Path, branch: str | None = None, commit: str | None = None) -> dict:
+    repo = Repo(path.resolve(), commit)
     hooks = hook_state(repo)
     gates = gate_scope(repo, hooks)
     skills = project_skills(repo)
@@ -625,7 +679,7 @@ def check(path: Path, branch: str | None = None) -> dict:
     missing = sum(1 for m in must_haves if m["status"] != "PASS")
     return {
         "path": str(repo.root),
-        "head": repo.git("rev-parse", "--short", "HEAD"),
+        "head": repo.head(),
         "read_only": True,
         "stacks": evidence if evidence else {},
         "stack_status": "detected" if evidence else "unsupported",
