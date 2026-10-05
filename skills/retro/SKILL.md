@@ -13,7 +13,7 @@ You are improving the environment the agents work in, not judging one session.
 1. **Extract.** `kitchen retro --since 7d` prints my prompts from both tools with project, session and time. Widen the window when I ask.
    - **Validate provenance.** Its last line is the coverage: included / excluded by reason (notifications, subagents, automations, agent-launched and non-interactive runs, replayed history) / unknown provenance. Unknown means an agent launched the same text elsewhere and the session cannot tell whether I typed it; unknown prompts are never counted as my corrections. Copy that line into the report. Before counting anything, skim `kitchen retro --since 7d --include-automated` for a non-human message that slipped through (a heartbeat, a delegation notice, a probe) or a human one that was excluded; name each one and leave it out of the counts. A count built on automated messages is a fake count.
 2. **Find** what cost me attention: corrections ("no", "otra vez", "te dije", "eso está mal", "outdated"), instructions repeated across sessions, the same question asked twice, agents rebuilding the same script, and mistakes with real damage.
-3. **Group** by root cause, not by wording. Keep a group with two or more occurrences, or one with real damage.
+3. **Group** by root cause, not by wording. Keep a group with two or more occurrences, or one with real damage. Propose a fix only for a group an earlier retro report already listed, or one with real damage; a group seen for the first time goes to a **Watch** list with its count, for the next retro to check.
 4. **Pick the strongest layer** that would have prevented it:
    1. impossible in code;
    2. guard test, lint or `kitchen check` rule;
@@ -36,6 +36,6 @@ Start the report with the coverage line and any provenance corrections.
 | # | Problem | Evidence (count, one quote, session) | Layer | Concrete change (file and text or test) | Cost |
 |---|---|---|---|---|---|
 
-Then a **Prune** list, a **Follow up** list and a **Last retro** check. Never apply a change; each one waits for my approval.
+Then a **Watch** list (first-time groups: count, one quote), a **Prune** list, a **Follow up** list and a **Last retro** check. Never apply a change; each one waits for my approval.
 
 Principles (the kitchen's PRINCIPLES.md): `encode-lessons`, `truthful-state`.
