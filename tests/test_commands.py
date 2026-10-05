@@ -505,9 +505,9 @@ class IntegrateTests(ProjectFixture):
             (folder / "shop-check").write_text(f"#!/bin/sh\nexit {code}\n")
             (folder / "shop-check").chmod(0o755)
             tools[name] = folder
-        self.configure(f'checks = ["shop-check"]\npath = ["{tools['good']}"]')
+        self.configure(f'checks = ["shop-check"]\npath = ["{tools["good"]}"]')
         self.assertEqual(self.integrate("feature-a").returncode, 0)
-        self.configure(f'checks = ["shop-check"]\npath = ["{tools['bad']}"]')
+        self.configure(f'checks = ["shop-check"]\npath = ["{tools["bad"]}"]')
 
         recorded = self.integrate("feature-a", "--recorded")
         real = self.integrate("feature-a")
