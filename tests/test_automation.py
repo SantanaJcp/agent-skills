@@ -1091,3 +1091,37 @@ class ShimTests(AutomationFixture):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SuperviseStopGroupTests(unittest.TestCase):
+    """The supervisor stops a finished job's process group, and must not crash when the OS refuses a signal."""
+
+    def load(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("supervise", AUTOMATION / "lib" / "supervise.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.DRAIN = 0
+        return module
+
+    def test_a_group_that_refuses_the_signal_does_not_crash_the_supervisor(self):
+        supervise = self.load()
+        sent = []
+
+        def killpg(pgid, sig):
+            sent.append(sig)
+            if sig == 0:
+                if len([s for s in sent if s != 0]) >= 2:  # gone once TERM and KILL were attempted
+                    raise ProcessLookupError
+                return
+            raise PermissionError(1, "Operation not permitted")
+
+        original = supervise.os.killpg
+        supervise.os.killpg = killpg
+        try:
+            supervise.stop_group(4242, 0.01)  # raised PermissionError before the fix
+        finally:
+            supervise.os.killpg = original
+
+        self.assertIn(signal.SIGTERM, sent)
+        self.assertIn(signal.SIGKILL, sent)  # escalation continued past the refused TERM

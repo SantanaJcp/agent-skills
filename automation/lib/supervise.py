@@ -112,6 +112,12 @@ def stop_group(pgid: int, grace: float) -> None:
             os.killpg(pgid, sig)
         except ProcessLookupError:
             return
+        except PermissionError:
+            # killpg fails with EPERM when some member of the group may not be signalled by us; the others may
+            # still have received it (seen 2026-10-05: a session ended during the nightly's docker tests and the
+            # supervisor crashed here, leaving its run "running"). Keep waiting and escalating: whatever is still
+            # running afterwards is found by the sweep and recorded as survivors.
+            pass
         end = time.monotonic() + wait
         while group_alive(pgid) and time.monotonic() < end:
             time.sleep(0.05)
