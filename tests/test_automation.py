@@ -164,6 +164,20 @@ class NightlyGuardTests(AutomationFixture):
                 self.assertEqual((run["status"], run["failed_step"]), ("incomplete", "config"))
                 self.assertIn("no guard step ran", result.stdout)
 
+    def test_an_empty_or_malformed_step_is_a_configuration_failure_never_green(self):
+        # `bash -c ""` exits 0: a step without a command would pass without checking anything
+        for name, steps in (("empty command", ["build|"]), ("blank command", ["build|   "]), ("no name", ["| true"]),
+                            ("empty entry", [""]), ("no separator", ["true"]), ("one bad among good", ["ok|true", "lint|"])):
+            with self.subTest(name):
+                self.configure(steps)
+
+                result = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
+
+                run = self.nightly()[-1]
+                self.assertNotEqual(result.returncode, 0, result.stdout)
+                self.assertEqual((run["status"], run["failed_step"]), ("incomplete", "config"))
+                self.assertIn("not name|command with both parts", result.stdout)
+
     def test_each_step_runs_strict_so_a_hidden_failure_fails_it(self):
         for name, command in (("chained", "false; true"), ("piped", "false | true")):
             with self.subTest(name):
@@ -1127,6 +1141,15 @@ git commit -q -am "More notes"
         self.assertNotIn("claude", self.calls_log())
         self.assertEqual([r["status"] for r in self.gardener()], ["refused"])
         self.assertEqual(len(self.notifications()), 1, self.calls_log())
+
+    def test_a_malformed_verify_step_refuses_before_the_agent_runs(self):
+        self.verify_config('"build|true" "tests|"', guard_steps=["ok|true"])
+        self.agent(self.commit_script())
+
+        result = self.run_job("weekly-gardener", "shop")
+
+        self.assert_refused(result, "not name|command with both parts (tests|)")
+        self.assertNotIn("claude", self.calls_log())
 
     def test_without_verify_steps_the_job_refuses_to_publish(self):
         self.configure([])

@@ -152,6 +152,7 @@ verify_tree() {
   local tree="$1" vdir="$JOB_DIR/verify" spec name cmd rc recorded var path keep=() args passed=""
   # The agent's own report is not evidence: without steps of its own the job publishes nothing.
   [ ${#GARDENER_VERIFY_STEPS[@]} -gt 0 ] || refuse "no independent verification configured (GARDENER_VERIFY_STEPS is empty)" || return 1
+  [ -z "$(malformed_steps "${GARDENER_VERIFY_STEPS[@]}")" ] || refuse "GARDENER_VERIFY_STEPS has a malformed step" || return 1
   python3 "$KITCHEN_AUTOMATION/lib/export_tree.py" "$GIT_DIR" "$tree" "$vdir" >/dev/null ||
     refuse "could not export the validated tree" || return 1
   git config --file "$JOB_DIR/gitconfig" user.name kitchen-gardener-verify
@@ -287,6 +288,9 @@ record_gardener running "" "$RUN_ID" "$RUN_LOG" "$STARTED_AT"
 # Without verification of its own the job would publish nothing (verify_tree refuses too): no agent run for it.
 [ ${#GARDENER_VERIFY_STEPS[@]} -gt 0 ] ||
   { refuse "no independent verification configured (GARDENER_VERIFY_STEPS is empty); the agent did not run"; exit 1; }
+bad_steps="$(malformed_steps "${GARDENER_VERIFY_STEPS[@]}")"
+[ -z "$bad_steps" ] ||
+  { refuse "GARDENER_VERIFY_STEPS has a step that is not name|command with both parts ($(printf '%s' "$bad_steps" | tr '\n' ';')); the agent did not run"; exit 1; }
 
 gh label create "$GARDENER_LABEL" -R "$GH_REPO" --color 0E8A16 --description "Weekly gardener PR" >/dev/null 2>&1 || true
 pending="$(gh pr list -R "$GH_REPO" --label "$GARDENER_LABEL" --state open --json number --jq 'length')"
