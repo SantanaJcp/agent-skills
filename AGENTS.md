@@ -1,6 +1,6 @@
 # Working on this repo
 
-This file is for agents editing the kitchen itself. The rules every session follows everywhere live in `global/AGENTS.md`.
+This file is for agents editing the kitchen itself. `PRINCIPLES.md` says what the kitchen does and why; read it before you change a control. The owner's rules for every session live in `global/AGENTS.md`.
 
 ## Rules
 
@@ -11,6 +11,7 @@ This file is for agents editing the kitchen itself. The rules every session foll
 - A skill is a workflow, not a manual: `SKILL.md` stays under 150 lines (`bin/kitchen check` enforces it). Move mechanical steps into a script inside the skill and detail into a referenced file.
 - Skill names and descriptions are English and kebab-case; the folder name equals the frontmatter `name`; descriptions are one line.
 - Prefer the strongest fix for a recurring mistake: make it impossible in code, then a check in `bin/kitchen check`, then a rule here.
+- Every control (a guard, a scheduled job, a CLI module that decides PASS, FAIL or unknown, a must-have of `kitchen init`, a skill) names the principles it enforces in a `Principles:` line, and a new one is added to the list in `tests/test_principles.py`. A new principle goes in `PRINCIPLES.md` with an `Enforced by:` line.
 
 ## Verify
 
