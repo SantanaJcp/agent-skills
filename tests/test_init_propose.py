@@ -533,13 +533,43 @@ class AgentHooks(ProposeFixture):
     def test_a_missing_copy_blocks_instead_of_passing(self):
         repo = self.make_repo("calc", PYTHON_FILES)
         self.propose_json(repo)
-        empty = self.root / "no-guards"
-        empty.mkdir()
+        broken = self.root / "settings-without-guards"
+        (broken / ".claude").mkdir(parents=True)
+        (broken / ".claude" / "settings.json").write_text(self.show(repo, BRANCH, ".claude/settings.json"))
 
-        result = self.run_hook(self.hook_commands(repo)[0], empty, "ls")
+        result = self.run_hook(self.hook_commands(repo)[0], broken, "ls")
 
         self.assertEqual(result.returncode, 2)
         self.assertIn("kitchen: guard missing", result.stderr)
+
+    def test_an_unknown_project_or_a_broken_settings_link_still_blocks(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        self.propose_json(repo)
+        command = self.hook_commands(repo)[0]
+        payload = json.dumps({"tool_name": "Bash", "tool_input": {"command": "ls"}})
+        unset = subprocess.run(["sh", "-c", command], input=payload, capture_output=True, text=True,
+                               env={k: v for k, v in self.env().items() if k != "CLAUDE_PROJECT_DIR"})
+        dangling = self.root / "dangling"
+        (dangling / ".claude").mkdir(parents=True)
+        (dangling / ".claude" / "settings.json").symlink_to(self.root / "nowhere.json")
+
+        broken = self.run_hook(command, dangling, "ls")
+
+        self.assertEqual((unset.returncode, broken.returncode), (2, 2), unset.stderr + broken.stderr)
+        self.assertIn("CLAUDE_PROJECT_DIR is not set", unset.stderr)
+        self.assertIn("guard missing", broken.stderr)
+
+    def test_a_checkout_without_project_settings_is_not_locked(self):
+        # measured 2026-10-05: a Claude Code session that loaded the settings on kitchen/init, then switched to a branch
+        # from before init, kept the hooks; the missing copy blocked every Bash call
+        repo = self.make_repo("calc", PYTHON_FILES)
+        self.propose_json(repo)
+        before_init = self.root / "before-init"
+        before_init.mkdir()
+
+        result = self.run_hook(self.hook_commands(repo)[0], before_init, "ls")
+
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_a_stale_copy_fails_the_check_and_is_not_overwritten(self):
         files = {**PYTHON_FILES, **vendored_hooks()}
@@ -638,6 +668,45 @@ class Refresh(ProposeFixture):
 
         self.assertNotEqual(self.state(result, ".kitchen/hooks/deny-shared-push"), "refreshed")
         self.assertEqual(self.tree(repo, BRANCH)[".kitchen/hooks/deny-shared-push"][0], "100644")
+
+    def test_settings_kitchen_wrote_follow_the_kitchen(self):
+        old = self.older_kitchen()
+        source = old / "lib" / "kitchen" / "repocheck.py"
+        source.write_text(source.read_text().replace('[ -e "$s" ] || [ -L "$s" ] || exit 0; ', ""))  # the command before the lockout fix
+        repo = self.make_repo("calc", PYTHON_FILES)
+        self.init_with(old, repo)
+        commands = lambda: " ".join(AgentHooks.hook_commands(self, repo))
+        self.assertNotIn('|| exit 0', commands())
+
+        result = self.propose_json(repo)
+
+        self.assertEqual(self.state(result, ".claude/settings.json"), "refreshed")
+        self.assertIn('|| exit 0', commands())
+
+    def test_a_proof_with_nothing_new_still_updates_the_report(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        self.propose_json(repo)
+        first = self.git(repo, "rev-parse", BRANCH).strip()
+        self.assertIn("checks run green            not run", self.show(repo, BRANCH, "KITCHEN-INIT.md"))
+
+        result = self.propose_json(repo, "--prove", code=0 if shutil.which("gitleaks") else 1)
+
+        self.assertEqual([f for f in result["files"] if f["state"] in ("written", "refreshed")], [])
+        self.assertNotEqual(self.git(repo, "rev-parse", BRANCH).strip(), first)
+        report = self.show(repo, BRANCH, "KITCHEN-INIT.md")
+        self.assertNotIn("checks run green            not run", report)
+        self.assertIn("negative control went red", report)
+
+    def test_a_report_whose_mode_the_owner_changed_is_left_alone(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        self.propose_json(repo)
+        self.owner_commit(repo, lambda checkout: (checkout / "KITCHEN-INIT.md").chmod(0o755))
+        before = self.show(repo, BRANCH, "KITCHEN-INIT.md")
+
+        self.propose_json(repo, "--prove", code=0 if shutil.which("gitleaks") else 1)
+
+        self.assertEqual(self.tree(repo, BRANCH)["KITCHEN-INIT.md"][0], "100755")
+        self.assertEqual(self.show(repo, BRANCH, "KITCHEN-INIT.md"), before)
 
     def test_an_edited_copy_is_left_alone(self):
         repo = self.make_repo("calc", PYTHON_FILES)
