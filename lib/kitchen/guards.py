@@ -17,6 +17,8 @@ from __future__ import annotations
 import copy
 import json
 import os
+import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -58,13 +60,19 @@ def kitchen_files(kitchen: Path) -> dict[str, tuple[bytes, int]]:
 
 
 def command(tool: Tool, name: str) -> str:
+    """Runs the copy; any exit other than 0 (allow) or 2 (block), such as a copy that cannot execute, blocks too."""
     return (f"sh -c '{tool.root}; s=\"$r/{tool.settings}\"; h=\"$r/{VENDORED}/{name}\"; "
-            f"[ -e \"$s\" ] || [ -L \"$s\" ] || exit 0; [ -x \"$h\" ] || {{ echo \"kitchen: guard missing: $h\" >&2; exit 2; }}; exec \"$h\"'")
+            f"[ -e \"$s\" ] || [ -L \"$s\" ] || exit 0; [ -x \"$h\" ] || {{ echo \"kitchen: guard missing: $h\" >&2; exit 2; }}; "
+            f"\"$h\"; c=$?; [ $c -eq 0 ] || [ $c -eq 2 ] || {{ echo \"kitchen: guard $h failed with exit $c\" >&2; exit 2; }}; exit $c'")
+
+
+# The handlers this command writes, and the form `kitchen init` wrote before it (Claude Code only).
+MANAGED = (f'h="$r/{VENDORED}/', f'h="$CLAUDE_PROJECT_DIR/{VENDORED}/')
 
 
 def is_kitchen_handler(handler) -> bool:
     return isinstance(handler, dict) and isinstance(handler.get("command"), str) \
-        and handler["command"].startswith("sh -c '") and f'/{VENDORED}/' in handler["command"]
+        and handler["command"].startswith("sh -c '") and any(mark in handler["command"] for mark in MANAGED)
 
 
 def load(path: Path) -> dict:
@@ -107,8 +115,9 @@ def plan(repo: Path, kitchen: Path) -> list[tuple[str, bytes, int]]:
     changes = []
     for rel, content, mode in wanted:
         path = repo / rel
-        if path.is_symlink():
-            raise GuardsError(f"{path} is a symlink; kitchen guards writes only regular files")
+        for step in [path, *path.relative_to(repo).parents[:-1]]:
+            if (repo / step).is_symlink():  # a linked .claude/ or .kitchen/ would carry the write out of the project
+                raise GuardsError(f"{repo / step} is a symlink; kitchen guards writes only regular files inside the project")
         same = path.is_file() and path.read_bytes() == content
         if rel.startswith(VENDORED):
             same = same and (path.stat().st_mode & 0o777) == mode
@@ -117,12 +126,21 @@ def plan(repo: Path, kitchen: Path) -> list[tuple[str, bytes, int]]:
     return changes
 
 
+def uncommitted(repo: Path, rels: list[str]) -> list[str]:
+    """Paths among rels with changes git does not hold yet: overwriting them would lose them for good."""
+    result = subprocess.run(["git", "-C", str(repo), "status", "--porcelain", "--", *rels], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise GuardsError(f"cannot read git status in {repo}: {result.stderr.strip()}")
+    return [line[3:] for line in result.stdout.splitlines() if not line.startswith("??")]
+
+
 def apply(repo: Path, changes: list[tuple[str, bytes, int]]) -> None:
     for rel, content, mode in changes:
         path = repo / rel
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_name(f".{path.name}.kitchen-tmp")
-        tmp.write_bytes(content)
+        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")  # created new, never through a planted link
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(content)
         os.chmod(tmp, mode if rel.startswith(VENDORED) else (path.stat().st_mode & 0o777 if path.exists() else mode))
         os.replace(tmp, path)
 
@@ -136,6 +154,9 @@ def run(repo: Path, kitchen: Path, check: bool) -> int:
             print(f"FAIL  {rel} differs from what `kitchen guards` writes")
         print(f"{'FAIL' if changes else 'OK'}    kitchen guards in {repo}")
         return 1 if changes else 0
+    dirty = uncommitted(repo, [rel for rel, _, _ in changes])
+    if dirty:  # a committed file stays in history, so replacing it is reversible; an uncommitted edit is not
+        raise GuardsError(f"uncommitted changes in {', '.join(dirty)}; commit or discard them first, so what kitchen guards replaces stays in git")
     apply(repo, changes)
     for rel, _, _ in changes:
         print(f"wrote      {rel}")

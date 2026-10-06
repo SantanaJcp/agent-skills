@@ -6,6 +6,8 @@ Copy these steps into your todo list.
 
 ## 0. Where
 
+You need the kitchen on this machine: `kitchen` on PATH and this playbook's starting points next to it. Without it, install it first (the README's one-line prompt), or stop BLOCKED and say so.
+
 Work in a worktree on a new branch `kitchen/init` from the shared base: in T3 Code `t3_thread_launch` with a worktree `workspaceStrategy`, elsewhere `git worktree add -b kitchen/init <path> origin/<base>`. Never in the owner's checkout. Unknown base: ask; never guess.
 
 ## 1. Read what is there; write nothing
@@ -40,10 +42,13 @@ One-way doors are printed, never run: a ruleset or branch protection that requir
 
 ## 4. Prove it
 
-1. `bin/check commit` green twice in a row, from a clean tree.
-2. Negative control: plant a defect in a file the commit tier actually runs (a test it executes, in a language its commands cover), run `bin/check commit`, see it fail, revert the defect. Still green means the tier does not cover that file: fix the tier or pick a file it runs. Never report done on a control that stayed green.
-3. `bin/check integrate` green once.
-4. Each guard blocks its probe in this repo: pipe `{"tool_name":"Bash","cwd":"<repo>","tool_input":{"command":"git push origin HEAD:<base>"}}` into `.kitchen/hooks/deny-shared-push` and see exit 2 (likewise `git commit --no-verify -m x` for `deny-no-verify`, `rm -rf /x` for `deny-recursive-rm`).
+Prove each piece the owner said yes to; a piece they declined has nothing to prove.
+
+1. Check contract: `bin/check commit` green twice in a row, from a clean tree.
+2. Check contract, negative control: plant a defect in a file the commit tier actually runs (a test it executes, in a language its commands cover), run `bin/check commit`, see it fail, revert the defect. Still green means the tier does not cover that file: fix the tier or pick a file it runs. Never report done on a control that stayed green.
+3. Check contract: `bin/check integrate` green once.
+4. Pre-commit hook: `git config core.hooksPath .githooks`, stage the planted defect and run `git commit`: the hook must refuse it. Revert.
+5. Guards: each one blocks its probe in this repo: pipe `{"tool_name":"Bash","cwd":"<repo>","tool_input":{"command":"git push origin HEAD:<base>"}}` into `.kitchen/hooks/deny-shared-push` and see exit 2 (likewise `git commit --no-verify -m x` for `deny-no-verify`, `rm -rf /x` for `deny-recursive-rm`).
 
 Keep each command and its last lines of output for the pull request.
 

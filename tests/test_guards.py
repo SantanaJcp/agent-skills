@@ -11,6 +11,8 @@ from tests.test_kitchen import KITCHEN, KitchenFixture
 ROOT = KITCHEN.parent.parent
 GUARDS = ["deny-no-verify", "deny-recursive-rm", "deny-shared-push"]
 PUSH = {"tool_name": "Bash", "hook_event_name": "PreToolUse", "tool_input": {"command": "git push origin HEAD:main"}}
+PROBES = {"deny-shared-push": "git push origin HEAD:main", "deny-no-verify": "git commit --no-verify -m x",
+          "deny-recursive-rm": "rm -rf /kitchen-probe"}
 
 
 class GuardsFixture(KitchenFixture):
@@ -25,8 +27,8 @@ class GuardsFixture(KitchenFixture):
     def handlers(self, path):
         return [h for g in json.loads(path.read_text())["hooks"]["PreToolUse"] for h in g["hooks"]]
 
-    def run_handler(self, handler, cwd, env_extra=None):
-        payload = json.dumps({**PUSH, "cwd": str(cwd)})
+    def run_handler(self, handler, cwd, env_extra=None, command=None):
+        payload = json.dumps({**PUSH, "cwd": str(cwd), **({"tool_input": {"command": command}} if command else {})})
         env = {k: v for k, v in os.environ.items() if k != "CLAUDE_PROJECT_DIR"}
         return subprocess.run(["/bin/sh", "-c", handler["command"]], input=payload, capture_output=True, text=True,
                               cwd=cwd, env={**env, **(env_extra or {})})
@@ -58,6 +60,48 @@ class GuardsTests(GuardsFixture):
         for results in (claude, codex):
             self.assertEqual(sorted(r.returncode for r in results), [0, 0, 2], [r.stderr for r in results])
             self.assertTrue(any("Blocked by the kitchen hook" in r.stderr for r in results))
+
+    def test_each_guard_blocks_its_own_probe_through_its_handler_in_both_tools(self):
+        self.kitchen("guards", str(self.project))
+
+        for path, env in ((self.claude, {"CLAUDE_PROJECT_DIR": str(self.project)}), (self.codex, {})):
+            for handler in self.handlers(path):
+                name = next(n for n in GUARDS if f"/.kitchen/hooks/{n}" in handler["command"])
+                with self.subTest(tool=path.name, guard=name):
+                    result = self.run_handler(handler, self.project, env, PROBES[name])
+                    self.assertEqual(result.returncode, 2, result.stderr)
+
+    def test_a_copy_that_cannot_run_blocks_instead_of_passing(self):
+        self.kitchen("guards", str(self.project))
+        copy = self.project / ".kitchen" / "hooks" / "deny-shared-push"
+        copy.write_text("#!/nonexistent/interpreter\n")
+        handler = next(h for h in self.handlers(self.codex) if "deny-shared-push" in h["command"])
+
+        result = self.run_handler(handler, self.project)
+
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("failed with exit", result.stderr)
+
+    def test_guards_keeps_a_project_hook_of_its_own_under_kitchen_hooks(self):
+        theirs = {"type": "command", "command": "sh -c 'exec \"$CLAUDE_PROJECT_DIR/.kitchen/hooks/tenant-check\"'"}
+        self.claude.parent.mkdir(parents=True)
+        self.claude.write_text(json.dumps({"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [theirs]}]}}))
+
+        self.kitchen("guards", str(self.project))
+
+        self.assertIn(theirs, self.handlers(self.claude))
+
+    def test_guards_writes_through_no_planted_temporary_link(self):
+        hooks = self.project / ".kitchen" / "hooks"
+        hooks.mkdir(parents=True)
+        victim = Path(self.tmp.name) / "victim"
+        victim.write_text("KEEP")
+        (hooks / ".deny-no-verify.kitchen-tmp").symlink_to(victim)
+
+        result = self.kitchen("guards", str(self.project))
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(victim.read_text(), "KEEP")
 
     def test_a_handler_fails_closed_when_its_copy_is_missing(self):
         self.kitchen("guards", str(self.project))
@@ -108,6 +152,38 @@ class GuardsTests(GuardsFixture):
         self.assertEqual(self.codex.read_text(), "{ not json")
         self.assertFalse((self.project / ".kitchen").exists())
         self.assertFalse(self.claude.exists())
+
+    def test_guards_refuses_a_linked_directory_that_would_carry_the_write_out_of_the_project(self):
+        outside = Path(self.tmp.name) / "personal-claude"
+        outside.mkdir()
+        (outside / "settings.json").write_text('{"model": "opus"}')
+        (self.project / ".claude").symlink_to(outside)
+
+        result = self.kitchen("guards", str(self.project))
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(".claude is a symlink", result.stderr)
+        self.assertEqual((outside / "settings.json").read_text(), '{"model": "opus"}')
+        self.assertFalse((self.project / ".kitchen").exists())
+
+    def test_guards_refuses_to_replace_an_uncommitted_edit_and_replaces_a_committed_one(self):
+        self.kitchen("guards", str(self.project))
+        copy = self.project / ".kitchen" / "hooks" / "deny-shared-push"
+        git = ["git", "-C", str(self.project), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "core.hooksPath=/dev/null"]
+        subprocess.run([*git, "add", "-A"], check=True)
+        subprocess.run([*git, "commit", "-q", "-m", "guards"], check=True)
+        copy.write_text("#!/bin/sh\n# my own rule\nexit 2\n")
+
+        refused = self.kitchen("guards", str(self.project))
+        subprocess.run([*git, "commit", "-q", "-am", "my rule"], check=True)
+        replaced = self.kitchen("guards", str(self.project))
+
+        self.assertEqual(refused.returncode, 1)
+        self.assertIn("uncommitted changes in .kitchen/hooks/deny-shared-push", refused.stderr)
+        self.assertEqual(replaced.returncode, 0, replaced.stderr)
+        self.assertEqual(copy.read_bytes(), (ROOT / "hooks" / "deny-shared-push").read_bytes())
+        shown = subprocess.run([*git, "show", "HEAD:.kitchen/hooks/deny-shared-push"], capture_output=True, text=True)
+        self.assertIn("# my own rule", shown.stdout)
 
     def test_check_fails_until_the_guards_are_written_and_again_when_a_copy_drifts(self):
         before = self.kitchen("guards", str(self.project), "--check")
