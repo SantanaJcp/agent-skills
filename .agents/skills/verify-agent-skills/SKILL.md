@@ -1,0 +1,49 @@
+---
+name: verify-agent-skills
+description: "Prove agent-skills behavior against a real, disposable instance and capture evidence. Use before and after any change to <surfaces>; when a task says verify, prove it works or no behavior change; and to record golden outputs before a refactor."
+---
+
+# verify-agent-skills
+
+Every agent drives the app through one CLI:
+
+```bash
+V=.agents/skills/verify-agent-skills/bin/verify
+```
+
+`features/` maps every user-facing entry point to a feature: how a user reaches it and which observable result proves it.
+
+## Prove the whole map
+
+```bash
+$V prove     # clean start → every features/*.md drive block in README order → teardown
+```
+
+Run it before a change for a baseline and after it to prove nothing else moved. It exits 0 only when every step passes.
+
+## Launch and check
+
+```bash
+$V launch    # <what it starts, where, isolated from what>
+$V doctor    # build is HEAD, dependencies healthy, no external service reachable by accident
+```
+
+## Drive
+
+```bash
+$V api GET /<path> --expect 200 --save <name>
+$V sql "<query>" --expect "<rows>"
+$V diff <before> <after>    # ignores volatile fields: <list>
+```
+
+UI surfaces are driven through `$V` too, so the gate is the same everywhere. In T3 Code an agent may also look at them with `preview_*` (web) or `device_*` (mobile) and keep the recording as evidence; that is extra proof, never a replacement for `$V prove`.
+
+## Clean up
+
+```bash
+$V cleanup   # stops only what launch started; evidence stays in <path>
+```
+
+## Not covered
+
+List what this skill cannot prove yet and why. Never claim verification for anything listed here.

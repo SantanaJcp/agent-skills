@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c 'h=\"$CLAUDE_PROJECT_DIR/.kitchen/hooks/deny-no-verify\"; [ -x \"$h\" ] || { echo \"kitchen: guard missing: $h\" >&2; exit 2; }; exec \"$h\"'",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "sh -c 'h=\"$CLAUDE_PROJECT_DIR/.kitchen/hooks/deny-recursive-rm\"; [ -x \"$h\" ] || { echo \"kitchen: guard missing: $h\" >&2; exit 2; }; exec \"$h\"'",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "sh -c 'h=\"$CLAUDE_PROJECT_DIR/.kitchen/hooks/deny-shared-push\"; [ -x \"$h\" ] || { echo \"kitchen: guard missing: $h\" >&2; exit 2; }; exec \"$h\"'",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
