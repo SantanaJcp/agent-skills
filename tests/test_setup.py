@@ -101,6 +101,18 @@ class LegacyHookTests(LegacyHooksFixture):
         self.assertEqual([b.read_text() for b in (self.home / ".kitchen-backups").rglob("hooks.json")], ["{ not json"])
         self.assertFalse(self.codex.exists())
 
+    def test_install_removes_the_old_guards_an_install_from_another_clone_added(self):
+        other = Path(self.tmp.name) / "old-clone" / "hooks"  # the old install ran from a clone that is gone now
+        handlers = [{"type": "command", "command": str(other / name), "timeout": 30} for name in GUARDS]
+        self.write(self.codex, {"hooks": {"PreToolUse": [{"matcher": "^Bash$", "hooks": handlers + [self.mine]}]}})
+
+        before = self.kitchen("doctor")
+        result = self.kitchen("install")
+
+        self.assertEqual(before.returncode, 1, before.stdout)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads(self.codex.read_text()), {"hooks": {"PreToolUse": [{"matcher": "^Bash$", "hooks": [self.mine]}]}})
+
     def test_doctor_fails_while_the_old_guards_are_installed(self):
         self.write(self.codex, {"hooks": {"PreToolUse": [{"matcher": "^Bash$", "hooks": self.old_handlers()}]}})
 

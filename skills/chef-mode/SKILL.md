@@ -47,8 +47,8 @@ Match the request to one row and copy its steps into your todo list. A skill nam
 
 - A two-way door is cheap to revert: a merged pull request one revert commit undoes. A one-way door is not: schema migrations, data deletion, auth and tenant scope, published contracts and installers, production deploys, force-pushes and history rewrites on shared branches, removing behavior someone relies on.
 - One-way door, on every rung: sketch two structurally different options, get the owner's approval, then verify that specific risk.
-- Two-way door: verify, run `second-opinion` when the diff is risky, then go as far as the project's rung allows. The owner samples afterwards: tell them in one line what merged and how it was proved.
-- The rung is per project: a line `Autonomy: propose|merge|ship` in its AGENTS.md. No line means `propose`. Only the owner moves it.
+- Two-way door: verify, run `second-opinion`, then go as far as the project's rung allows. The owner samples afterwards: tell them in one line what merged and how it was proved.
+- The rung is per project: a line `Autonomy: propose|merge|ship` in its AGENTS.md, read from the shared base branch (`git show origin/<base>:AGENTS.md`), never from the branch under review. No line means `propose`. Only the owner moves it.
   1. `propose`: push your own branch and open the pull request; the owner merges.
   2. `merge`: merge your own two-way pull requests once the project's check is green on the PR head, its verify method passed, and review left no P0/P1.
   3. `ship`: also land stacks unattended and deploy to the non-production environments the AGENTS.md names.

@@ -131,6 +131,38 @@ class InstallTests(KitchenFixture):
         self.assertFalse(old.is_symlink() or old.exists())
         self.assertEqual(rules.read_text(), "# Rules\n")
 
+    def test_install_moves_rules_linked_from_another_clone_aside(self):
+        other = Path(self.tmp.name) / "old-clone"
+        (other / "global").mkdir(parents=True)
+        (other / "bin").mkdir()
+        (other / "bin" / "kitchen").write_text("#!/bin/sh\n")
+        (other / "global" / "AGENTS.md").write_text("# Rules\n")
+        generated = Path(self.tmp.name) / "elsewhere.md"
+        self.write_generated_rules(generated)
+        claude, codex = self.home / ".claude" / "CLAUDE.md", self.home / ".codex" / "AGENTS.md"
+        for link, target in ((claude, other / "global" / "AGENTS.md"), (codex, generated)):
+            link.parent.mkdir(parents=True)
+            link.symlink_to(target)
+
+        result = self.kitchen("install")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(claude.is_symlink() or claude.exists())
+        self.assertFalse(codex.is_symlink() or codex.exists())
+        self.assertEqual((other / "global" / "AGENTS.md").read_text(), "# Rules\n")
+
+    def test_install_keeps_a_link_to_the_persons_own_rules(self):
+        mine = Path(self.tmp.name) / "my-rules.md"
+        mine.write_text("# Mine\n")
+        link = self.home / ".claude" / "CLAUDE.md"
+        link.parent.mkdir(parents=True)
+        link.symlink_to(mine)
+
+        result = self.kitchen("install")
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(link.resolve(), mine.resolve())
+
     def test_install_moves_the_old_rules_choice_aside(self):
         choice = self.home / "config" / "rules.txt"
         choice.parent.mkdir(parents=True)
@@ -262,7 +294,7 @@ class LintTests(KitchenFixture):
     def test_valid_skill_passes(self):
         self.add_skill("alpha")
 
-        result = self.lint()
+        result = self.kitchen("check", "--lint-only", "--skills-dir", str(self.repo / "skills"))  # a project's skills may trigger on their own
 
         self.assertEqual(result.returncode, 0, result.stdout)
 
@@ -366,6 +398,14 @@ class InvocationParityTests(KitchenFixture):
         self.add_skill("alpha", self.MANUAL.format(name="alpha"))
 
         self.assertIn("manual-only for Claude but not for Codex", self.kitchen("check", "--lint-only").stdout)
+
+    def test_a_kitchen_skill_that_triggers_on_its_own_fails(self):
+        self.add_skill("alpha")
+
+        result = self.kitchen("check", "--lint-only")
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("alpha: every kitchen skill is manual-only", result.stdout)
 
     def test_manual_only_in_codex_fails(self):
         skill = self.add_skill("alpha")

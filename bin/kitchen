@@ -277,6 +277,14 @@ def lint_skill(skill: Path) -> list[str]:
     return problems
 
 
+def manual_only(skill: Path) -> bool:
+    try:
+        fields = parse_frontmatter((skill / "SKILL.md").read_text(encoding="utf-8"))
+    except ValueError:
+        return True  # lint_skill already reports the broken frontmatter
+    return fields.get("disable-model-invocation", "").lower() == "true" and not invocation_parity(skill, fields)
+
+
 def invocation_parity(skill: Path, fields: dict[str, str]) -> list[str]:
     """A manual-only skill must be manual-only in Claude Code and in Codex."""
     manual_in_claude = fields.get("disable-model-invocation", "").lower() == "true"
@@ -349,6 +357,9 @@ def cmd_check(args: argparse.Namespace) -> int:
     root = Path(args.skills_dir).resolve() if args.skills_dir else skills_dir()
     skills = sorted(p for p in root.iterdir() if p.is_dir()) if root.is_dir() else []
     problems = [problem for skill in skills for problem in lint_skill(skill)]
+    if not args.skills_dir:  # the kitchen's own skills run only when called: through chef-mode or by name
+        problems += [f"{skill.name}: every kitchen skill is manual-only; add `disable-model-invocation: true` and agents/openai.yaml "
+                     "with `allow_implicit_invocation: false`" for skill in skills if (skill / "SKILL.md").is_file() and not manual_only(skill)]
     safety_problems, warnings = ([], []) if args.skills_dir else public_safety()
     problems += safety_problems
     for problem in problems:
