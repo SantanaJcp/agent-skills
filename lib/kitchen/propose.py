@@ -382,10 +382,9 @@ def wanted_files(repo: repocheck.Repo, report: dict, name: str, doors: list[dict
             path = f"{repocheck.VENDORED_HOOKS}/{name}"
             if not repo.exists(path) or repo.read(path) != content:  # missing, or a copy init may refresh
                 files.append(File(path, "agent-hooks", content, 0o644 if name.endswith(".py") else 0o755))
-        if not repo.exists(repocheck.CLAUDE_SETTINGS):
-            commands = [{"type": "command", "command": repocheck.guard_command(n), "timeout": 30} for n in guards if not n.endswith(".py")]
-            settings = {"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": commands}]}}
-            files.append(File(repocheck.CLAUDE_SETTINGS, "agent-hooks", json.dumps(settings, indent=2) + "\n"))
+        settings = repocheck.claude_settings()
+        if not repo.exists(repocheck.CLAUDE_SETTINGS) or repo.read(repocheck.CLAUDE_SETTINGS) != settings:  # missing, or kitchen's to refresh
+            files.append(File(repocheck.CLAUDE_SETTINGS, "agent-hooks", settings))
     if status["principles"] != "PASS" and repocheck.KITCHEN_PRINCIPLES.is_file():
         content = repocheck.KITCHEN_PRINCIPLES.read_text(encoding="utf-8")
         if not repo.exists(repocheck.VENDORED_PRINCIPLES) or repo.read(repocheck.VENDORED_PRINCIPLES) != content:
@@ -757,7 +756,7 @@ def proposals(report: dict, states: dict[str, str], pieces: dict[str, str], name
         elif key == "agent-hooks":
             if "agent-hooks" not in ours:
                 existing(key)
-            elif repocheck.CLAUDE_SETTINGS not in states:  # it exists, so kitchen did not write it
+            elif states.get(repocheck.CLAUDE_SETTINGS) in (None, "exists", "edited by owner"):  # the owner's file: left alone
                 commands = [{"type": "command", "command": repocheck.guard_command(n), "timeout": 30}
                             for n in repocheck.kitchen_guards() if not n.endswith(".py")]
                 add(key, f"{repocheck.CLAUDE_SETTINGS} exists, so kitchen left it alone: add this group under hooks.PreToolUse: "
@@ -952,9 +951,12 @@ def build(git: Git, root: Path, head: str, existing: str | None, branch: str | N
             states[p] = "refresh"
     to_write = [wanted[p] for p in paths if states[p] in ("write", "refresh")]
     report_entry = manifest.get("report") if isinstance(manifest.get("report"), dict) else None
-    report_now = classify(git, repo, REPORT, report_entry) if to_write else "skip"
-    write_manifest = bool(to_write) and manifest_state in ("absent", "unchanged")
-    if to_write:
+    report_now = classify(git, repo, REPORT, report_entry) if to_write or run_proof else "skip"
+    # a proof with nothing new to write still updates kitchen's own report, so the branch never keeps an old verdict
+    refresh_report = run_proof and not to_write and bool(existing) and report_now == "unchanged" and manifest_state == "unchanged"
+    bookkeep = bool(to_write) or refresh_report
+    write_manifest = bookkeep and manifest_state in ("absent", "unchanged")
+    if bookkeep:
         refuse_unsafe_targets(repo.tree, [f.path for f in to_write] + ([MANIFEST] if write_manifest else [])
                               + ([REPORT] if report_now in ("write", "unchanged") else []))
     for f in to_write:
@@ -1013,9 +1015,15 @@ def build(git: Git, root: Path, head: str, existing: str | None, branch: str | N
     ready = result["readiness"]
     result["exit"] = 1 if run_proof and (ready["checks_run_green"]["state"] != "yes" or ready["negative_control_went_red"]["state"] != "yes") else 0
 
+    if result["proposals"] or ready["checks_run_green"]["state"] != "yes" or ready["negative_control_went_red"]["state"] != "yes":
+        result["next"].append('hand the rest to your agent, from the repo: "Finish kitchen init here: read KITCHEN-INIT.md on branch '
+                              f'{BRANCH}, make bin/check run this project\'s real commands, fill the verify skill and apply the proposals '
+                              'on that branch, then rerun `kitchen init . --yes --prove` until checks run green and the negative control '
+                              'goes red. Open a pull request and show me only what needs my decision."')
+
     final = existing
     report_state = None
-    if to_write:
+    if bookkeep:
         bookkeeping: list[tuple[str, bytes, str]] = []
         markdown = render(result, markdown=True).replace(str(root), "<repo>").replace(os.path.expanduser("~"), "~")
         if report_now in ("write", "unchanged"):
@@ -1040,7 +1048,8 @@ def build(git: Git, root: Path, head: str, existing: str | None, branch: str | N
                                  + (f"--prove ran at {proof_sha}.\n" if proof_sha else "Not proved: rerun with --prove.\n"), scratch / "index")
         zero = "0" * len(final)
         git(root, "update-ref", "--no-deref", "-m", "kitchen init", f"refs/heads/{BRANCH}", final, existing or zero)
-    result.update({"branch_sha": final, "created": bool(to_write) and not existing, "changed": bool(to_write), "report_file": report_state})
+    result.update({"branch_sha": final, "created": bool(to_write) and not existing, "changed": bool(to_write) or refresh_report,
+                   "report_file": report_state})
     return result
 
 

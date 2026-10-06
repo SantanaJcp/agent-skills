@@ -613,9 +613,19 @@ def kitchen_guards() -> dict[str, str]:
 
 
 def guard_command(name: str) -> str:
-    """The project hook command: the repo's own copy, failing closed (exit 2 blocks) when the copy is missing."""
-    return (f'sh -c \'h="$CLAUDE_PROJECT_DIR/{VENDORED_HOOKS}/{name}"; [ -x "$h" ] || '
-            f'{{ echo "kitchen: guard missing: $h" >&2; exit 2; }}; exec "$h"\'')
+    """The project hook command: the repo's own copy, failing closed (exit 2 blocks) when the copy is missing.
+
+    Only while the checkout has a .claude/settings.json: a session keeps the hooks it loaded, so after a switch to a
+    branch from before kitchen init (no settings, no copy) the stale command would otherwise block every Bash call.
+    The guards installed for the person still run there."""
+    return (f'sh -c \'s="$CLAUDE_PROJECT_DIR/{CLAUDE_SETTINGS}"; h="$CLAUDE_PROJECT_DIR/{VENDORED_HOOKS}/{name}"; '
+            f'[ -f "$s" ] || exit 0; [ -x "$h" ] || {{ echo "kitchen: guard missing: $h" >&2; exit 2; }}; exec "$h"\'')
+
+
+def claude_settings() -> str:
+    """The .claude/settings.json kitchen init writes: one PreToolUse group on Bash that runs each copied guard."""
+    commands = [{"type": "command", "command": guard_command(n), "timeout": 30} for n in kitchen_guards() if not n.endswith(".py")]
+    return json.dumps({"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": commands}]}}, indent=2) + "\n"
 
 
 def matches_bash(matcher: object) -> bool:

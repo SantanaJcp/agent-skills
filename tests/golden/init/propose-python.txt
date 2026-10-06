@@ -94,6 +94,7 @@ One-way doors: owner decisions, printed and never executed
 Next (two-way, yours)
   review the branch (`git diff HEAD...kitchen/init`), then push it yourself: `git push -u origin kitchen/init`
   after it merges, activate the hook in each clone: `git config core.hooksPath .githooks`
+  hand the rest to your agent, from the repo: "Finish kitchen init here: read KITCHEN-INIT.md on branch kitchen/init, make bin/check run this project's real commands, fill the verify skill and apply the proposals on that branch, then rerun `kitchen init . --yes --prove` until checks run green and the negative control goes red. Open a pull request and show me only what needs my decision."
 added      <repo> to ~/.config/kitchen/projects.txt
 added      [projects.calc] to ~/.config/kitchen/integrate.toml (base main, checks bin/check integrate)
 skipped    prove (--yes never runs repository code: add --prove)
