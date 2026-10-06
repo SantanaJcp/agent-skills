@@ -8,7 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from .common import home, projects
-from . import rules
+from . import legacy
 
 
 def skill_locations() -> list[tuple[str, Path]]:
@@ -90,7 +90,7 @@ def rule_files(repo_root: Path) -> list[dict]:
         files.append({
             "path": str(path),
             "exists": path.exists(),
-            "managed": rules.generated(path),  # written by `kitchen install` from the person's rules and PRINCIPLES.md
+            "managed": path in legacy.rule_files(h, repo_root),  # written by an older `kitchen install`; the next install moves it aside
         })
     return files
 
@@ -111,7 +111,7 @@ def render(report: dict) -> str:
     out = ["kitchen inventory", ""]
     out.append("Rule files")
     for rule in report["rules"]:
-        state = "managed by kitchen" if rule["managed"] else ("exists, not managed" if rule["exists"] else "missing")
+        state = "left by an older kitchen install" if rule["managed"] else ("yours" if rule["exists"] else "missing")
         out.append(f"  {rule['path']}: {state}")
 
     out += ["", "Skills"]

@@ -1,4 +1,4 @@
-"""install and doctor for the agent hooks, doctor's environment checks, and the path-scoped `check --fast`."""
+"""install taking out the global guards older installs added, doctor's environment checks, and the path-scoped `check --fast`."""
 import json
 import os
 import plistlib
@@ -26,64 +26,60 @@ def environment():
     return module
 
 
-class HooksFixture(KitchenFixture):
+class LegacyHooksFixture(KitchenFixture):
+    """A HOME where an older install merged the kitchen's guards into both tools' hook files."""
+
     def setUp(self):
         super().setUp()
         shutil.copytree(ROOT / "hooks", self.repo / "hooks", ignore=shutil.ignore_patterns("__pycache__"))
         self.claude = self.home / ".claude" / "settings.json"
         self.codex = self.home / ".codex" / "hooks.json"
+        self.mine = {"type": "command", "command": "/opt/my-hook.sh"}
 
-    def commands(self, path, matcher):
-        data = json.loads(path.read_text())
-        return [h["command"] for g in data["hooks"]["PreToolUse"] if g.get("matcher") == matcher for h in g["hooks"]]
+    def old_handlers(self):
+        return [{"type": "command", "command": str(self.repo.resolve() / "hooks" / name), "timeout": 30} for name in GUARDS]
 
-    def kitchen_commands(self):
-        return [str(self.repo.resolve() / "hooks" / name) for name in GUARDS]
+    def write(self, path, data):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data))
 
 
-class HookInstallTests(HooksFixture):
-    def test_install_adds_the_guards_to_claude_and_codex(self):
-        result = self.kitchen("install")
-
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual(self.commands(self.claude, "Bash"), self.kitchen_commands())
-        self.assertEqual(self.commands(self.codex, "^Bash$"), self.kitchen_commands())
-
-    def test_install_keeps_the_users_settings_and_hooks(self):
-        mine = {"type": "command", "command": "/opt/my-hook.sh"}
+class LegacyHookTests(LegacyHooksFixture):
+    def test_install_removes_the_old_guards_and_keeps_the_users_settings_and_hooks(self):
         settings = {"model": "opus", "permissions": {"allow": ["Bash(ls)"]},
-                    "hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [mine]}],
-                              "PostToolUse": [{"matcher": "Edit", "hooks": [mine]}]}}
-        self.claude.parent.mkdir(parents=True)
-        self.claude.write_text(json.dumps(settings))
+                    "hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [self.mine]},
+                                             {"matcher": "Bash", "hooks": self.old_handlers()}],
+                              "PostToolUse": [{"matcher": "Edit", "hooks": [self.mine]}]}}
+        self.write(self.claude, settings)
+        self.write(self.codex, {"hooks": {"PreToolUse": [{"matcher": "^Bash$", "hooks": self.old_handlers()}]}})
 
         result = self.kitchen("install")
 
-        data = json.loads(self.claude.read_text())
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertEqual((data["model"], data["permissions"], data["hooks"]["PostToolUse"]),
-                         ("opus", settings["permissions"], settings["hooks"]["PostToolUse"]))
-        self.assertEqual(data["hooks"]["PreToolUse"][0], {"matcher": "Bash", "hooks": [mine]})
-        self.assertEqual(self.commands(self.claude, "Bash"), ["/opt/my-hook.sh"] + self.kitchen_commands())
+        self.assertEqual(json.loads(self.claude.read_text()),
+                         {"model": "opus", "permissions": {"allow": ["Bash(ls)"]},
+                          "hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [self.mine]}],
+                                    "PostToolUse": [{"matcher": "Edit", "hooks": [self.mine]}]}})
+        self.assertEqual(json.loads(self.codex.read_text()), {})
+        self.assertIn("removed    Codex: the kitchen's global guards", result.stdout)
 
-    def test_install_is_idempotent_for_hooks(self):
-        self.kitchen("install")
-        before = (self.claude.read_bytes(), self.codex.read_bytes())
+    def test_install_adds_no_global_guards(self):
+        result = self.kitchen("install")
 
-        second = self.kitchen("install")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(self.claude.exists())
+        self.assertFalse(self.codex.exists())
 
-        self.assertEqual((self.claude.read_bytes(), self.codex.read_bytes()), before)
-        self.assertNotIn("hooks      ", second.stdout)
+    def test_install_leaves_a_hook_file_without_kitchen_handlers_byte_for_byte(self):
+        self.write(self.claude, {"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [self.mine]}]}})
+        before = self.claude.read_bytes()
 
-    def test_install_drops_the_handler_of_a_removed_guard(self):
-        self.kitchen("install")
-        (self.repo / "hooks" / "deny-shared-push").unlink()
+        result = self.kitchen("install")
 
-        self.kitchen("install")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.claude.read_bytes(), before)
 
-        self.assertEqual(self.commands(self.codex, "^Bash$"), self.kitchen_commands()[:2])
-
-    def test_install_refuses_a_hook_file_it_cannot_merge(self):
+    def test_install_refuses_a_hook_file_it_cannot_parse(self):
         self.add_skill("alpha")
         self.codex.parent.mkdir(parents=True)
         self.codex.write_text("{ not json")
@@ -94,9 +90,8 @@ class HookInstallTests(HooksFixture):
         self.assertIn(f"{self.codex}: not valid JSON", result.stdout)
         self.assertEqual(self.codex.read_text(), "{ not json")
         self.assertFalse((self.home / ".claude" / "skills" / "alpha").exists())
-        self.assertFalse(self.claude.exists())
 
-    def test_install_backup_moves_an_unmergeable_hook_file_aside(self):
+    def test_install_backup_moves_an_unparseable_hook_file_aside(self):
         self.codex.parent.mkdir(parents=True)
         self.codex.write_text("{ not json")
 
@@ -104,42 +99,18 @@ class HookInstallTests(HooksFixture):
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual([b.read_text() for b in (self.home / ".kitchen-backups").rglob("hooks.json")], ["{ not json"])
-        self.assertEqual(self.commands(self.codex, "^Bash$"), self.kitchen_commands())
+        self.assertFalse(self.codex.exists())
 
+    def test_doctor_fails_while_the_old_guards_are_installed(self):
+        self.write(self.codex, {"hooks": {"PreToolUse": [{"matcher": "^Bash$", "hooks": self.old_handlers()}]}})
 
-class HookDoctorTests(HooksFixture):
-    def test_doctor_fails_until_the_hooks_are_installed(self):
         before = self.kitchen("doctor")
         self.kitchen("install")
         after = self.kitchen("doctor")
 
         self.assertEqual(before.returncode, 1)
-        self.assertIn("FAIL  Claude Code hooks not installed (deny-no-verify, deny-recursive-rm, deny-shared-push)", before.stdout)
-        self.assertIn("FAIL  Codex hooks not installed", before.stdout)
+        self.assertIn("still runs the kitchen's global guards", before.stdout)
         self.assertEqual(after.returncode, 0, after.stdout)
-        self.assertIn("INFO  Claude Code hooks installed", after.stdout)
-        self.assertIn("INFO  Codex runs a new or changed hook only after you trust it", after.stdout)
-
-    def test_doctor_fails_when_hooks_are_disabled(self):
-        self.kitchen("install")
-        data = json.loads(self.claude.read_text())
-        self.claude.write_text(json.dumps({**data, "disableAllHooks": True}))
-        (self.home / ".codex" / "config.toml").write_text("[features]\nhooks = false\n")
-
-        result = self.kitchen("doctor")
-
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("disableAllHooks is true", result.stdout)
-        self.assertIn("Codex hooks are disabled: [features] hooks = false", result.stdout)
-
-    def test_doctor_fails_when_a_guard_does_not_block(self):
-        self.kitchen("install")
-        (self.repo / "hooks" / "deny-shared-push").write_text("#!/bin/sh\nexit 0\n")
-
-        result = self.kitchen("doctor")
-
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("hook deny-shared-push did not block its probe", result.stdout)
 
 
 class EnvironmentDoctorTests(unittest.TestCase):

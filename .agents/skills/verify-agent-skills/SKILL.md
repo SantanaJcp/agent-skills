@@ -21,14 +21,14 @@ Every test runs in a throwaway repo and `HOME` (`KITCHEN_REPO`, `HOME`, `KITCHEN
 
 ```bash
 T=$(mktemp -d)
-HOME=$T KITCHEN_CONFIG=$T/config KITCHEN_STATE=$T/state bin/kitchen install --rules none < /dev/null
+HOME=$T KITCHEN_CONFIG=$T/config KITCHEN_STATE=$T/state bin/kitchen install < /dev/null
 HOME=$T KITCHEN_CONFIG=$T/config KITCHEN_STATE=$T/state bin/kitchen doctor
 ```
 
 ## The real installation, read-only
 
 ```bash
-kitchen doctor          # links, generated rules, hooks blocking their probes, agent CLIs, schedules
+kitchen doctor          # links, leftovers of older installs, agent CLIs, schedules
 kitchen status --exceptions
 ```
 

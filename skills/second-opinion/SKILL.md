@@ -1,6 +1,7 @@
 ---
 name: second-opinion
 description: "Cross-model review of a diff before merge, or of a whole setup in design-review mode: reviewers run on the other model (your `kitchen models` reviewer, through T3's delegate_task or the other CLI), on two separate axes (standards and the request), and the lead triages every finding into act on, consider, noted or dismissed. Use before merging or opening a PR, when I ask for a review, and always when a change touches auth, tenant scope, sync, data or migrations."
+disable-model-invocation: true
 ---
 
 # second-opinion

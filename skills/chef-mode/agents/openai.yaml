@@ -1,0 +1,5 @@
+interface:
+  display_name: "Chef mode"
+  short_description: "Work the kitchen's way: principles, doors, delegation, verification"
+policy:
+  allow_implicit_invocation: false

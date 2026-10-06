@@ -1,6 +1,6 @@
 # Working on this repo
 
-This file is for agents editing the kitchen itself. `PRINCIPLES.md` says what the kitchen does and why; read it before you change a control. `.kitchen/PRINCIPLES.md` is the copy `kitchen init` keeps, the one agents in other repos get. The owner's rules for every session live in `global/AGENTS.md`.
+This file is for agents editing the kitchen itself. `PRINCIPLES.md` says what the kitchen does and why; read it before you change a control. `.kitchen/PRINCIPLES.md` is the copy `kitchen init` keeps, the one agents in other repos get. The rules agents follow in chef mode live in `skills/chef-mode/SKILL.md`; the kitchen writes no global rules, so each person's own `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md` stay theirs.
 
 ## Rules
 
