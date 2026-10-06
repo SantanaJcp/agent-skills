@@ -13,7 +13,7 @@
     },
     ".claude/settings.json": {
       "piece": "agent-hooks",
-      "sha256": "42ba89f11f51880a1f33cb263bff769587fd384340eca81e11cb34bc191b6a34"
+      "sha256": "9a7e127e922b031783b6c14407c462fabd2a5cce60d44dd649caceed926320fc"
     },
     ".kitchen/PRINCIPLES.md": {
       "piece": "principles",
@@ -46,7 +46,7 @@
   },
   "report": {
     "path": "KITCHEN-INIT.md",
-    "sha256": "b674bd5112814ddc30e80c3607a8802ab2d37386833252b5c4d04fef2a425793"
+    "sha256": "e7b81db26ad933bae81e0894d15edcbce08351d09cb6f07de7fcc48d0b74b8ac"
   },
-  "sha256": "113178abffc0c2fd39e71d8bdbc9fd9f98adeab2b15e6f5bc0a4fb507c6d73ff"
+  "sha256": "ec978ae0ac9950f0072dfaf0501f251b5a397d9b31026c7c1f5c7c98d5e560cd"
 }
