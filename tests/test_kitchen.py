@@ -1,6 +1,7 @@
 import os
 import pty
 import select
+import signal
 import shutil
 import subprocess
 import sys
@@ -152,7 +153,8 @@ class InstallTests(KitchenFixture):
         output, replies = b"", ["3", "3"]  # rules: none; repos: none
         while True:
             ready, _, _ = select.select([fd], [], [], 60)
-            if not ready:
+            if not ready:  # waiting on input nobody will type: end it, so the test fails instead of hanging
+                os.kill(pid, signal.SIGKILL)
                 break
             try:
                 data = os.read(fd, 4096)

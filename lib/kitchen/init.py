@@ -51,17 +51,21 @@ def personal_state(root: Path) -> dict:
     entry = None
     if path.is_file():
         try:
-            entry = tomllib.loads(path.read_text(encoding="utf-8")).get("projects", {}).get(root.name)
+            projects = tomllib.loads(path.read_text(encoding="utf-8")).get("projects", {})
         except tomllib.TOMLDecodeError as error:
             raise InitError(f"cannot parse {path}: {error}; fix it, then rerun") from error
+        if not isinstance(projects, dict):
+            raise InitError(f"{path}: `projects` must be a table")
+        entry = projects.get(root.name)
     return {"listed": listed, "integrate": entry is not None}
 
 
-def questions(report: dict, personal: dict, base: str | None) -> list[Question]:
+def questions(report: dict, personal: dict, base: str | None, guess: bool = False) -> list[Question]:
     out = []
     if report["missing"]:
         out.append(Question("branch", f"Write the missing pieces on branch kitchen/init? Nothing is pushed; you review and push it.",
                             True, "every piece it writes is listed afterwards, with what it would block today"))
+    if report["missing"] and not guess:  # proving kitchen's own guess of the commands would only time the guess
         out.append(Question("prove", "Prove the gate on that branch? This RUNS THE REPO'S CODE in a temporary worktree: "
                                      "bin/check commit twice, once more with a planted defect that must turn it red, and the hook.",
                             True, "a gate that never went red is not trusted"))
@@ -142,7 +146,8 @@ def run(path: Path, branch: str | None, check_only: bool, yes: bool, prove: bool
     root = Path(report["path"])
     personal = personal_state(root)
     base = base or default_branch(root)
-    asked = questions(report, personal, base)
+    guess = propose.will_guess(root)
+    asked = questions(report, personal, base, guess)
     interactive = sys.stdin.isatty() if interactive is None else interactive
     if not yes and not interactive:
         err("kitchen init asks before it writes, and there is no terminal to ask in. Run it in a terminal, or answer with flags:\n"
@@ -175,7 +180,7 @@ def run(path: Path, branch: str | None, check_only: bool, yes: bool, prove: bool
         if answers.get("prove"):
             err("kitchen init --prove RUNS REPOSITORY CODE in a temporary worktree of the target repo: its checkout may run "
                 "the repo's git filters, then bin/check commit, the commands it calls and the proposed hook run.\n")
-        result = propose.propose(root, branch, answers.get("prove", False), log=lambda line: err(line + "\n"))
+        result = propose.propose(root, branch, answers.get("prove", False) or (guess and prove), log=lambda line: err(line + "\n"))
         summary["proposal"] = result
         if not as_json:
             out("\n" + propose.render(result))
@@ -187,6 +192,8 @@ def run(path: Path, branch: str | None, check_only: bool, yes: bool, prove: bool
         return code
     for line in summary["personal"]:
         out(line + "\n")
+    if guess and answers.get("branch"):
+        out("not proved bin/check holds kitchen's guess of the commands; the agent prompt above fills it, then proves it\n")
     for q in asked:
         if answers.get(q.id):
             continue
