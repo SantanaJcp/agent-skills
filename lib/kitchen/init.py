@@ -51,9 +51,12 @@ def personal_state(root: Path) -> dict:
     entry = None
     if path.is_file():
         try:
-            entry = tomllib.loads(path.read_text(encoding="utf-8")).get("projects", {}).get(root.name)
+            projects = tomllib.loads(path.read_text(encoding="utf-8")).get("projects", {})
         except tomllib.TOMLDecodeError as error:
             raise InitError(f"cannot parse {path}: {error}; fix it, then rerun") from error
+        if not isinstance(projects, dict):
+            raise InitError(f"{path}: `projects` must be a table")
+        entry = projects.get(root.name)
     return {"listed": listed, "integrate": entry is not None}
 
 

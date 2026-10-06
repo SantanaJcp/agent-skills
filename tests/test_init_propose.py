@@ -113,6 +113,11 @@ class ProposeFixture(InitFixture):
         self.git(checkout, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "owner edit")
         self.git(repo, "worktree", "remove", "--force", str(checkout))
 
+    def configure(self, text):
+        path = self.home / ".config" / "kitchen" / "integrate.toml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+
     def fill_check(self, repo):
         """What the agent does first: init writes its guess, the agent turns it into the project's own bin/check."""
         self.propose_json(repo)
@@ -524,11 +529,6 @@ class Prove(ProposeFixture):
 class GuessAndConfig(ProposeFixture):
     """init never times its own guess of the commands; it starts bin/check from the owner's integrate.toml when it can."""
 
-    def configure(self, text):
-        path = self.home / ".config" / "kitchen" / "integrate.toml"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text)
-
     def test_a_guessed_bin_check_is_never_proved(self):
         repo = self.make_repo("calc", PYTHON_FILES)
 
@@ -564,6 +564,65 @@ class GuessAndConfig(ProposeFixture):
 
         self.assertIn("bin/check commit (run 1 of 2) still running", result.stderr)
         self.assertIn("last line: compiling step one", result.stderr)
+
+
+class ConfigReview(ProposeFixture):
+    """Round 1 of the review of the integrate.toml seed; each test was red at 8cf9dbd."""
+
+    def test_a_check_that_runs_bin_check_is_not_copied_into_it(self):  # P1: bin/check would call itself
+        self.configure('[projects.calc]\nbase = "main"\nchecks = ["bin/check integrate"]\n')
+        repo = self.make_repo("calc", PYTHON_FILES)
+
+        self.propose_json(repo)
+
+        tier = self.show(repo, BRANCH, "bin/check").split("tier_commit() {", 1)[1].split("}", 1)[0]
+        self.assertNotIn("bin/check", tier)
+
+    def test_the_owner_home_becomes_home_in_committed_files(self):
+        self.configure(f'[projects.calc]\nbase = "main"\nchecks = ["{self.home}/tools/check --commit"]\n')
+        repo = self.make_repo("calc", PYTHON_FILES)
+
+        self.propose_json(repo)
+
+        for path in ("bin/check", "KITCHEN-INIT.md"):
+            self.assertNotIn(str(self.home), self.show(repo, BRANCH, path), path)
+        self.assertIn("$HOME/tools/check --commit", self.show(repo, BRANCH, "bin/check"))
+
+    def test_a_path_folder_with_shell_syntax_stays_out(self):
+        self.configure('[projects.calc]\nbase = "main"\npath = ["~/tools$(touch pwned)"]\nchecks = ["true"]\n')
+        repo = self.make_repo("calc", PYTHON_FILES)
+
+        self.propose_json(repo)
+
+        check = self.show(repo, BRANCH, "bin/check")
+        self.assertNotIn("pwned", check)
+        self.assertIn("characters the shell would interpret", check)
+
+    def test_wrong_types_in_integrate_toml_are_an_error(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        for text in ('[projects.calc]\nchecks = "true"\n', '[projects.calc]\nchecks = false\n', "projects = 1\n"):
+            with self.subTest(text=text):
+                self.configure(text)
+                result = self.propose(repo)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn("must be", result.stderr)
+
+    def test_an_edited_manifest_does_not_vouch_for_a_guess(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        self.propose_json(repo)
+
+        def edit_check_and_its_digest(checkout):
+            check = checkout / "bin" / "check"
+            check.write_text(check.read_text().replace("python3 -m unittest discover -s tests", "python3 -m unittest discover -s tests -q"))
+            manifest_path = checkout / ".kitchen" / "init.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["files"]["bin/check"]["sha256"] = hashlib.sha256(check.read_bytes()).hexdigest()
+            manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")  # the seal is now stale
+        self.owner_commit(repo, edit_check_and_its_digest)
+
+        result = self.propose_json(repo, "--prove", code=0 if shutil.which("gitleaks") else 1)
+
+        self.assertTrue(result["ran_repository_code"], result["readiness"])
 
 
 class AgentHooks(ProposeFixture):

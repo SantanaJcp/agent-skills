@@ -301,8 +301,9 @@ def will_guess(root: Path) -> bool:
     repo = repocheck.Repo(root, start)
     if repo.is_file(CHECK):
         text = repo.read(CHECK) or ""
-        entry = read_manifest(repo)[1].get("files", {}).get(CHECK) or {}
-        return bool(GUESS.search(text)) and entry.get("sha256") == sha256(text.encode())
+        state, manifest = read_manifest(repo)
+        entry = manifest.get("files", {}).get(CHECK) or {}  # only kitchen's own, untouched manifest vouches for it
+        return state == "unchanged" and bool(GUESS.search(text)) and entry.get("sha256") == sha256(text.encode())
     if repo.exists(".kitchen/checks.toml"):
         return False
     return not configured_checks(root.name)[0]
@@ -315,12 +316,20 @@ def configured_checks(project: str) -> tuple[list[str], list[str]]:
     if not path.is_file():
         return [], []
     try:
-        entry = tomllib.loads(path.read_text(encoding="utf-8")).get("projects", {}).get(project) or {}
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
     except tomllib.TOMLDecodeError as error:
         raise ProposeError(f"cannot parse {path}: {error}; fix it, then rerun") from error
-    checks, dirs = entry.get("checks") or [], entry.get("path") or []
-    if not all(isinstance(c, str) for c in checks) or not all(isinstance(d, str) for d in dirs):
-        raise ProposeError(f"[projects.{project}] in {path}: checks and path must be lists of strings")
+    projects = data.get("projects", {})
+    entry = projects.get(project, {}) if isinstance(projects, dict) else None
+    if not isinstance(entry, dict):
+        raise ProposeError(f"{path}: `projects` and [projects.{project}] must be tables")
+    checks, dirs = entry.get("checks", []), entry.get("path", [])
+    for key, value in (("checks", checks), ("path", dirs)):
+        if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+            raise ProposeError(f"[projects.{project}] in {path}: `{key}` must be a list of strings")
+    home = os.path.expanduser("~")
+    # a check that runs bin/check already points at the contract: copying it into bin/check would call itself
+    checks = [c.replace(home, "$HOME") for c in checks if not re.search(r"(^|[\s/;&|(])bin/check\b", c)]
     return checks, dirs
 
 
@@ -329,7 +338,9 @@ def path_line(dirs: list[str], notes: list[str]) -> list[str]:
     path would end up committed in the repo."""
     kept = []
     for d in dirs:
-        if d.startswith("~/"):
+        if not re.fullmatch(r"[~A-Za-z0-9._/+-]+", d):
+            notes.append("left out of PATH: a folder from your integrate.toml with characters the shell would interpret")
+        elif d.startswith("~/"):
             kept.append("$HOME/" + d[2:])
         elif not d.startswith(("/", "~")):
             kept.append(d)
@@ -1057,7 +1068,8 @@ def build(git: Git, root: Path, head: str, existing: str | None, branch: str | N
 
     proof, proof_skipped = None, None
     check_text = wanted[CHECK].content if states.get(CHECK) == "written" else (repo.read(CHECK) if repo.is_file(CHECK) else None)
-    if run_proof and check_text and GUESS.search(check_text) and states.get(CHECK) in ("written", "unchanged"):
+    vouched = states.get(CHECK) == "written" or (states.get(CHECK) == "unchanged" and manifest_state == "unchanged")
+    if run_proof and check_text and GUESS.search(check_text) and vouched:
         # timing kitchen's own guesses proves nothing about the project: the agent fills bin/check first, then proves it
         proof_skipped = ("not run: bin/check is still kitchen's guess from the manifests (its `# unverified:` lines, never edited); "
                          "fill it with this project's real commands, then rerun with --prove")
