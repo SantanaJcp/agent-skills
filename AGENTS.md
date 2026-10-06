@@ -1,6 +1,6 @@
 # Working on this repo
 
-This file is for agents editing the kitchen itself. `PRINCIPLES.md` says what the kitchen does and why; read it before you change a control. The owner's rules for every session live in `global/AGENTS.md`.
+This file is for agents editing the kitchen itself. `PRINCIPLES.md` says what the kitchen does and why; read it before you change a control. `.kitchen/PRINCIPLES.md` is the copy `kitchen init` keeps, the one agents in other repos get. The owner's rules for every session live in `global/AGENTS.md`.
 
 ## Rules
 
@@ -15,7 +15,7 @@ This file is for agents editing the kitchen itself. `PRINCIPLES.md` says what th
 
 ## Verify
 
-- `bin/kitchen check` lints skills, scans for private data and runs `tests/`. The pre-commit hook runs `bin/kitchen check --fast` (only the tests the staged paths need); run the plain command before you push. Never bypass the hook with `--no-verify`.
+- `bin/check` is the check contract (`commit`, `integrate`, `nightly`, `verify-tree`; `bin/check --list`), and the `verify-agent-skills` skill says how to prove a change. `bin/kitchen check` lints skills, scans for private data and runs `tests/`. The pre-commit hook runs `bin/kitchen check --fast` (only the tests the staged paths need); run the plain command before you push. Never bypass the hook with `--no-verify`.
 - Every guard in `hooks/` has cases in `tests/corpus/hooks/cases.json`. An evasion a guard cannot catch goes in as a `known-limit` case.
 - `bin/kitchen doctor` checks the real installation on this machine.
 - Tests use a throwaway repo and `HOME` (`KITCHEN_REPO`, `HOME`, `KITCHEN_DENYLIST`, `KITCHEN_STATE`, `KITCHEN_CONFIG`); never let a test touch the real `~/.claude`, `~/.codex`, `~/.agents` or `~/.config/kitchen`.

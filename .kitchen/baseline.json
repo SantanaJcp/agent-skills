@@ -1,0 +1,27 @@
+{
+  "mode": "measure-only",
+  "note": "Seeded by kitchen init from what --check measured. No gate reads it yet; it becomes a ratchet only when a gate compares against it and fails when a value gets worse.",
+  "measured_at": "82486e3",
+  "must_haves": {
+    "check-contract": "FAIL",
+    "pre-commit-hook": "PASS",
+    "agents-md": "FAIL",
+    "verify-skill": "FAIL",
+    "decisions": "PASS",
+    "secret-scan": "FAIL",
+    "baseline-ratchet": "FAIL",
+    "skills-linked": "FAIL",
+    "branch-protection": "FAIL",
+    "agent-hooks": "FAIL",
+    "principles": "FAIL"
+  },
+  "components": [
+    {
+      "path": "automation",
+      "stack": "node",
+      "manifest": "automation/package.json",
+      "lint": "FAIL",
+      "lockfile": "PASS"
+    }
+  ]
+}

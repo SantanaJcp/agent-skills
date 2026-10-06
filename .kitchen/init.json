@@ -1,0 +1,52 @@
+{
+  "generator": "kitchen init",
+  "version": 1,
+  "base": "82486e392b9b8ca6324d74496db21ba7bbb59b80",
+  "files": {
+    ".agents/skills/verify-agent-skills/SKILL.md": {
+      "piece": "verify-skill",
+      "sha256": "486ee7b84d0124838427498699f44ab0abf0faf5ad67589bda41a4be75c235f3"
+    },
+    ".agents/skills/verify-agent-skills/features/README.md": {
+      "piece": "verify-skill",
+      "sha256": "137585feffb7e53dee7ccf3667a2f6a24836c3501ebc0e8c20d2a584b5aeba76"
+    },
+    ".claude/settings.json": {
+      "piece": "agent-hooks",
+      "sha256": "9a7e127e922b031783b6c14407c462fabd2a5cce60d44dd649caceed926320fc"
+    },
+    ".kitchen/PRINCIPLES.md": {
+      "piece": "principles",
+      "sha256": "901c7295d6b3d23f49ecd754edfb617f8aef29ad0af3a5508c74b8fb5d3b6e81"
+    },
+    ".kitchen/baseline.json": {
+      "piece": "baseline-ratchet",
+      "sha256": "87a8bcf0840295aad79a33cfb37c58524eb21f884110990c10948fc54ee8cdf8"
+    },
+    ".kitchen/hooks/deny-no-verify": {
+      "piece": "agent-hooks",
+      "sha256": "b85f27160224d27ff23bd9f94b8e36b70ba73f3b27eed0073ca3e8f91497485c"
+    },
+    ".kitchen/hooks/deny-recursive-rm": {
+      "piece": "agent-hooks",
+      "sha256": "1067da79cb39820a8c99db3ea61cc94df679c509202b463b69820824e016e1ba"
+    },
+    ".kitchen/hooks/deny-shared-push": {
+      "piece": "agent-hooks",
+      "sha256": "23f041129d5cea53c4f8c00ad2bd67e538b8586b83780515ca194f25513067b7"
+    },
+    ".kitchen/hooks/shellparse.py": {
+      "piece": "agent-hooks",
+      "sha256": "999752e8aed84b27a5e3c02a909a1678c8520f7274aef9aea9ef86d5c9063b6d"
+    },
+    "bin/check": {
+      "piece": "check-contract",
+      "sha256": "c83d7f80df5f8966416f133189a551539f363c5db1cc68ad166d4208d72dba78"
+    }
+  },
+  "report": {
+    "path": "KITCHEN-INIT.md",
+    "sha256": "e7b81db26ad933bae81e0894d15edcbce08351d09cb6f07de7fcc48d0b74b8ac"
+  },
+  "sha256": "ec978ae0ac9950f0072dfaf0501f251b5a397d9b31026c7c1f5c7c98d5e560cd"
+}
