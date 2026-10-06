@@ -17,7 +17,7 @@
     },
     ".kitchen/PRINCIPLES.md": {
       "piece": "principles",
-      "sha256": "901c7295d6b3d23f49ecd754edfb617f8aef29ad0af3a5508c74b8fb5d3b6e81"
+      "sha256": "55810c412bec530233e6c4971720228ec0f916b9ea2c472a580d7ca5a79a5fab"
     },
     ".kitchen/baseline.json": {
       "piece": "baseline-ratchet",
@@ -48,5 +48,5 @@
     "path": "KITCHEN-INIT.md",
     "sha256": "e7b81db26ad933bae81e0894d15edcbce08351d09cb6f07de7fcc48d0b74b8ac"
   },
-  "sha256": "ec978ae0ac9950f0072dfaf0501f251b5a397d9b31026c7c1f5c7c98d5e560cd"
+  "sha256": "0014f511d6cbcd36ee4485883787e042505cd602c5330bce6aec72446cd5a776"
 }

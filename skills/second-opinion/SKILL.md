@@ -33,7 +33,7 @@ State the intent in two lines and name the originating request: issue, my messag
 | Up to 200 lines, up to 5 files | Skeptic, Architect |
 | Larger, or any design or design+diff review | Skeptic, Architect, Minimalist |
 
-Auth, tenant scope, sync, data and migrations always get the Skeptic, whatever the size, on the other model at low reasoning effort.
+Auth, tenant scope, sync, data and migrations always get the Skeptic, whatever the size, on the other model: the reviewer from `kitchen models`, with its effort and tier.
 
 ## 3. Run on the other model
 
