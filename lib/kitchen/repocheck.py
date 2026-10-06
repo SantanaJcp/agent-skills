@@ -618,8 +618,9 @@ def guard_command(name: str) -> str:
     Only while the checkout has a .claude/settings.json: a session keeps the hooks it loaded, so after a switch to a
     branch from before kitchen init (no settings, no copy) the stale command would otherwise block every Bash call.
     The guards installed for the person still run there."""
-    return (f'sh -c \'s="$CLAUDE_PROJECT_DIR/{CLAUDE_SETTINGS}"; h="$CLAUDE_PROJECT_DIR/{VENDORED_HOOKS}/{name}"; '
-            f'[ -f "$s" ] || exit 0; [ -x "$h" ] || {{ echo "kitchen: guard missing: $h" >&2; exit 2; }}; exec "$h"\'')
+    return (f'sh -c \'[ -n "$CLAUDE_PROJECT_DIR" ] || {{ echo "kitchen: CLAUDE_PROJECT_DIR is not set" >&2; exit 2; }}; '
+            f's="$CLAUDE_PROJECT_DIR/{CLAUDE_SETTINGS}"; h="$CLAUDE_PROJECT_DIR/{VENDORED_HOOKS}/{name}"; '
+            f'[ -e "$s" ] || [ -L "$s" ] || exit 0; [ -x "$h" ] || {{ echo "kitchen: guard missing: $h" >&2; exit 2; }}; exec "$h"\'')
 
 
 def claude_settings() -> str:

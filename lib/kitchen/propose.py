@@ -953,7 +953,8 @@ def build(git: Git, root: Path, head: str, existing: str | None, branch: str | N
     report_entry = manifest.get("report") if isinstance(manifest.get("report"), dict) else None
     report_now = classify(git, repo, REPORT, report_entry) if to_write or run_proof else "skip"
     # a proof with nothing new to write still updates kitchen's own report, so the branch never keeps an old verdict
-    refresh_report = run_proof and not to_write and bool(existing) and report_now == "unchanged" and manifest_state == "unchanged"
+    refresh_report = (run_proof and not to_write and bool(existing) and report_now == "unchanged" and manifest_state == "unchanged"
+                      and repo.tree.get(REPORT, ("", ""))[0] == "100644")  # a changed mode is the owner's edit too
     bookkeep = bool(to_write) or refresh_report
     write_manifest = bookkeep and manifest_state in ("absent", "unchanged")
     if bookkeep:
