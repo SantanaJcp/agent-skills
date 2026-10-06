@@ -1,49 +1,43 @@
 ---
 name: verify-agent-skills
-description: "Prove agent-skills behavior against a real, disposable instance and capture evidence. Use before and after any change to <surfaces>; when a task says verify, prove it works or no behavior change; and to record golden outputs before a refactor."
+description: "Prove a change to the kitchen (bin/kitchen, lib/, hooks/, skills/, automation/) before and after it lands: the check contract in a throwaway HOME, then the real installation read-only. Use when a task says verify, prove it works or no behavior change."
 ---
 
 # verify-agent-skills
 
-Every agent drives the app through one CLI:
+The kitchen is a CLI, its guards and its skills. It is proved in two places, never on the person's real `~/.claude`, `~/.codex` or `~/.config/kitchen` except read-only.
+
+## The check contract
 
 ```bash
-V=.agents/skills/verify-agent-skills/bin/verify
+bin/check commit        # lint, private-data and secret scan, the fast suites (about 20 s)
+bin/check integrate     # bin/kitchen check: every test, the automation suite included
+bin/check --list        # the tiers
 ```
 
-`features/` maps every user-facing entry point to a feature: how a user reaches it and which observable result proves it.
+Every test runs in a throwaway repo and `HOME` (`KITCHEN_REPO`, `HOME`, `KITCHEN_CONFIG`, `KITCHEN_STATE`, `KITCHEN_DENYLIST`). A behavior change ships with a test that fails without it: run it red against the old code, then green.
 
-## Prove the whole map
+## A disposable instance
 
 ```bash
-$V prove     # clean start → every features/*.md drive block in README order → teardown
+T=$(mktemp -d)
+HOME=$T KITCHEN_CONFIG=$T/config KITCHEN_STATE=$T/state bin/kitchen install --rules none < /dev/null
+HOME=$T KITCHEN_CONFIG=$T/config KITCHEN_STATE=$T/state bin/kitchen doctor
 ```
 
-Run it before a change for a baseline and after it to prove nothing else moved. It exits 0 only when every step passes.
-
-## Launch and check
+## The real installation, read-only
 
 ```bash
-$V launch    # <what it starts, where, isolated from what>
-$V doctor    # build is HEAD, dependencies healthy, no external service reachable by accident
+kitchen doctor          # links, generated rules, hooks blocking their probes, agent CLIs, schedules
+kitchen status --exceptions
 ```
 
-## Drive
+## Feature map
 
-```bash
-$V api GET /<path> --expect 200 --save <name>
-$V sql "<query>" --expect "<rows>"
-$V diff <before> <after>    # ignores volatile fields: <list>
-```
-
-UI surfaces are driven through `$V` too, so the gate is the same everywhere. In T3 Code an agent may also look at them with `preview_*` (web) or `device_*` (mobile) and keep the recording as evidence; that is extra proof, never a replacement for `$V prove`.
-
-## Clean up
-
-```bash
-$V cleanup   # stops only what launch started; evidence stays in <path>
-```
+`features/` holds one file per `kitchen` command: how it is reached and which test proves it. `tests/test_feature_map.py` fails when a command has no file there.
 
 ## Not covered
 
-List what this skill cannot prove yet and why. Never claim verification for anything listed here.
+- Cloud sessions (Claude Code and Codex): never measured.
+- Codex project hooks: did not load in Codex 0.160, so `.kitchen/hooks` protects Claude Code sessions only.
+- The scheduled jobs on a real schedule: `bin/check` runs their tests, not a night of launchd or systemd.

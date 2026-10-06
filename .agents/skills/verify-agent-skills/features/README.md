@@ -1,5 +1,14 @@
 # Feature map
 
-One file per user-facing entry point (route, command, screen, job), in proof order: how a user reaches it and the observable result that proves it. A guard test must fail when an entry point is missing here.
+One file per `kitchen` command, in this order. `tests/test_feature_map.py` fails when a command has no file here or is missing from this list.
 
-No feature is mapped yet.
+- [install](install.md)
+- [doctor](doctor.md)
+- [check](check.md)
+- [log](log.md)
+- [status](status.md)
+- [inventory](inventory.md)
+- [init](init.md)
+- [models](models.md)
+- [retro](retro.md)
+- [integrate](integrate.md)

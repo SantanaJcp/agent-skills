@@ -9,14 +9,14 @@ set -eu
 cd "$(dirname "$0")/.."
 
 tier_commit() {
-  # automation/package.json has dependencies: install them (npm ci) before bin/check runs
-  # automation/package.json: no test script, so no test command
-  echo "bin/check commit: no command detected; add one" >&2
-  exit 1
+  # lint the skills, scan for private data and secrets, then the fast suites (about 20 s; no automation suite)
+  bin/kitchen check --lint-only
+  python3 -m unittest -q tests.test_principles tests.test_kitchen tests.test_hooks tests.test_corpus tests.test_source_compat tests.test_feature_map
 }
 
 tier_integrate() {
-  tier_commit
+  # every test, the automation suite included (it needs srt: npm ci --ignore-scripts --prefix automation)
+  bin/kitchen check
 }
 
 tier_nightly() {
