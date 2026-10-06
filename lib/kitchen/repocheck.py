@@ -59,7 +59,9 @@ VENDORED = {"node_modules", ".venv", "venv", ".tox", "site-packages", "obj"}
 TEST_DIRS = {"test", "tests", "__tests__", "spec", "specs", "fixture", "fixtures", "testdata"}
 SOURCE_SUFFIXES = {".cs", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".py", ".sh", ".go", ".rs", ".java", ".kt", ".rb"}
 CI_FILES = (".gitlab-ci.yml", "azure-pipelines.yml", "Jenkinsfile", ".circleci/config.yml", "bitbucket-pipelines.yml")
-SECRET_SCANNER = re.compile(r"\b(gitleaks|trufflehog|detect-secrets|git-secrets|ggshield|secretlint|talisman)\b")
+# The kitchen's own scan (credential shapes in the staged blobs) counts only as the repo's own bin/kitchen: a global
+# `kitchen check` checks the kitchen, not the repo whose hook runs it.
+SECRET_SCANNER = re.compile(r'\b(gitleaks|trufflehog|detect-secrets|git-secrets|ggshield|secretlint|talisman)\b|bin/kitchen"?\s+check\b')
 TIER_TOKEN = re.compile(r"(?<![\w-])(commit|integrate|nightly|verify-tree)(?![\w-])")
 CASE_ARM = re.compile(r"^\s*\(?\s*([\"']?[\w-]+[\"']?(?:\s*\|\s*[\"']?[\w-]+[\"']?)*)\s*\)")
 KEYED_TIER = re.compile(r"^\s*[\"']?(commit|integrate|nightly|verify-tree)[\"']?(\s*:|\s+=\s*[\[{\"'])")  # not shell `commit=$(...)`

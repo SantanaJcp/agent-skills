@@ -401,6 +401,19 @@ class MustHaves(InitFixture):
         repo = self.make_repo("commented", files, executable=("bin/check", ".githooks/pre-commit"), hooks_path=".githooks")
         self.assertEqual(self.statuses(self.report(repo))["secret-scan"], "FAIL")
 
+    def test_the_kitchen_scan_counts_only_from_the_repo_own_bin_kitchen(self):
+        files = complete_files()
+        files["bin/kitchen"] = "#!/usr/bin/env python3\n"
+        files[".githooks/pre-commit"] = '#!/bin/sh\nexec "$(git rev-parse --show-toplevel)/bin/kitchen" check --fast\n'
+        own = self.make_repo("kitchen", files, executable=("bin/check", ".githooks/pre-commit", "bin/kitchen"), hooks_path=".githooks")
+        files[".githooks/pre-commit"] = "#!/bin/sh\nkitchen check --fast\n"
+        global_cli = self.make_repo("other", files, executable=("bin/check", ".githooks/pre-commit"), hooks_path=".githooks")
+
+        verdict = next(m for m in self.report(own)["must_haves"] if m["id"] == "secret-scan")
+
+        self.assertEqual((verdict["status"], verdict["proof"]), ("PASS", 'bin/kitchen" check at .githooks/pre-commit:2'))
+        self.assertEqual(self.statuses(self.report(global_cli))["secret-scan"], "FAIL")
+
     def test_scanner_in_an_inactive_hook_is_reported_but_fails(self):
         files = complete_files()
         repo = self.make_repo("inactive", files, executable=("bin/check", ".githooks/pre-commit"))  # no core.hooksPath
