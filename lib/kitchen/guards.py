@@ -127,11 +127,12 @@ def plan(repo: Path, kitchen: Path) -> list[tuple[str, bytes, int]]:
 
 
 def uncommitted(repo: Path, rels: list[str]) -> list[str]:
-    """Paths among rels with changes git does not hold yet: overwriting them would lose them for good."""
+    """Paths among rels with content git does not hold yet: overwriting them would lose it for good."""
     result = subprocess.run(["git", "-C", str(repo), "status", "--porcelain", "--", *rels], capture_output=True, text=True)
     if result.returncode != 0:
         raise GuardsError(f"cannot read git status in {repo}: {result.stderr.strip()}")
-    return [line[3:] for line in result.stdout.splitlines() if not line.startswith("??")]
+    # an untracked copy that exists was written or edited by someone; the settings files are merged, so nothing in them is lost
+    return [line[3:] for line in result.stdout.splitlines() if not line.startswith("??") or line[3:].startswith(VENDORED)]
 
 
 def apply(repo: Path, changes: list[tuple[str, bytes, int]]) -> None:

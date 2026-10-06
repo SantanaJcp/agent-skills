@@ -185,6 +185,17 @@ class GuardsTests(GuardsFixture):
         shown = subprocess.run([*git, "show", "HEAD:.kitchen/hooks/deny-shared-push"], capture_output=True, text=True)
         self.assertIn("# my own rule", shown.stdout)
 
+    def test_guards_refuses_to_replace_an_edited_copy_git_never_held(self):
+        self.kitchen("guards", str(self.project))
+        copy = self.project / ".kitchen" / "hooks" / "deny-shared-push"
+        copy.write_text("#!/bin/sh\n# my own rule\nexit 2\n")
+
+        result = self.kitchen("guards", str(self.project))
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("uncommitted changes in .kitchen/hooks/deny-shared-push", result.stderr)
+        self.assertIn("# my own rule", copy.read_text())
+
     def test_check_fails_until_the_guards_are_written_and_again_when_a_copy_drifts(self):
         before = self.kitchen("guards", str(self.project), "--check")
         self.kitchen("guards", str(self.project))
