@@ -115,9 +115,9 @@ Parallel work runs in separate worktrees or clones, one writer each. Shared stat
 
 ## 11. Another model checks the work, on a budget (`cross-review`)
 
-The author's model does not review its own work. Risky diffs (auth, tenant scope, sync, data, migrations) go to the other model at low effort. Two rounds per PR: one open review, then one pass that only reruns the first round's repros. Only P0/P1 block; the rest becomes test or corpus cases. Never upgrade ISSUES, BLOCKED or missing evidence to PASS.
+The author's model does not review its own work. Risky diffs (auth, tenant scope, sync, data, migrations) always go to the other model. Which model, at what effort and tier, is each person's setup in `kitchen models`, never written here. Two rounds per PR: one open review, then one pass that only reruns the first round's repros. Only P0/P1 block; the rest becomes test or corpus cases. Never upgrade ISSUES, BLOCKED or missing evidence to PASS.
 
-- **Why:** a different model sees what the author is blind to ("the other model reviews", the deck). The budget and the low effort are the owner's calls (PRs #22, #25): open-ended rounds kept finding new blockers instead of converging, and three-model panels at maximum effort cost too much for small and medium work (the deck).
+- **Why:** a different model sees what the author is blind to ("the other model reviews", the deck). The budget is the owner's call (PR #22): open-ended rounds kept finding new blockers instead of converging. Three-model panels at maximum effort cost too much for small and medium work (the deck), so one reviewer, configured once in `kitchen models`.
 - **When:** before merge, and whenever a worker reports back.
 - **Enforced by:** the `second-opinion` skill, with the reviewer taken from each person's `kitchen models` setup; it stops BLOCKED when no other model is reachable. Budget and effort: rule only.
 

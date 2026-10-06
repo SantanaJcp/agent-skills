@@ -54,6 +54,14 @@ class Principles(unittest.TestCase):
     def test_every_excused_helper_still_exists(self):
         self.assertEqual([p for p in NOT_CONTROLS if not (REPO / p).is_file()], [], "drop a gone helper from NOT_CONTROLS")
 
+    def test_the_reviewer_effort_lives_only_in_kitchen_models(self):
+        # one source of truth: a level written here would contradict what each person sets with `kitchen models`
+        level = re.compile(r"\b(low|medium|high|xhigh|max)\s+(reasoning\s+)?effort\b", re.IGNORECASE)
+        for rel in ("PRINCIPLES.md", "global/AGENTS.md", "skills/second-opinion/SKILL.md", "skills/second-opinion/reviewer-prompt.md"):
+            with self.subTest(file=rel):
+                text = (REPO / rel).read_text(encoding="utf-8")
+                self.assertEqual([m.group(0) for m in level.finditer(text)], [], "set it in `kitchen models` instead")
+
     def test_every_must_have_names_a_known_principle(self):
         for key, _, principle in repocheck.MUST_HAVES:
             with self.subTest(must_have=key):

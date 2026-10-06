@@ -44,8 +44,8 @@ These rules apply in every project and every tool. A project's own AGENTS.md add
 - Let machine gates handle reversible verification and integration. Resolve technical exceptions within the authorized scope; do not turn them into owner checkboxes.
 - A batch of parallel work is PASS only after `kitchen integrate` passes on the exact sibling SHAs.
 - Review has a budget of two rounds per PR: one open review, then one pass that only reruns the previous round's repros against the fixes. Only P0/P1 findings block a merge; P2 and lower become corpus or test cases.
-- Match effort to the role. Reviews of risky diffs (auth, sync, tenant scope, data) run on the other model, at low reasoning effort.
-- When the delegation interface lets you set a service tier, set it explicitly: Standard unless I ask for Fast.
+- Match effort to the role. Reviews of risky diffs (auth, sync, tenant scope, data) run on the other model: the reviewer, its effort and its tier are what I set in `kitchen models`.
+- For any other delegation, when the interface lets you set a service tier, set it explicitly: Standard unless I ask for Fast.
 - In T3 Code, use its tools; elsewhere, their plain equivalents. A worker that edits files gets its own worktree: `t3_thread_launch` with a worktree `workspaceStrategy` and an explicit `baseRef` (elsewhere `git worktree add`). Reviews and probes go through `delegate_task` with provider, model, effort and tier set (elsewhere the other model's CLI).
 - After opening a PR, watch it instead of polling: in T3 Code, `link_pull_request` and `watch_pull_request`, then end the turn; elsewhere, read `gh pr checks` when the work resumes.
 
