@@ -1,5 +1,5 @@
 # init
 
-- **Reached by:** `kitchen init <repo> [--check|--yes|--prove]`
-- **Observable result:** the must-haves, then branch kitchen/init with the missing pieces and the personal layer
-- **Proved by:** tests/test_init_check.py, tests/test_init_propose.py
+- **Reached by:** `kitchen init [repo]`, or `/chef-mode init` in the repo
+- **Observable result:** the init playbook printed for the person's agent, with the repo and the kitchen path; nothing written
+- **Proved by:** tests/test_guards.py (InitTests, RealPlaybookTests)

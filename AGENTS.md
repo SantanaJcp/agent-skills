@@ -1,6 +1,6 @@
 # Working on this repo
 
-This file is for agents editing the kitchen itself. `PRINCIPLES.md` says what the kitchen does and why; read it before you change a control. `.kitchen/PRINCIPLES.md` is the copy `kitchen init` keeps, the one agents in other repos get. The rules agents follow in chef mode live in `skills/chef-mode/SKILL.md`; the kitchen writes no global rules, so each person's own `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md` stay theirs.
+This file is for agents editing the kitchen itself. `PRINCIPLES.md` says what the kitchen does and why; read it before you change a control. Agents reach it through `/chef-mode`, which links it. The rules agents follow in chef mode live in `skills/chef-mode/SKILL.md`; the kitchen writes no global rules, so each person's own `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md` stay theirs.
 
 ## Rules
 
@@ -11,7 +11,7 @@ This file is for agents editing the kitchen itself. `PRINCIPLES.md` says what th
 - A skill is a workflow, not a manual: `SKILL.md` stays under 150 lines (`bin/kitchen check` enforces it). Move mechanical steps into a script inside the skill and detail into a referenced file.
 - Skill names and descriptions are English and kebab-case; the folder name equals the frontmatter `name`; descriptions are one line.
 - Prefer the strongest fix for a recurring mistake: make it impossible in code, then a check in `bin/kitchen check`, then a rule here.
-- Every control (a guard, a scheduled job, a CLI module that decides PASS, FAIL or unknown, a must-have of `kitchen init`, a skill) names the principles it enforces in a `Principles:` line, and a new one is added to the list in `tests/test_principles.py`. A new principle goes in `PRINCIPLES.md` with an `Enforced by:` line.
+- Every control (a guard, a scheduled job, a CLI module that decides PASS, FAIL or unknown, a skill) names the principles it enforces in a `Principles:` line, and a new one is added to the list in `tests/test_principles.py`. A new principle goes in `PRINCIPLES.md` with an `Enforced by:` line.
 
 ## Verify
 

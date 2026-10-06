@@ -1,19 +1,14 @@
 """Every control names the principle it enforces, and every name is a principle in PRINCIPLES.md.
 
-A control is a guard, a scheduled job, a CLI module, a must-have of `kitchen init`, or a skill. They are found by
+A control is a guard, a scheduled job, a CLI module or a skill. They are found by
 globbing, so a new one is held to this suite the moment it lands; a helper that enforces nothing is excused by name
 in NOT_CONTROLS, with the reason.
 """
 import re
-import sys
 import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO / "lib"))
-
-from kitchen import repocheck  # noqa: E402
-
 NOT_CONTROLS = {
     "hooks/shellparse.py": "the parser the guards share",
     "automation/bin/install-schedule": "writes launchd and systemd units; the jobs it schedules are the controls",
@@ -72,15 +67,10 @@ class Principles(unittest.TestCase):
         self.assertTrue(link.is_symlink(), "a copy would drift: link it to the repo's PRINCIPLES.md")
         self.assertEqual(link.resolve(), (REPO / "PRINCIPLES.md").resolve())
 
-    def test_every_must_have_names_a_known_principle(self):
-        for key, _, principle in repocheck.MUST_HAVES:
-            with self.subTest(must_have=key):
-                self.assertIn(principle, self.ids)
-
     def test_every_principle_is_enforced_or_says_rule_only(self):
         text = (REPO / "PRINCIPLES.md").read_text(encoding="utf-8")
         sections = dict(zip(self.ids, re.split(r"^## \d+\. ", text, flags=re.MULTILINE)[1:]))
-        cited = {n for path in CONTROLS for n in declared(path)} | {p for _, _, p in repocheck.MUST_HAVES}
+        cited = {n for path in CONTROLS for n in declared(path)}
         for pid in self.ids:
             with self.subTest(principle=pid):
                 enforced = re.search(r"^- \*\*Enforced by:\*\* (.+)$", sections[pid], re.MULTILINE)
