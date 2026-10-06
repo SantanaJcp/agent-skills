@@ -106,6 +106,21 @@ class ProposeFixture(InitFixture):
         return subprocess.run([sys.executable, str(KITCHEN), "init", str(repo), "--yes", "--base", "main", *extra],
                               capture_output=True, text=True, env=self.env(gh))
 
+    def owner_commit(self, repo, change):
+        checkout = self.root / "checkout"
+        self.git(repo, "worktree", "add", "--quiet", str(checkout), BRANCH)
+        change(checkout)
+        self.git(checkout, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "owner edit")
+        self.git(repo, "worktree", "remove", "--force", str(checkout))
+
+    def fill_check(self, repo):
+        """What the agent does first: init writes its guess, the agent turns it into the project's own bin/check."""
+        self.propose_json(repo)
+        def fill(checkout):
+            path = checkout / "bin" / "check"
+            path.write_text("".join(l for l in path.read_text().splitlines(True) if "# unverified:" not in l))
+        self.owner_commit(repo, fill)
+
     def propose_json(self, repo, *extra, gh=None, code=0):
         result = self.propose(repo, "--json", *extra, gh=gh)
         self.assertEqual(result.returncode, code, result.stdout + result.stderr)
@@ -448,6 +463,7 @@ class Prove(ProposeFixture):
 
     def test_python_negative_control_goes_red(self):
         repo = self.make_repo("calc", PYTHON_FILES)
+        self.fill_check(repo)
 
         result = self.propose_json(repo, "--prove", code=0 if shutil.which("gitleaks") else 1)
 
@@ -458,6 +474,7 @@ class Prove(ProposeFixture):
     @unittest.skipUnless(node_supports_typescript(), "needs node >= 22.18 (runs .ts tests natively) and npm")
     def test_node_negative_control_goes_red(self):
         repo = self.make_repo("web", NODE_FILES)
+        self.fill_check(repo)
 
         result = self.propose_json(repo, "--prove", code=0 if shutil.which("gitleaks") else 1)
 
@@ -466,6 +483,7 @@ class Prove(ProposeFixture):
     @unittest.skipUnless(dotnet_major(), "dotnet is not installed")
     def test_dotnet_negative_control_goes_red(self):
         repo = self.make_repo("shop", dotnet_files(dotnet_major()))
+        self.fill_check(repo)
 
         result = self.propose_json(repo, "--prove", code=0 if shutil.which("gitleaks") else 1)
 
@@ -488,6 +506,7 @@ class Prove(ProposeFixture):
 
     def test_prove_says_it_runs_repository_code(self):
         repo = self.make_repo("calc", PYTHON_FILES)
+        self.fill_check(repo)
 
         result = self.propose(repo, "--prove")
 
@@ -500,6 +519,51 @@ class Prove(ProposeFixture):
         self.assertEqual(result.returncode, 2)
         self.assertIn("--check only reads", result.stderr)
 
+
+
+class GuessAndConfig(ProposeFixture):
+    """init never times its own guess of the commands; it starts bin/check from the owner's integrate.toml when it can."""
+
+    def configure(self, text):
+        path = self.home / ".config" / "kitchen" / "integrate.toml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+
+    def test_a_guessed_bin_check_is_never_proved(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+
+        result = self.propose_json(repo, "--prove", code=1)
+
+        self.assertFalse(result["ran_repository_code"])
+        self.assertIn("still kitchen's guess", result["readiness"]["checks_run_green"]["detail"])
+        self.assertTrue(any("hand the rest to your agent" in line for line in result["next"]))
+        self.assertEqual(os.listdir(self.tmpdir), [])
+
+    def test_bin_check_starts_from_integrate_toml_and_is_proved(self):
+        self.configure('[projects.calc]\nbase = "main"\npath = ["~/.dotnet", "/opt/private/bin"]\n'
+                       'checks = ["python3 -m unittest discover -s tests"]\n')
+        repo = self.make_repo("calc", PYTHON_FILES)
+
+        result = self.propose_json(repo, "--prove", code=0 if shutil.which("gitleaks") else 1)
+
+        check = self.show(repo, BRANCH, "bin/check")
+        self.assertIn("# from your integrate.toml [projects.calc].checks", check)
+        self.assertIn('PATH="$HOME/.dotnet:$PATH"; export PATH', check)
+        self.assertNotIn("/opt/private/bin", check)
+        self.assertNotIn("# unverified:", check)
+        self.assertEqual(result["readiness"]["checks_run_green"]["state"], "yes", result["readiness"])
+        self.assertIn("tests/test_calc.py", result["readiness"]["negative_control_went_red"]["detail"])
+
+    def test_a_long_check_reports_its_progress(self):
+        repo = self.make_repo("calc", PYTHON_FILES)
+        self.propose_json(repo)
+        self.owner_commit(repo, lambda c: (c / "bin" / "check").write_text("#!/bin/sh\necho compiling step one\nsleep 3\n"))
+
+        result = subprocess.run([sys.executable, str(KITCHEN), "init", str(repo), "--yes", "--base", "main", "--prove"],
+                                capture_output=True, text=True, env={**self.env(), "KITCHEN_PROGRESS_SECONDS": "1"})
+
+        self.assertIn("bin/check commit (run 1 of 2) still running", result.stderr)
+        self.assertIn("last line: compiling step one", result.stderr)
 
 
 class AgentHooks(ProposeFixture):
@@ -634,13 +698,6 @@ class Refresh(ProposeFixture):
         again = self.propose_json(repo)
         self.assertEqual(self.state(again, ".kitchen/hooks/deny-shared-push"), "unchanged")
 
-    def owner_commit(self, repo, change):
-        checkout = self.root / "checkout"
-        self.git(repo, "worktree", "add", "--quiet", str(checkout), BRANCH)
-        change(checkout)
-        self.git(checkout, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "owner edit")
-        self.git(repo, "worktree", "remove", "--force", str(checkout))
-
     def test_an_edited_manifest_vouches_for_nothing(self):
         repo = self.make_repo("calc", PYTHON_FILES)
         self.init_with(self.older_kitchen(), repo)
@@ -685,7 +742,7 @@ class Refresh(ProposeFixture):
 
     def test_a_proof_with_nothing_new_still_updates_the_report(self):
         repo = self.make_repo("calc", PYTHON_FILES)
-        self.propose_json(repo)
+        self.fill_check(repo)
         first = self.git(repo, "rev-parse", BRANCH).strip()
         self.assertIn("checks run green            not run", self.show(repo, BRANCH, "KITCHEN-INIT.md"))
 
@@ -699,7 +756,7 @@ class Refresh(ProposeFixture):
 
     def test_a_report_whose_mode_the_owner_changed_is_left_alone(self):
         repo = self.make_repo("calc", PYTHON_FILES)
-        self.propose_json(repo)
+        self.fill_check(repo)
         self.owner_commit(repo, lambda checkout: (checkout / "KITCHEN-INIT.md").chmod(0o755))
         before = self.show(repo, BRANCH, "KITCHEN-INIT.md")
 
@@ -734,7 +791,8 @@ class Ask(ProposeFixture):
         output, pending = b"", list(replies)
         while True:
             ready, _, _ = select.select([fd], [], [], 60)
-            if not ready:
+            if not ready:  # waiting on input nobody will type: end it, so the test fails instead of hanging
+                os.kill(pid, signal.SIGKILL)
                 break
             try:
                 data = os.read(fd, 4096)
@@ -754,15 +812,17 @@ class Ask(ProposeFixture):
 
     def test_answers_decide_what_is_written(self):
         repo = self.make_repo("calc", PYTHON_FILES)
-        # branch: yes; prove: no; personal: yes; the base is unknown (no origin/HEAD), so it is asked: dev
-        code, output, left = self.run_tty(["init", str(repo)], ["1", "2", "1", "dev"])
+        # branch: yes; personal: yes; the base is unknown (no origin/HEAD), so it is asked: dev. No prove question:
+        # bin/check would be kitchen's guess of the commands
+        code, output, left = self.run_tty(["init", str(repo)], ["1", "1", "dev"])
         self.assertEqual((code, left), (0, []), output)
         self.assertIn("1. Write the missing pieces on branch kitchen/init?", output)
         self.assertIn("Which branch is the shared base", output)
         self.assertTrue(self.git(repo, "rev-parse", "--verify", "--quiet", "refs/heads/kitchen/init"), output)
         self.assertEqual(self.config("projects.txt"), f"{repo}\n")
         self.assertEqual(self.config("integrate.toml"), '[projects.calc]\nbase = "dev"\nchecks = ["bin/check integrate"]\n')
-        self.assertIn("skipped    prove (answered no)", output)
+        self.assertNotIn("Prove the gate", output)
+        self.assertIn("not proved bin/check holds kitchen's guess", output)
 
     def test_no_writes_nothing(self):
         repo = self.make_repo("calc", PYTHON_FILES)
@@ -811,6 +871,7 @@ class ReviewRound1(ProposeFixture):
         self.assertFalse(self.marker.exists(), "a filter of the target repo ran during --propose")
         self.assertFalse(result["ran_repository_code"])
         self.assertIn("bin/check", self.added(repo))
+        self.owner_commit(repo, lambda c: (c / "bin" / "check").write_text("#!/bin/sh\nexit 0\n"))
         prove = self.propose(repo, "--prove")
         self.assertIn("filters", prove.stderr)
 

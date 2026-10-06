@@ -35,12 +35,13 @@ import shutil
 import signal
 import subprocess
 import tempfile
+import time
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Callable
 
-from kitchen import repocheck
+from kitchen import common, repocheck
 
 BRANCH = "kitchen/init"
 MANIFEST = ".kitchen/init.json"
@@ -50,6 +51,8 @@ HOOK = ".githooks/pre-commit"
 CHECK = "bin/check"
 TEMPLATES = Path(__file__).resolve().parents[2] / "templates"
 PROVE_TIMEOUT_SECONDS = 900
+GUESS = re.compile(r"^\s*# unverified: |no command detected; add one", re.MULTILINE)  # bin/check lines kitchen guessed
+PROGRESS_SECONDS = int(os.environ.get("KITCHEN_PROGRESS_SECONDS", "30"))
 GITLEAKS_TIMEOUT_SECONDS = 120
 TAIL_LINES = 12
 CONTROL_FILE = "kitchen-init-control.md"
@@ -287,13 +290,62 @@ def detect_commands(repo: repocheck.Repo, components: list[dict]) -> tuple[list[
 
 # ---- the pieces -----------------------------------------------------------------------------------
 
-def render_check(commands: list[Command], notes: list[str]) -> str:
+def will_guess(root: Path) -> bool:
+    """Would bin/check on kitchen/init be kitchen's unedited guess? Then init does not offer to prove it: running
+    guessed commands only measures the guess. Read-only."""
+    original = repocheck.Repo(root)
+    start = (original.git("rev-parse", "--verify", "--quiet", f"refs/heads/{BRANCH}^{{commit}}")
+             or original.git("rev-parse", "--verify", "--quiet", "HEAD^{commit}"))
+    if not start:
+        return False
+    repo = repocheck.Repo(root, start)
+    if repo.is_file(CHECK):
+        text = repo.read(CHECK) or ""
+        entry = read_manifest(repo)[1].get("files", {}).get(CHECK) or {}
+        return bool(GUESS.search(text)) and entry.get("sha256") == sha256(text.encode())
+    if repo.exists(".kitchen/checks.toml"):
+        return False
+    return not configured_checks(root.name)[0]
+
+
+def configured_checks(project: str) -> tuple[list[str], list[str]]:
+    """(checks, path) of the project's entry in the owner's integrate.toml: commands `kitchen integrate` already runs,
+    so bin/check starts from them instead of a guess. A file that cannot be read is an error, never an empty answer."""
+    path = common.config_dir() / "integrate.toml"
+    if not path.is_file():
+        return [], []
+    try:
+        entry = tomllib.loads(path.read_text(encoding="utf-8")).get("projects", {}).get(project) or {}
+    except tomllib.TOMLDecodeError as error:
+        raise ProposeError(f"cannot parse {path}: {error}; fix it, then rerun") from error
+    checks, dirs = entry.get("checks") or [], entry.get("path") or []
+    if not all(isinstance(c, str) for c in checks) or not all(isinstance(d, str) for d in dirs):
+        raise ProposeError(f"[projects.{project}] in {path}: checks and path must be lists of strings")
+    return checks, dirs
+
+
+def path_line(dirs: list[str], notes: list[str]) -> list[str]:
+    """integrate.toml's `path` as a PATH line for bin/check. Only ~/ and repo-relative folders: an absolute personal
+    path would end up committed in the repo."""
+    kept = []
+    for d in dirs:
+        if d.startswith("~/"):
+            kept.append("$HOME/" + d[2:])
+        elif not d.startswith(("/", "~")):
+            kept.append(d)
+        else:
+            notes.append("left out of PATH: an absolute folder from your integrate.toml (personal, so not committed); add it in your shell")
+    return [f'  PATH="{":".join(kept)}:$PATH"; export PATH'] if kept else []
+
+
+def render_check(commands: list[Command], notes: list[str], path: list[str] | None = None) -> str:
     def body(tier: str) -> list[str]:
         lines = []
         for command in (c for c in commands if c.tier == tier):
-            lines += [f"  # unverified: {safe(command.source)}", f"  {command.line()}"]
+            mark = "from" if command.source.startswith("your integrate.toml") else "unverified:"
+            lines += [f"  # {mark} {safe(command.source)}", f"  {command.line()}"]
         return lines
-    commit = [f"  # {safe(note)}" for note in notes] + body("commit")
+    commit = [f"  # {safe(note)}" for note in notes] + (path or []) + body("commit")
     if not any(c.tier == "commit" for c in commands):
         commit += ['  echo "bin/check commit: no command detected; add one" >&2', "  exit 1"]
     return template("init/check.sh.tmpl", commit="\n".join(commit), integrate="\n".join(["  tier_commit"] + body("integrate")))
@@ -359,14 +411,15 @@ def one_way_doors(origin_url: str, protection: str, project: str) -> list[dict]:
     return doors
 
 
-def wanted_files(repo: repocheck.Repo, report: dict, name: str, doors: list[dict], commands: list[Command], notes: list[str]) -> list[File]:
+def wanted_files(repo: repocheck.Repo, report: dict, name: str, doors: list[dict], commands: list[Command], notes: list[str],
+                 check_path: list[str] | None = None) -> list[File]:
     status = {m["id"]: m["status"] for m in report["must_haves"]}
     files = []
     if status["decisions"] != "PASS":
         owed = "\n".join(f"- [ ] {d['title']} (one-way door, proposed by kitchen init; see KITCHEN-INIT.md)" for d in doors) or "None yet."
         files.append(File("decisions.md", "decisions", template("init/decisions.md.tmpl", owed=owed)))
-    if status["check-contract"] != "PASS" and report["stack_status"] == "detected" and not repo.exists(CHECK) and not repo.exists(".kitchen/checks.toml"):
-        files.append(File(CHECK, "check-contract", render_check(commands, notes), 0o755))
+    if status["check-contract"] != "PASS" and (report["stack_status"] == "detected" or commands) and not repo.exists(CHECK) and not repo.exists(".kitchen/checks.toml"):
+        files.append(File(CHECK, "check-contract", render_check(commands, notes, check_path), 0o755))
     hook_candidates = [f for f in repo.files if PurePosixPath(f).name == "pre-commit"] + report["hooks"]["managers"]
     if (status["pre-commit-hook"] != "PASS" or status["secret-scan"] != "PASS") and not report["hooks"]["active"] and not hook_candidates:
         files.append(File(HOOK, "pre-commit-hook", template("init/pre-commit.sh.tmpl"), 0o755))
@@ -487,25 +540,49 @@ def kill_group(process: subprocess.Popen) -> None:
     process.wait()
 
 
-def run_code(argv: list[str], cwd: Path, tmp: Path, timeout: int = PROVE_TIMEOUT_SECONDS) -> dict:
-    """Run repository code in its own process group; exit None means it never finished (timeout) or never started."""
+def last_line(path: Path) -> str:
     try:
-        process = subprocess.Popen(argv, cwd=cwd, env=repo_code_env(tmp), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT, start_new_session=True)
+        with path.open("rb") as handle:
+            handle.seek(max(0, path.stat().st_size - 4096))
+            lines = [l for l in ANSI.sub("", handle.read().decode("utf-8", errors="replace")).splitlines() if l.strip()]
+    except OSError:
+        return ""
+    return lines[-1].strip()[:120] if lines else ""
+
+
+def run_code(argv: list[str], cwd: Path, tmp: Path, timeout: int = PROVE_TIMEOUT_SECONDS,
+             progress: Callable[[str], None] | None = None, label: str = "") -> dict:
+    """Run repository code in its own process group; exit None means it never finished (timeout) or never started.
+    Every PROGRESS_SECONDS it reports how long it has run and its last line of output, so a long check is never silent."""
+    out_path = tmp / f"run-{secrets.token_hex(4)}.log"
+    try:
+        with out_path.open("wb") as sink:
+            process = subprocess.Popen(argv, cwd=cwd, env=repo_code_env(tmp), stdin=subprocess.DEVNULL, stdout=sink,
+                                       stderr=subprocess.STDOUT, start_new_session=True)
     except OSError as error:
         return {"exit": None, "why": f"cannot run {argv[0]}: {error.strerror}", "tail": [], "output": ""}
+    started = time.monotonic()
     try:
-        out, _ = process.communicate(timeout=timeout)
-        result = {"exit": process.returncode, "why": f"exit {process.returncode}"}
-    except subprocess.TimeoutExpired:
-        kill_group(process)
-        out = process.stdout.read() if process.stdout else b""
-        result = {"exit": None, "why": f"timed out after {timeout}s"}
+        while True:
+            try:
+                process.wait(timeout=min(PROGRESS_SECONDS, max(0.1, timeout - (time.monotonic() - started))))
+                result = {"exit": process.returncode, "why": f"exit {process.returncode}"}
+                break
+            except subprocess.TimeoutExpired:
+                elapsed = time.monotonic() - started
+                if elapsed >= timeout:
+                    kill_group(process)
+                    result = {"exit": None, "why": f"timed out after {timeout}s"}
+                    break
+                if progress:
+                    progress(f"kitchen init --prove: {label or argv[-1]} still running, {int(elapsed) // 60}m{int(elapsed) % 60:02d}s"
+                             f" of at most {timeout // 60}m; last line: {last_line(out_path) or '(no output yet)'}")
     except BaseException:  # Interrupted, KeyboardInterrupt: nothing the run started may outlive kitchen
         kill_group(process)
         raise
     kill_group(process)  # whatever it left running in the background
-    text = ANSI.sub("", out.decode("utf-8", errors="replace"))
+    text = ANSI.sub("", out_path.read_bytes().decode("utf-8", errors="replace"))
+    out_path.unlink(missing_ok=True)
     lines = [line.rstrip() for line in text.splitlines() if line.strip()]
     return {**result, "tail": lines[-TAIL_LINES:], "output": text}
 
@@ -563,12 +640,12 @@ def negative_control(git: Git, wt: Path, target: str | None, tmp: Path, log: Cal
     try:
         with open(path, "ab") as handle:
             handle.write(BREAKERS[path.suffix].encode())
-        red = run_code([str(wt / CHECK), "commit"], wt, tmp)
+        red = run_code([str(wt / CHECK), "commit"], wt, tmp, progress=log, label="bin/check commit under the negative control")
     finally:
         path.write_bytes(original)
     if git.run(wt, "diff", "--quiet", "HEAD", "--", target).returncode != 0:
         raise ProposeError(f"the negative control on {target} could not be reverted in the temporary worktree")
-    after = run_code([str(wt / CHECK), "commit"], wt, tmp)
+    after = run_code([str(wt / CHECK), "commit"], wt, tmp, progress=log, label="bin/check commit after the revert")
     named = target in red["output"] or PurePosixPath(target).name in red["output"]
     shown = {k: v for k, v in red.items() if k != "output"}
     base = {"target": target, "change": change, "result": shown}
@@ -623,8 +700,8 @@ def prove(git: Git, wt: Path, target: str | None, hook_ours: bool, scratch: Path
         proof["control"] = {"state": "not run", "detail": "no bin/check to turn red", "why": why}
     else:
         log(f"kitchen init --prove: running bin/check commit twice in {wt}")
-        first = run_code([str(wt / CHECK), "commit"], wt, tmp)
-        second = run_code([str(wt / CHECK), "commit"], wt, tmp) if first["exit"] == 0 else None
+        first = run_code([str(wt / CHECK), "commit"], wt, tmp, progress=log, label="bin/check commit (run 1 of 2)")
+        second = run_code([str(wt / CHECK), "commit"], wt, tmp, progress=log, label="bin/check commit (run 2 of 2)") if first["exit"] == 0 else None
         proof["green"] = {k: v for k, v in (second if second and second["exit"] != 0 else first).items() if k != "output"}
         if first["exit"] != 0:
             proof["checks"] = {"state": "no", "detail": f"bin/check commit {first['why']} at {head[:7]}"}
@@ -694,12 +771,12 @@ def trust_lines(states: dict[str, str], pieces: dict[str, str], proof: dict | No
     return out
 
 
-def readiness(states: dict[str, str], written: int, proof: dict | None) -> dict:
+def readiness(states: dict[str, str], written: int, proof: dict | None, skipped: str | None = None) -> dict:
     present = sum(1 for s in states.values() if s in OURS)
     files = ({"state": "yes", "detail": f"{present} file{'s' if present != 1 else ''} on {BRANCH}" + ("" if written else "; nothing new this run")}
              if present else {"state": "no", "detail": "nothing is missing that kitchen init writes"})
     if proof is None:
-        rerun = "rerun with --prove (it runs repository code)"
+        rerun = skipped or "rerun with --prove (it runs repository code)"
         return {"files_proposed": files, "checks_run_green": {"state": "not run", "detail": rerun},
                 "negative_control_went_red": {"state": "not run", "detail": rerun},
                 "unattended_ready": {"state": "not assessed", "detail": "kitchen init does not assess unattended runs (sandbox, schedule, credentials)"}}
@@ -933,8 +1010,15 @@ def build(git: Git, root: Path, head: str, existing: str | None, branch: str | N
     status = {m["id"]: m["status"] for m in report["must_haves"]}
     origin = git.run(root, "config", "--get", "remote.origin.url").stdout.decode(errors="replace").strip()
     doors = one_way_doors(origin, status["branch-protection"], safe(root.name))
-    commands, command_notes = detect_commands(repo, report["components"])
-    wanted = {f.path: f for f in wanted_files(repo, report, name, doors, commands, command_notes)}
+    configured, dirs = configured_checks(root.name)
+    if configured:
+        source = f"your integrate.toml [projects.{safe(root.name)}].checks, what `kitchen integrate` runs"
+        commands, command_notes = [Command("commit", c, source, "") for c in configured], []
+        check_path = path_line(dirs, command_notes)
+    else:
+        commands, command_notes = detect_commands(repo, report["components"])
+        check_path = []
+    wanted = {f.path: f for f in wanted_files(repo, report, name, doors, commands, command_notes, check_path)}
     entries = manifest.get("files", {})
     paths = list(wanted) + [p for p in entries if p not in wanted]
     states = {p: classify(git, repo, p, entries.get(p)) for p in paths}
@@ -971,8 +1055,14 @@ def build(git: Git, root: Path, head: str, existing: str | None, branch: str | N
         for f in to_write:
             states[f.path] = "refreshed" if states[f.path] == "refresh" else "written"
 
-    proof = None
-    if run_proof:
+    proof, proof_skipped = None, None
+    check_text = wanted[CHECK].content if states.get(CHECK) == "written" else (repo.read(CHECK) if repo.is_file(CHECK) else None)
+    if run_proof and check_text and GUESS.search(check_text) and states.get(CHECK) in ("written", "unchanged"):
+        # timing kitchen's own guesses proves nothing about the project: the agent fills bin/check first, then proves it
+        proof_skipped = ("not run: bin/check is still kitchen's guess from the manifests (its `# unverified:` lines, never edited); "
+                         "fill it with this project's real commands, then rerun with --prove")
+        log(f"kitchen init --prove: skipped, {proof_skipped[9:]}")
+    elif run_proof:
         proof = prove_in_worktree(git, root, pieces_commit, states.get(HOOK) in OURS, scratch, log)
 
     files = []
@@ -995,12 +1085,12 @@ def build(git: Git, root: Path, head: str, existing: str | None, branch: str | N
         "branch": BRANCH,
         "base": str(manifest.get("base") or head),
         "measured_at": report["head"],
-        "ran_repository_code": run_proof,
+        "ran_repository_code": proof is not None,
         "must_haves": [{"id": m["id"], "label": m["label"], "status": m["status"], "proof": m["proof"]} for m in report["must_haves"]],
         "files": files,
         "proposals": proposals(report, states, pieces, name, repo),
         "unverified": unverified(report, states, pieces, commands, proof, name),
-        "readiness": readiness(states, len(to_write), proof),
+        "readiness": readiness(states, len(to_write), proof, proof_skipped),
         "trust": trust_lines(states, pieces, proof, proof["check_present"] if proof else repo.is_file(CHECK) or CHECK in [f.path for f in to_write]),
         "doors": doors,
         "next": next_steps,
