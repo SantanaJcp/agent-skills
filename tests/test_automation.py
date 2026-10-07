@@ -252,6 +252,37 @@ class NightlyGuardTests(AutomationFixture):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual((run["status"], run["warnings"]), ("green", ["issue report failed"]))
 
+    def test_metrics_history_is_mirrored_to_the_gardener_host_after_a_recorded_run(self):
+        self.fake("rsync", 'echo "rsync $*" >> "$CALLS"')
+        self.configure(["ok|true"], metrics="echo '{\\\"tests\\\": 3}'", extra='HISTORY_MIRROR="gardener-host:state/history/"\n')
+
+        result = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
+
+        history = self.state / "automation" / "shop" / "history" / "history.jsonl"
+        rsync = [line for line in self.calls_log().splitlines() if line.startswith("rsync ")]
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(len(rsync), 1, self.calls_log())
+        self.assertTrue(rsync[0].endswith(f"{history} gardener-host:state/history/"), rsync[0])
+        self.assertNotIn("warnings", {k for k, v in self.nightly()[-1].items() if v})
+
+    def test_a_failed_history_mirror_is_a_warning_on_a_green_run(self):
+        self.fake("rsync", "exit 12")
+        self.configure(["ok|true"], metrics="echo '{}'", extra='HISTORY_MIRROR="gardener-host:state/history/"\n')
+
+        result = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
+
+        run = self.nightly()[-1]
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual((run["status"], run["warnings"]), ("green", ["history mirror failed"]))
+
+    def test_no_mirror_when_the_metrics_were_not_recorded(self):
+        self.fake("rsync", 'echo "rsync $*" >> "$CALLS"')
+        self.configure(["ok|true"], metrics="exit 3", extra='HISTORY_MIRROR="gardener-host:state/history/"\n')
+
+        self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
+
+        self.assertNotIn("rsync", self.calls_log())
+
     def test_invalid_metrics_json_is_recorded_not_fatal(self):
         self.configure(["ok|true"], metrics="echo not-json")
 
