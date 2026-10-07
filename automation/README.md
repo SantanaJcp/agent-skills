@@ -36,6 +36,7 @@ GUARD_STEPS=(                          # name|command, run in order in bash -e -
 )
 CLEANUP_CMD="make stop"                # optional
 METRICS_CMD="python3 scripts/metrics.py --json"   # optional; snapshot per run in the history
+HISTORY_MIRROR="gardener-host:.local/state/kitchen/automation/<project>/history/"   # optional; rsync history.jsonl there after each recorded run, for a gardener on another host
 QUALITY_CMD="python3 scripts/metrics.py"          # optional; what the gardener measures with
 BASELINE_FILE="scripts/metrics.json"             # optional
 HOOKS_PATH="scripts/hooks"             # optional; the project's hooks folder, kept working in the clone
