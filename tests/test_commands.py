@@ -333,6 +333,25 @@ class LogAndStatusTests(ProjectFixture):
         for green_line in ("PRs", "gardener", "decisions", "journal window"):
             self.assertNotIn(green_line, red.stdout)
 
+    def test_a_remote_nightly_is_informational_never_green_and_never_an_exception(self):
+        self.green_project()
+        (self.home / "state" / "nightly" / "shop.jsonl").unlink()  # its records live on the other host
+        self.configure_base("main", extra='nightly = "remote:build-host"\n')
+
+        remote = self.kitchen("status", "--exceptions")
+        out = self.kitchen("status").stdout
+        self.configure_base("main", extra='nightly = "elsewhere"\n')
+        malformed = self.kitchen("status", "--exceptions")
+        self.configure_base("main")
+        local = self.kitchen("status", "--exceptions")
+
+        self.assertEqual((remote.returncode, remote.stdout), (0, ""), remote.stdout + remote.stderr)
+        self.assertIn("  nightly    remote (build-host): not read here", out)
+        self.assertEqual(malformed.returncode, 1, malformed.stdout)
+        self.assertIn("shop  nightly    unknown: nightly = 'elsewhere'", malformed.stdout)
+        self.assertEqual(local.returncode, 1, local.stdout)
+        self.assertIn("shop  nightly    ✗ no record", local.stdout)
+
     def test_a_remote_gardener_is_informational_never_green_and_never_an_exception(self):
         self.green_project()
         (self.home / "state" / "gardener" / "shop.jsonl").unlink()

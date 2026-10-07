@@ -28,7 +28,7 @@ from pathlib import Path
 from .common import config_dir, now, state_dir
 
 FIXED_DATE = "2000-01-01T00:00:00+00:00"  # merge commits are deterministic for a given SHA vector
-NOT_EXECUTION = ("gardener",)  # keys of a project's entry that only `kitchen status` reads
+NOT_EXECUTION = ("gardener", "nightly")  # keys of a project's entry that only `kitchen status` reads
 
 
 class IntegrateError(Exception):
