@@ -8,7 +8,7 @@ Scheduled jobs that keep a project honest without anyone asking.
 | `bin/weekly-gardener <project>` | Monday 06:00 | One unattended Claude Code run that commits at most one small, verified change on a local branch; the job then publishes it as a PR if it passes its own checks. Skips while the last one is still open. Every run that holds the project lock lands once in `~/.local/state/kitchen/gardener/<project>.jsonl`; a local notification when refused or incomplete. |
 | `bin/weekly-retro` | Monday 07:00 | Runs the `retro` skill over the week's transcripts and writes a report of proposals. Applies nothing. |
 
-Schedule them with `bin/install-schedule <project>` and `bin/install-schedule --retro`: launchd on macOS, systemd user timers on Linux. `bin/install-schedule --gardener <project>` schedules the gardener alone, for a machine that runs only it.
+Schedule them with `bin/install-schedule <project>` and `bin/install-schedule --retro`: launchd on macOS, systemd user timers on Linux. `bin/install-schedule --gardener <project>` schedules the gardener alone, for a machine that runs only it. `bin/install-schedule --guard <project>` schedules the nightly guard alone, for a machine whose gardener runs elsewhere.
 
 On Linux the gardener needs:
 

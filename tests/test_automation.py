@@ -1223,6 +1223,22 @@ class MacScheduleTests(AutomationFixture):
             self.assertNotIn("Background", text, plist.name)
 
 
+    def test_guard_alone_schedules_only_the_nightly_guard_and_installs_no_srt(self):
+        self.configure([])
+        self.fake("launchctl", 'echo "launchctl $*" >> "$CALLS"')
+        self.fake("npm", 'echo "npm $*" >> "$CALLS"')
+        home = Path(self.tmp.name) / "home"
+        env = {**self.job_env(), "HOME": str(home), "PATH": f"{self.bin}:{os.environ['PATH']}"}
+
+        result = subprocess.run(["bash", str(AUTOMATION / "bin" / "install-schedule"), "--guard", "shop", "3"], env=env,
+                                capture_output=True, text=True)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        plists = sorted((home / "Library" / "LaunchAgents").glob("*.plist"))
+        self.assertEqual([p.name for p in plists], ["com.kitchen.shop.nightly-guard.plist"])
+        self.assertIn("<key>Hour</key><integer>3</integer>", plists[0].read_text())
+        self.assertNotIn("npm", self.calls_log())
+
 @unittest.skipUnless(platform.system() == "Linux", "systemd user timers are the Linux schedule")
 class LinuxScheduleTests(AutomationFixture):
     def install(self, *args, linger="yes"):
