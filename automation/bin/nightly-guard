@@ -103,7 +103,14 @@ PY
 mirror_history() {
   [ -n "${HISTORY_MIRROR:-}" ] && [ "$METRICS" = ok ] || return 0
   local mirror_log="$LOG_DIR/guard-$RUN_ID-mirror.log"
-  if rsync -q --timeout=60 -e "ssh -o BatchMode=yes -o ConnectTimeout=20" "$HISTORY_DIR/history.jsonl" "$HISTORY_MIRROR" > "$mirror_log" 2>&1; then
+  if [[ ! "$HISTORY_MIRROR" =~ ^[A-Za-z0-9][A-Za-z0-9._@-]*:[^-] ]]; then  # an option-like value would copy nothing and still exit 0
+    log "metrics history mirror FAILED: HISTORY_MIRROR=$HISTORY_MIRROR is not host:path"
+    warn "history mirror failed"
+    return 0
+  fi
+  # bounded: macOS's openrsync can outlive --timeout while its ssh child hangs; the record must still be written.
+  if bounded "${HISTORY_MIRROR_SECONDS:-120}" rsync -q --timeout=60 -e "ssh -o BatchMode=yes -o ConnectTimeout=20" -- \
+      "$HISTORY_DIR/history.jsonl" "$HISTORY_MIRROR" > "$mirror_log" 2>&1; then
     log "metrics history mirrored to $HISTORY_MIRROR"
   else
     log "metrics history mirror FAILED (log $mirror_log)"

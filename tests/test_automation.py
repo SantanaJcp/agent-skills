@@ -262,7 +262,7 @@ class NightlyGuardTests(AutomationFixture):
         rsync = [line for line in self.calls_log().splitlines() if line.startswith("rsync ")]
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual(len(rsync), 1, self.calls_log())
-        self.assertTrue(rsync[0].endswith(f"{history} gardener-host:state/history/"), rsync[0])
+        self.assertTrue(rsync[0].endswith(f"-- {history} gardener-host:state/history/"), rsync[0])
         self.assertNotIn("warnings", {k for k, v in self.nightly()[-1].items() if v})
 
     def test_a_failed_history_mirror_is_a_warning_on_a_green_run(self):
@@ -274,6 +274,29 @@ class NightlyGuardTests(AutomationFixture):
         run = self.nightly()[-1]
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual((run["status"], run["warnings"]), ("green", ["history mirror failed"]))
+
+    def test_a_hung_history_mirror_is_cut_off_and_the_run_is_still_recorded(self):
+        self.fake("rsync", "sleep 30")
+        self.configure(["ok|true"], metrics="echo '{}'", extra='HISTORY_MIRROR="gardener-host:state/history/"\n')
+
+        started = time.monotonic()
+        result = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1", HISTORY_MIRROR_SECONDS="2")
+
+        run = self.nightly()[-1]
+        self.assertLess(time.monotonic() - started, 25, "the mirror was not cut off")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual((run["status"], run["warnings"]), ("green", ["history mirror failed"]))
+
+    def test_a_mirror_destination_that_is_not_host_path_is_refused_not_passed_to_rsync(self):
+        self.fake("rsync", 'echo "rsync $*" >> "$CALLS"')
+        self.configure(["ok|true"], metrics="echo '{}'", extra='HISTORY_MIRROR="--help"\n')
+
+        result = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
+
+        run = self.nightly()[-1]
+        self.assertNotIn("rsync", self.calls_log())
+        self.assertIn("is not host:path", result.stdout)
+        self.assertEqual(run["warnings"], ["history mirror failed"])
 
     def test_no_mirror_when_the_metrics_were_not_recorded(self):
         self.fake("rsync", 'echo "rsync $*" >> "$CALLS"')
