@@ -4,7 +4,7 @@ One entry per decision: date, decision, scope, when to revisit. `- [ ]` marks a 
 
 ## Owed
 
-- [ ] Require a status check on `main` with a ruleset (one-way door; the init playbook prints the `gh api` command).
+- [x] 2026-10-06 Require a status check on `main` with a ruleset: yes. A ruleset (no deletion or force-push, linear history, pull request with squash and no required approval, no bypass) plus the `check` job of `.github/workflows/check.yml`, which runs `bin/check integrate` on macOS. Linux is proved on the gardener host: a hosted runner has no systemd private /tmp.
 
 ## Decided
 

@@ -19,7 +19,7 @@ NOT_CONTROLS = {
     "lib/kitchen/inventory.py": "lists what the agents can see",
     "lib/kitchen/notify.py": "sends a local notification for the controls that decide to",
 }
-CANDIDATES = [*REPO.glob("hooks/*"), *REPO.glob("skills/*/SKILL.md"), *REPO.glob("automation/bin/*"), *REPO.glob("lib/kitchen/*.py")]
+CANDIDATES = [*REPO.glob(".github/workflows/*.yml"), *REPO.glob("hooks/*"), *REPO.glob("skills/*/SKILL.md"), *REPO.glob("automation/bin/*"), *REPO.glob("lib/kitchen/*.py")]
 CONTROLS = sorted(p for p in CANDIDATES if p.is_file() and p.name != "README.md" and str(p.relative_to(REPO)) not in NOT_CONTROLS)
 HEADING = re.compile(r"^## \d+\. .+? \(`([a-z-]+)`\)\s*$", re.MULTILINE)
 DECLARATION = re.compile(r"Principles(?: \([^)]*\))?:\s*(.+)")

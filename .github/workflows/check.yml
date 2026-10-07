@@ -2,6 +2,7 @@
 # `main` requires this job, so nothing merges without the whole suite green on a clean machine.
 # macOS only: on Linux the gardener refuses to run without a systemd private /tmp, which a hosted runner
 # does not give, so the Linux paths are proved on the Linux host that runs the gardener, not here.
+# Principles: `prove` (the suite on a clean machine before every merge), `doors` (main takes nothing unchecked).
 name: check
 
 on:
