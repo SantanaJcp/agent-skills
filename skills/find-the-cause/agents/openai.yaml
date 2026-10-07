@@ -1,0 +1,5 @@
+interface:
+  display_name: "Find the cause"
+  short_description: "Root-cause a bug with a red repro first"
+policy:
+  allow_implicit_invocation: false

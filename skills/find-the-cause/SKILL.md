@@ -1,6 +1,7 @@
 ---
 name: find-the-cause
 description: "Find and fix the root cause of a bug, failing test, wrong output or slowdown: a red-capable repro first, falsifiable hypotheses, and the red run shown before the fix. Use when something is broken, throwing, failing or slow and the cause is not known yet."
+disable-model-invocation: true
 ---
 
 # find-the-cause

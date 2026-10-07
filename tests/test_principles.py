@@ -12,7 +12,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "lib"))
 
-from kitchen import repocheck, rules  # noqa: E402
+from kitchen import repocheck  # noqa: E402
 
 NOT_CONTROLS = {
     "hooks/shellparse.py": "the parser the guards share",
@@ -26,6 +26,7 @@ NOT_CONTROLS = {
 }
 CANDIDATES = [*REPO.glob("hooks/*"), *REPO.glob("skills/*/SKILL.md"), *REPO.glob("automation/bin/*"), *REPO.glob("lib/kitchen/*.py")]
 CONTROLS = sorted(p for p in CANDIDATES if p.is_file() and p.name != "README.md" and str(p.relative_to(REPO)) not in NOT_CONTROLS)
+HEADING = re.compile(r"^## \d+\. .+? \(`([a-z-]+)`\)\s*$", re.MULTILINE)
 DECLARATION = re.compile(r"Principles(?: \([^)]*\))?:\s*(.+)")
 NAME = re.compile(r"`([a-z][a-z-]*)`")
 
@@ -37,7 +38,7 @@ def declared(path: Path) -> list[str]:
 
 class Principles(unittest.TestCase):
     def setUp(self):
-        self.ids = [pid for pid, _, _ in rules.principles(REPO)]
+        self.ids = HEADING.findall((REPO / "PRINCIPLES.md").read_text(encoding="utf-8"))
 
     def test_principles_parse_with_unique_ids(self):
         self.assertGreaterEqual(len(self.ids), 13, "PRINCIPLES.md headings must read `## N. Title (`id`)`")
@@ -57,10 +58,19 @@ class Principles(unittest.TestCase):
     def test_the_reviewer_effort_lives_only_in_kitchen_models(self):
         # one source of truth: a level written here would contradict what each person sets with `kitchen models`
         level = re.compile(r"\b(low|medium|high|xhigh|max)\s+(reasoning\s+)?effort\b", re.IGNORECASE)
-        for rel in ("PRINCIPLES.md", "global/AGENTS.md", "skills/second-opinion/SKILL.md", "skills/second-opinion/reviewer-prompt.md"):
+        for rel in ("PRINCIPLES.md", "skills/chef-mode/SKILL.md", "skills/second-opinion/SKILL.md", "skills/second-opinion/reviewer-prompt.md"):
             with self.subTest(file=rel):
                 text = (REPO / rel).read_text(encoding="utf-8")
                 self.assertEqual([m.group(0) for m in level.finditer(text)], [], "set it in `kitchen models` instead")
+
+    def test_chef_mode_names_every_principle(self):
+        # chef-mode is the one place the kitchen's rules switch on; a principle it leaves out never reaches an agent
+        self.assertEqual(sorted(declared(REPO / "skills" / "chef-mode" / "SKILL.md")), sorted(self.ids))
+
+    def test_chef_mode_reads_this_principles_file(self):
+        link = REPO / "skills" / "chef-mode" / "PRINCIPLES.md"
+        self.assertTrue(link.is_symlink(), "a copy would drift: link it to the repo's PRINCIPLES.md")
+        self.assertEqual(link.resolve(), (REPO / "PRINCIPLES.md").resolve())
 
     def test_every_must_have_names_a_known_principle(self):
         for key, _, principle in repocheck.MUST_HAVES:

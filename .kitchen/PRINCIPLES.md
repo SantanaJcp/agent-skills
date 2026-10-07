@@ -1,6 +1,6 @@
 # Principles
 
-How we work with agents, and why. The rules in each person's AGENTS.md, the hooks, `kitchen check`, `kitchen status` and `kitchen init` are these principles made concrete. When no rule covers your case, decide the way these point.
+How we work with agents, and why. The rules of the `chef-mode` skill, the guards each project carries, `kitchen check`, `kitchen status` and `kitchen init` are these principles made concrete. The kitchen is on only in chef mode: an agent reads this file when the owner types `/chef-mode`. When no rule covers your case, decide the way these point.
 
 A kitchen, not a factory: the goal is quality the owner can trust without tasting every dish. The owner is the person whose kitchen it is, the one who runs the agents. Skills, rules, checks and the codebase are the ingredients and the knives, and every chef owns their knives: take ideas, not installers.
 
@@ -69,17 +69,17 @@ The owner's attention is the scarcest resource in the kitchen. On reversible wor
 - **When:** planning, reporting, designing any check or automation.
 - **Includes (pstack):**
   - *Never Block on the Human*: proceed on reversible work and let the owner correct afterwards. pstack lets external actions proceed; the kitchen does not: one-way doors (`doors`) and anything sent to people or published still wait for the owner's explicit request.
-- **Enforced by:** `status --exceptions` (prints only non-green, exits 1); notifications only for red, incomplete, blocked or decision; the nightly opens one issue while red and closes it when green; `init` asks only the questions it cannot answer from the repo. Reply format: rule only.
+- **Enforced by:** the kitchen stays off until the owner types `/chef-mode`, and `install` writes nothing every session reads; `status --exceptions` (prints only non-green, exits 1); notifications only for red, incomplete, blocked or decision; the nightly opens one issue while red and closes it when green; `init` asks only the questions it cannot answer from the repo. Reply format: rule only.
 
 ## 7. Know your doors (`doors`)
 
-A two-way door is cheap to revert: walk through it. A one-way door is not: schema migrations, data deletion, auth and tenant scope, published contracts and installers, production deploys, pushes to shared branches, removing behavior someone relies on. For a one-way door, sketch two structurally different options and get the owner's approval before executing.
+A two-way door is cheap to revert: walk through it. A one-way door is not: schema migrations, data deletion, auth and tenant scope, published contracts and installers, production deploys, force-pushes and history rewrites on shared branches, removing behavior someone relies on. For a one-way door, sketch two structurally different options and get the owner's approval before executing. A two-way door goes as far as the project's rung on the trust ladder, set by the owner in its AGENTS.md: `propose` (the owner merges), `merge` (the agent merges its own verified, reviewed pull requests) or `ship` (it also lands stacks unattended and deploys outside production).
 
-- **Why:** speed is safe only where mistakes are cheap, and autonomy on two-way doors is what the owner can grant. Two-way and one-way PRs came up in the video; the deck set the policy: two-way goes verify, second opinion, merge, and the owner samples; one-way goes two designs, approval, a specific verification.
+- **Why:** speed is safe only where mistakes are cheap, and autonomy on two-way doors is what the owner can grant. Two-way and one-way PRs came up in the video; the deck set the policy: two-way goes verify, second opinion, merge, and the owner samples; one-way goes two designs, approval, a specific verification. The owner chose the ladder (2026-10-06): more autonomy where trust is earned, so the agent merges what is not critical once a project has its guardrails.
 - **When:** before any action you could not undo with one command.
 - **Includes (pstack):**
   - *Exhaust the Design Space*: the options for a one-way door must differ in shape; "a second flavor of the first shape does not count".
-- **Enforced by:** hooks `deny-shared-push`, `deny-no-verify`, `deny-recursive-rm` (move to the Trash instead); `init` criteria `branch-protection` and `secret-scan`, and `init` prints one-way doors such as rulesets, never runs them, and never pushes; the gardener only opens a PR, within a line budget and outside protected paths; `kitchen check` blocks private data in this public repo.
+- **Enforced by:** the guards each project carries, `deny-shared-push`, `deny-no-verify`, `deny-recursive-rm` (move to the Trash instead); the rung rules of `chef-mode`; `init` criteria `branch-protection` and `secret-scan`, and `init` prints one-way doors such as rulesets, never runs them, and never pushes; the gardener only opens a PR, within a line budget and outside protected paths; `kitchen check` blocks private data in this public repo.
 
 ## 8. Say how you know (`evidence`)
 
@@ -127,7 +127,7 @@ Every brief stands alone: goal, scope, exact branch or SHA, how to verify, and a
 
 - **Why:** the next agent has no memory of this conversation, and asking a decision already made spends the owner's attention twice. Past transcripts are the process materialized (the video); the `retro` skill mines them.
 - **When:** delegating, ending a session, taking a decision.
-- **Enforced by:** `init` criteria `decisions`, `skills-linked` and `principles` (a copy of this file in the repo, named in its AGENTS.md, for agents that only have the repo); `status` shows owed decisions, checkpoints, and rule files that went stale after install; the `handoff` skill.
+- **Enforced by:** `init` criteria `decisions`, `skills-linked` and `principles` (a copy of this file in the repo, named in its AGENTS.md, for agents that only have the repo); `status` shows owed decisions, checkpoints, and what an older install left in the global setup; the `handoff` skill.
 
 ## 13. Make the right thing the easy thing (`design`)
 

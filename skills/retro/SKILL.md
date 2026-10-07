@@ -19,7 +19,7 @@ You are improving the environment the agents work in, not judging one session.
    2. guard test, lint or `kitchen check` rule;
    3. hook;
    4. the project's AGENTS.md;
-   5. the global AGENTS.md;
+   5. the `chef-mode` skill (how agents work in the kitchen), or my own global rules file for a personal preference;
    6. a skill;
    7. memory.
 

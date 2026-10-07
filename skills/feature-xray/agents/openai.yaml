@@ -1,0 +1,5 @@
+interface:
+  display_name: "Feature x-ray"
+  short_description: "Read-only investigation that ends in numbered decisions"
+policy:
+  allow_implicit_invocation: false

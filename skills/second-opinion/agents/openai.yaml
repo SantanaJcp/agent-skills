@@ -1,0 +1,5 @@
+interface:
+  display_name: "Second opinion"
+  short_description: "Cross-model review before merge"
+policy:
+  allow_implicit_invocation: false

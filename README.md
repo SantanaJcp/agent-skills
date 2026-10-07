@@ -1,6 +1,6 @@
 # agent-skills
 
-My personal agent kitchen: small, owned skills plus the tooling that keeps them honest, shared by Claude Code and Codex from one source.
+My personal agent kitchen: small, owned skills plus the tooling that keeps them honest, shared by Claude Code and Codex from one source. Nothing is always on: type `/chef-mode` (Claude Code) or `$chef-mode` (Codex) and the agent works the kitchen's way for that session.
 
 > Built on ideas from [Poteto's pstack](https://github.com/cursor/plugins/tree/main/pstack) and [Matt Pocock's skills](https://github.com/mattpocock/skills), rewritten small and owned. The previous Acta v2 suite is preserved at tag `acta-v2-final`.
 
@@ -9,11 +9,12 @@ My personal agent kitchen: small, owned skills plus the tooling that keeps them 
 | Path | What lives there |
 |---|---|
 | `PRINCIPLES.md` | What we do and why: the 13 principles every rule, hook and check points at (pstack's 24 folded in) |
-| `global/AGENTS.md` | The kitchen owner's own rules; each person can install their own instead |
 | `decisions.md` | Decisions about the kitchen that outlive a session |
-| `skills/<name>/` | One skill per folder: a short `SKILL.md`, plus scripts when a step is mechanical |
+| `skills/chef-mode/` | The mode: the kitchen's rules, the trust ladder and the playbooks that route to the other skills |
+| `skills/<name>/` | One skill per folder: a short `SKILL.md`, plus scripts when a step is mechanical; all manual-only, reached through chef-mode or by name |
+| `agents/` | The `chef` worker for Claude Code (`chef.md`) and Codex (`chef.toml`): it reads chef-mode before any work |
 | `bin/kitchen` | The CLI that installs and checks everything |
-| `hooks/` | Agent guards, run by Claude Code and Codex before every shell command |
+| `hooks/` | Agent guards, copied into each project that wants them and run before every shell command there |
 | `templates/` | Starting points for per-project pieces: a `verify-<repo>` skill, and what `kitchen init` writes |
 | `automation/` | Scheduled jobs (nightly guard, weekly gardener) |
 | `tests/` | The repo verifies itself |
@@ -32,22 +33,30 @@ What each part needs:
 
 The automation tests need `srt` too: without it `kitchen check` stops with that one `npm ci` line.
 
+The shortest way: tell any agent
+
+> Install the kitchen from https://github.com/SantanaJcp/agent-skills: clone it to `~/Development/agent-skills` (or pull it if it is already there), run `bin/kitchen install`, then `bin/kitchen doctor`, and show me both outputs.
+
+Or by hand:
+
 ```bash
 git clone https://github.com/SantanaJcp/agent-skills.git
 cd agent-skills
-bin/kitchen install   # links skills and hooks, writes your rules plus the principles index for Claude Code and Codex
-bin/kitchen doctor    # proves links, agent hooks, agent CLIs, automation tools and schedules
+bin/kitchen install   # links chef-mode, the skills and the chef agent for Claude Code and Codex
+bin/kitchen doctor    # proves the links, agent CLIs, automation tools and schedules
 ```
 
-`install` links each `skills/<name>` into `~/.claude/skills/` and `~/.agents/skills/`, and writes `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`: your own rules, then one line per principle from `PRINCIPLES.md`. Codex reads one global file and has no include, so this file is generated, not linked: edit the sources and rerun `install` (`doctor` fails while a copy is stale). Whose rules: `--rules <absolute path>`, `--rules global` (this kitchen's `global/AGENTS.md`) or `--rules none`, remembered in `~/.config/kitchen/rules.txt`; a terminal asks, and without a choice it uses `global/AGENTS.md` and says so. In a terminal it ends by offering `kitchen init` for all the repos in your `projects.txt`, one, or none; never automatically. It refuses to replace anything it does not manage; `--backup` moves those paths to `~/.kitchen-backups/` first.
+`install` links each `skills/<name>` into `~/.claude/skills/` and `~/.agents/skills/`, `agents/chef.md` into `~/.claude/agents/` and `agents/chef.toml` into `~/.codex/agents/`, and `bin/kitchen` into `~/.local/bin/`. Every installed path is a symlink back into this repo, so a `git pull` updates them. It writes nothing that every session reads: no global rules file, no global hooks. Your `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md` are yours. It refuses to replace anything it does not manage; `--backup` moves those paths to `~/.kitchen-backups/` first.
 
-It also merges the agent hooks into `~/.claude/settings.json` and `~/.codex/hooks.json`: it adds one `PreToolUse` group on Bash that runs each script in `hooks/`, and keeps every other setting and hook in those files. A file it cannot parse is refused; `--backup` moves it aside and writes one with only the kitchen hooks. Codex runs a new hook only after you trust it in `/hooks`.
+Every skill is manual-only (`disable-model-invocation: true` for Claude Code, `allow_implicit_invocation: false` for Codex; `kitchen check` fails when the two disagree). `/chef-mode` reads `PRINCIPLES.md`, switches the rules on for the session, and reads the other skills when a playbook step needs them. A worker it delegates to is the `chef` agent, which reads chef-mode first.
 
-`doctor` fails when a link or a hook is missing, a hook is disabled, or a guard does not block its probe command. It warns when `claude` or `codex` is not on PATH, when automation is configured but `node` or `srt` is missing, and when a kitchen LaunchAgent plist is present but not loaded (macOS) or a kitchen timer is not active (Linux).
+Moving from an older install: `install` moves a rules file an older install generated (and the old `~/.config/kitchen/rules.txt`) to `~/.kitchen-backups/`, and removes the kitchen's guards from `~/.claude/settings.json` and `~/.codex/hooks.json`, keeping every other setting and hook. A hook file it cannot parse is refused; `--backup` moves it aside. `doctor` and `status --exceptions` fail while any of it is left.
+
+`doctor` fails when a link is missing or dangling, or something an older install left is still there. It warns when `claude` or `codex` is not on PATH, when no reviewer is set in `kitchen models`, when automation is configured but `node` or `srt` is missing, and when a kitchen LaunchAgent plist is present but not loaded (macOS) or a kitchen timer is not active (Linux).
 
 ## Agent hooks
 
-Three rules that used to be text are now guards. Each one blocks with a message that says what to do instead:
+Three rules that used to be text are now guards, per project: they run only in repos that carry them in `.kitchen/hooks/`, from that repo's `.claude/settings.json`. Each one blocks with a message that says what to do instead:
 
 | Guard | Blocks |
 |---|---|
@@ -86,7 +95,7 @@ The branch is built from git objects only: no worktree, no checkout, nothing wri
 
 `models` is each person's own setup, in `~/.config/kitchen/models.toml`. One role today, `reviewer`, set per author family (`--author claude` means the work is Claude's, so the reviewer runs on Codex), with provider, model (`default` for the tool's own), effort and tier; another role is added when a workflow reads it. An unset role fails with the command that sets it; a reviewer on the author's own provider is refused; `get --command` prints the `codex exec` or `claude -p` call. `second-opinion` takes its reviewer from here: through `delegate_task` in T3 Code, the other CLI elsewhere, BLOCKED where the other provider cannot be reached.
 
-Per-machine config lives outside the repo, in `~/.config/kitchen/`: `projects.txt` (one project path per line), `denylist.txt`, `rules.txt` and `models.toml`. State (journal, nightly history, retro reports) lives in `~/.local/state/kitchen/`.
+Per-machine config lives outside the repo, in `~/.config/kitchen/`: `projects.txt` (one project path per line), `denylist.txt` and `models.toml`. State (journal, nightly history, retro reports) lives in `~/.local/state/kitchen/`.
 
 ## Skills
 

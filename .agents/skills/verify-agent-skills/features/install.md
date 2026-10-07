@@ -1,5 +1,5 @@
 # install
 
-- **Reached by:** `bin/kitchen install [--rules …] [--backup]`
-- **Observable result:** skills linked into ~/.claude/skills and ~/.agents/skills, the generated rules file, the hooks merged
-- **Proved by:** tests/test_kitchen.py (InstallTests), tests/test_setup.py
+- **Reached by:** `bin/kitchen install [--backup]`
+- **Observable result:** skills (chef-mode among them) linked into ~/.claude/skills and ~/.agents/skills, the chef agent into ~/.claude/agents and ~/.codex/agents; no global rules or hooks; what older installs left moved aside or removed
+- **Proved by:** tests/test_kitchen.py (InstallTests, ChefAgentTests), tests/test_setup.py (LegacyHookTests)
