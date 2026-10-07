@@ -10,11 +10,12 @@ My personal agent kitchen: small, owned skills plus the tooling that keeps them 
 |---|---|
 | `PRINCIPLES.md` | What we do and why: the 13 principles every rule, hook and check points at (pstack's 24 folded in) |
 | `decisions.md` | Decisions about the kitchen that outlive a session |
-| `skills/chef-mode/` | The mode: the kitchen's rules, the trust ladder and the playbooks that route to the other skills |
+| `skills/chef-mode/` | The mode: the kitchen's rules, the trust ladder and the playbooks (`playbooks/init.md` and its starting points) that route to the other skills |
 | `skills/<name>/` | One skill per folder: a short `SKILL.md`, plus scripts when a step is mechanical; all manual-only, reached through chef-mode or by name |
 | `bin/kitchen` | The CLI: install, doctor, check, status, guards and the rest |
 | `hooks/` | Agent guards, copied into each project that wants them and run before every shell command there |
-| `automation/` | Scheduled jobs (nightly guard, weekly gardener) |
+| `automation/` | Scheduled jobs (nightly guard, weekly gardener, weekly retro) |
+| `bin/check`, `.agents/skills/verify-kitchen-skills/` | This repo's own check contract and verify skill |
 | `tests/` | The repo verifies itself |
 
 Project-specific skills (deploy, verification for one app) stay in that project's `.agents/skills/`.
@@ -44,9 +45,9 @@ bin/kitchen install   # links chef-mode and the skills for Claude Code and Codex
 bin/kitchen doctor    # proves the links, agent CLIs, automation tools and schedules
 ```
 
-`install` links each `skills/<name>` into `~/.claude/skills/` and `~/.agents/skills/`, and `bin/kitchen` into `~/.local/bin/`. Every installed path is a symlink back into this repo, so a `git pull` updates them. It writes nothing that every session reads: no global rules file, no global hooks. Your `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md` are yours. It refuses to replace anything it does not manage; `--backup` moves those paths to `~/.kitchen-backups/` first.
+`install` links each `skills/<name>` into `~/.claude/skills/` and `~/.agents/skills/`, and `bin/kitchen` into `~/.local/bin/`. Every installed path is a symlink back into this repo, so a `git pull` updates them. It writes nothing that every session reads: no global rules file, no global hooks. Your `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md` are yours. It also sets this clone's `core.hooksPath` to `.githooks`, the repo's own pre-commit hook. It does not change your PATH: add `~/.local/bin` to it if it is not there (`doctor` warns). It refuses to replace anything it does not manage; `--backup` moves those paths to `~/.kitchen-backups/` first.
 
-Every skill is manual-only (`disable-model-invocation: true` for Claude Code, `allow_implicit_invocation: false` for Codex; `kitchen check` fails when the two disagree). `/chef-mode` reads `PRINCIPLES.md`, switches the rules on for the session, and reads the other skills when a playbook step needs them. A worker it delegates to gets a brief that starts by reading chef-mode. The kitchen registers no agent: Claude Code can delegate to a registered agent on its own, and chef mode starts only when you ask.
+Every skill is manual-only (`disable-model-invocation: true` for Claude Code, `allow_implicit_invocation: false` for Codex; `kitchen check` fails on a kitchen skill that is not, or when the two disagree). `/chef-mode` reads `PRINCIPLES.md`, switches the rules on for the session, and reads the other skills when a playbook step needs them. How far an agent may go on its own is the project's rung on the trust ladder, a line in its AGENTS.md: `Autonomy: propose` (you merge; the default), `merge` (it merges its own reversible pull requests once the check is green, the verify method passed and the other model's review left no P0/P1) or `ship` (it also lands stacks unattended and deploys to the non-production environments that AGENTS.md names). The agent reads the rung from the shared base branch, never from the branch under review, and only you change it. One-way doors wait for you on every rung. A worker it delegates to gets a brief that starts by reading chef-mode. The kitchen registers no agent: Claude Code can delegate to a registered agent on its own, and chef mode starts only when you ask.
 
 Moving from an older install: `install` moves a rules file an older install generated (and the old `~/.config/kitchen/rules.txt`) to `~/.kitchen-backups/`, and removes the kitchen's guards from `~/.claude/settings.json` and `~/.codex/hooks.json`, keeping every other setting and hook. A hook file it cannot parse is refused; `--backup` moves it aside. `doctor` and `status --exceptions` fail while any of it is left.
 
@@ -54,12 +55,12 @@ Moving from an older install: `install` moves a rules file an older install gene
 
 ## Agent hooks
 
-Three rules that used to be text are now guards, per project: they run only in repos that carry them in `.kitchen/hooks/`, from that repo's `.claude/settings.json`. Each one blocks with a message that says what to do instead:
+Three rules that used to be text are now guards, per project: they run only in repos that carry them in `.kitchen/hooks/`, from that repo's `.claude/settings.json` and `.codex/hooks.json` (`kitchen guards <repo>` puts them there). Each one blocks with a message that says what to do instead:
 
 | Guard | Blocks |
 |---|---|
-| `deny-no-verify` | `git commit --no-verify` or `-n`, `--no-verify` on push, merge and other hooked commands, a `core.hooksPath` or `include.*` override on the command line, and options that come from a variable, a command output or `xargs` |
-| `deny-shared-push` | `git push` to `dev`, `main`, `master` or a branch listed in `~/.config/kitchen/shared-branches.txt` (names or globs), including a bare `git push` from such a branch, `--all` and `--mirror`. A push whose destination cannot be known statically blocks too: the matching refspec `:`, abbreviated options, arguments from `xargs`, or a `-c`/`GIT_CONFIG_*` that sets `push.*`, `remote.*`, `branch.*` or `include.*` |
+| `deny-no-verify` | `git commit --no-verify` or `-n`, `--no-verify` on push, merge and other hooked commands, a `core.hooksPath` or `include.*` override on the command line, and, on `git commit`, options that come from a variable, a command output or `xargs` |
+| `deny-shared-push` | `git push` to `dev`, `main`, `master` or a branch listed in `~/.config/kitchen/shared-branches.txt` (names or globs), including a bare `git push` from such a branch, `--all` and `--mirror`. Abbreviated options are read as the full one (`--mir` is `--mirror`). A push whose destination cannot be known statically blocks too: the matching refspec `:`, a remote from a variable or command output, arguments from `xargs`, or a `-c`/`GIT_CONFIG_*` that sets `push.*`, `remote.*`, `branch.*` or `include.*` |
 | `deny-recursive-rm` | recursive `rm` on anything outside `/tmp` or `$TMPDIR`; use `trash <path>` instead |
 
 They read through `VAR=x` prefixes, `command`, `env`, `sudo`, `xargs`, `find -exec`, `sh -c`, `eval`, subshells, `$(...)` and heredocs. The attack corpus in `tests/corpus/hooks/cases.json` lists what each guard blocks, what it allows, and the evasions it cannot see (git aliases, scripts in files, commands piped into a shell), so a gap is written down, not hidden. A guard that cannot read its input, parse the command or even load blocks with exit 2 (the only code both tools treat as a block) rather than passing silently.
@@ -69,7 +70,7 @@ They read through `VAR=x` prefixes, `command`, `env`, `sudo`, `xargs`, `find -ex
 ```bash
 kitchen status              # every project: branch, upstream, PRs, nightly guard, gardener, agent checkpoints, owed decisions
 kitchen status --exceptions # only the lines that are not green; exits 1 when there are any
-kitchen log "msg" --status done|blocked|decision|note   # agents leave checkpoints during autonomous runs
+kitchen log "msg" --status done   # agents leave checkpoints during autonomous runs (done, blocked, decision or note)
 kitchen inventory           # skills, rule files and Codex automations the agents can see, and where copies drift
 kitchen retro --since 7d    # my prompts from Claude Code and Codex, for the retro skill
 kitchen models              # which model reviews each author's work; `kitchen models set reviewer --author claude ...` to change it
@@ -84,30 +85,29 @@ kitchen guards ../some-repo # put the kitchen's guards in that repo only; --chec
 
 `integrate` reads check commands from `~/.config/kitchen/integrate.toml` (`[projects.<repo folder>]` with `base`, `checks = [...]` and optional `path`), prints PASS or FAIL bound to the exact SHA vector, and records it in `~/.local/state/kitchen/integrate/` with a digest of everything that decides what runs (checks, `path`, the base and every other key of the project's entry except `gardener`). There is no default base: without `base` or `--base` it fails. `kitchen integrate <refs> --recorded` runs nothing and passes only if a recorded PASS matches the refs' current SHAs and that digest as configured now, so any moved HEAD or changed check configuration invalidates it. Nothing it runs inherits `GIT_*`.
 
-
-
-
-
-`status` starts with anything an older install left in your global setup (generated rules, global guards, `rules.txt`), as an exception for `--exceptions`, until `kitchen install` takes it out.
+`status` reads each project's scheduled-job config by running its `automation/<project>.env` with bash, so keep that file yours. A job with no config is informational; a configured job with no record is an exception. It starts with anything an older install left in your global setup (generated rules, global guards, `rules.txt`), as an exception for `--exceptions`, until `kitchen install` takes it out.
 
 `models` is each person's own setup, in `~/.config/kitchen/models.toml`. One role today, `reviewer`, set per author family (`--author claude` means the work is Claude's, so the reviewer runs on Codex), with provider, model (`default` for the tool's own), effort and tier; another role is added when a workflow reads it. An unset role fails with the command that sets it; a reviewer on the author's own provider is refused; `get --command` prints the `codex exec` or `claude -p` call. `second-opinion` takes its reviewer from here: through `delegate_task` in T3 Code, the other CLI elsewhere, BLOCKED where the other provider cannot be reached.
 
-Per-machine config lives outside the repo, in `~/.config/kitchen/`: `projects.txt` (one project path per line), `denylist.txt` and `models.toml`. State (journal, nightly history, retro reports) lives in `~/.local/state/kitchen/`.
+Scheduled jobs are installed per machine with `automation/bin/install-schedule`: `<project>` (nightly guard and weekly gardener), `--guard <project>` (the nightly guard alone), `--gardener <project>` (the gardener alone, for a machine that runs only it) or `--retro` (the weekly retro). launchd on macOS, systemd user timers on Linux; details in `automation/README.md`.
+
+Per-machine config lives outside the repo, in `~/.config/kitchen/`: `projects.txt` (one project path per line), `integrate.toml`, `models.toml`, `denylist.txt`, `shared-branches.txt` (optional) and `automation/<project>.env` for the scheduled jobs. State (journal, nightly history, integrate records, retro reports) lives in `~/.local/state/kitchen/`.
 
 ## Skills
 
-| Skill | Use it when | Invocation |
-|---|---|---|
-| `make-me-realize` | Before designing: settle open decisions through numbered questions | manual |
-| `feature-xray` | "Primero analicemos": read-only investigation that ends in decisions | automatic |
-| `find-the-cause` | Something is broken and the cause is unknown | automatic |
-| `second-opinion` | Before merging: cross-model review with triaged findings | automatic |
-| `handoff` | Passing work to another agent, tool or session | manual |
-| `retro` | Weekly: turn repeated corrections into environment fixes | manual |
-| `wait-what` | The last answer did not land | manual |
-| `audit-verification` | Periodically: prove a project's verify skill still tells the truth | manual |
+Every skill is manual: `/name` in Claude Code, `$name` in Codex, or read by chef-mode when one of its playbook steps needs it.
 
-Manual skills are invoked with `/name` in Claude Code and `$name` in Codex; `kitchen check` keeps that flag identical in both.
+| Skill | Use it when |
+|---|---|
+| `chef-mode` | Switching the kitchen on for a session; `/chef-mode init` sets a repo up |
+| `make-me-realize` | Before designing: settle open decisions through numbered questions |
+| `feature-xray` | "Primero analicemos": read-only investigation that ends in decisions |
+| `find-the-cause` | Something is broken and the cause is unknown |
+| `second-opinion` | Before merging: cross-model review with triaged findings |
+| `handoff` | Passing work to another agent, tool or session |
+| `retro` | Weekly: turn repeated corrections into environment fixes |
+| `wait-what` | The last answer did not land |
+| `audit-verification` | Periodically: prove a project's verify skill still tells the truth |
 
 ## Check
 
@@ -116,7 +116,7 @@ bin/kitchen check          # lint skills, scan for private data, run every test
 bin/kitchen check --fast   # the same lint and scan, plus only the tests the staged paths need
 ```
 
-The pre-commit hook runs `check --fast`: a docs-only commit runs only `tests/test_principles.py` (under a second: every control names a principle that exists), and the automation suite (about 95 s of the run) runs only when `automation/`, `lib/` or `tests/test_automation.py` is staged. It prints each module it skips. Plain `check` and `integrate` still run everything. Because this repo is public, `check` rejects personal absolute paths, credential shapes (GitHub, Slack, AWS and OpenAI-style tokens, JWTs, private key blocks, literal password or secret assignments) and any term listed in `~/.config/kitchen/denylist.txt` (one term per line, kept outside the repo). It scans the working tree and the exact staged blobs, so a secret staged and then deleted from the working file still fails.
+The pre-commit hook runs `check --fast`: a docs-only commit (outside `automation/`) runs only `tests/test_principles.py` (under a second: every control names a principle that exists), and the automation suite (about 95 s of the run) runs only when `automation/`, `lib/` or `tests/test_automation.py` is staged. It prints each module it skips. Plain `check` and `integrate` still run everything. Because this repo is public, `check` rejects personal absolute paths, credential shapes (GitHub, Slack, AWS and OpenAI-style tokens, JWTs, private key blocks, literal password or secret assignments) and any term listed in `~/.config/kitchen/denylist.txt` (one term per line, kept outside the repo). It scans the working tree and the exact staged blobs, so a secret staged and then deleted from the working file still fails.
 
 Each detector (credentials, private terms, retro provenance, the agent hooks) is tested against its attack corpus in `tests/corpus/<detector>/cases.json`: positive, negative and bypass cases, read by detection and redaction alike. A miss found in review becomes a new bypass case.
 
