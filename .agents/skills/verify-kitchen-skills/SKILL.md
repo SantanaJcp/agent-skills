@@ -1,9 +1,9 @@
 ---
-name: verify-agent-skills
+name: verify-kitchen-skills
 description: "Prove a change to the kitchen (bin/kitchen, lib/, hooks/, skills/, automation/) before and after it lands: the check contract in a throwaway HOME, then the real installation read-only. Use when a task says verify, prove it works or no behavior change."
 ---
 
-# verify-agent-skills
+# verify-kitchen-skills
 
 The kitchen is a CLI, its guards and its skills. It is proved in two places, never on the person's real `~/.claude`, `~/.codex` or `~/.config/kitchen` except read-only.
 
