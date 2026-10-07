@@ -1,19 +1,20 @@
 #!/bin/sh
-# bin/check: this project's one check contract, written by `kitchen init`. It is yours: edit it.
+# bin/check: this project's one check contract. It is yours: edit it.
 # Tiers: commit (the pre-commit hook), integrate (before a merge), nightly (on a schedule) and verify-tree
 # (a whole tree, as `kitchen integrate` checks it). `bin/check --list` prints them.
-# "unverified" marks a command found in a manifest that kitchen init never ran: it is a lead, not a fact.
-# `kitchen init --prove` runs the commit tier once and a negative control that must turn it red.
+# Every command here was run in this repo and seen to pass, and the commit tier was seen to fail on a planted defect.
 # A tier with no command fails: an empty check is never green.
 set -eu
 cd "$(dirname "$0")/.."
 
 tier_commit() {
-{{commit}}
+  # the fast checks: lint and the quick tests, seconds to a minute
+  echo "bin/check commit: no command yet" >&2; exit 1
 }
 
 tier_integrate() {
-{{integrate}}
+  # everything a merge needs: the full build and every test
+  echo "bin/check integrate: no command yet" >&2; exit 1
 }
 
 tier_nightly() {

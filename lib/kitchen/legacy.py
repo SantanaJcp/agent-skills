@@ -142,7 +142,7 @@ def remove_hooks(files: list[HookFile]) -> list[str]:
     for file in files:
         assert file.problem is None, "install refuses a hook file it cannot parse"
         write_json(file.path, file.after)
-        lines.append(f"removed    {file.tool}: the kitchen's global guards from {file.path} (guards now live in each project that carries them)")
+        lines.append(f"removed    {file.tool}: the kitchen's global guards from {file.path} (guards now live in each project: kitchen guards <repo>)")
     return lines
 
 

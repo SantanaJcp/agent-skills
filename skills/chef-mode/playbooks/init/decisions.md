@@ -4,7 +4,7 @@ One entry per decision: date, decision, scope, when to revisit. `- [ ]` marks a 
 
 ## Owed
 
-{{owed}}
+- [ ] <a one-way door the owner still has to decide, with the command that would do it>
 
 ## Decided
 

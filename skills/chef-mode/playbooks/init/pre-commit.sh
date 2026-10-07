@@ -1,5 +1,5 @@
 #!/bin/sh
-# Pre-commit gate, written by `kitchen init`. Git runs it only after, in each clone:
+# Pre-commit gate. Git runs it only after, in each clone:
 #   git config core.hooksPath .githooks
 # 1. gitleaks scans the staged changes. Without gitleaks the commit fails: install it, never skip it.
 # 2. bin/check commit runs unless every staged path is documentation (*.md, docs/, LICENSE).

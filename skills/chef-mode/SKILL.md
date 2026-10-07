@@ -16,6 +16,7 @@ Match the request to one row and copy its steps into your todo list. A skill nam
 
 | Request | Playbook |
 |---|---|
+| Set a repo up for agents: "kitchen init", "init this repo", guardrails | [playbooks/init.md](playbooks/init.md) |
 | Something broken, failing, flaky or slow, cause unknown | `find-the-cause` |
 | "Analiza", "qué hace X", or before changing code you have not read | `feature-xray` (read-only; ends in decisions) |
 | A diff ready to merge, or anything touching auth, tenant scope, sync, data or migrations | `second-opinion` |

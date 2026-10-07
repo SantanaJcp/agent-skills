@@ -1,6 +1,6 @@
 # Principles
 
-How we work with agents, and why. The rules of the `chef-mode` skill, the guards each project carries, `kitchen check`, `kitchen status` and `kitchen init` are these principles made concrete. The kitchen is on only in chef mode: an agent reads this file when the owner types `/chef-mode`. When no rule covers your case, decide the way these point.
+How we work with agents, and why. The rules of the `chef-mode` skill, the guards each project carries, `kitchen check`, `kitchen status` and the init playbook are these principles made concrete. The kitchen is on only in chef mode: an agent reads this file when the owner types `/chef-mode`. When no rule covers your case, decide the way these point.
 
 A kitchen, not a factory: the goal is quality the owner can trust without tasting every dish. The owner is the person whose kitchen it is, the one who runs the agents. Skills, rules, checks and the codebase are the ingredients and the knives, and every chef owns their knives: take ideas, not installers.
 
@@ -16,7 +16,7 @@ Done means you saw the observable result: the app, the command output, the recor
   - *Prove It Works*: check the real artifact; script the check and keep its output so anyone can rerun it.
   - *Test Behavior, Not Implementation*: would the test still pass if every function it imports returned `undefined`? Then it tests nothing. Watch for weak assertions, mock-only tests, self-referential expectations, pinned constants and fixtures asserting fixtures.
   - *Sequence Work into Verifiable Units*: small units, each ending in a check; do not start the next until it is green.
-- **Enforced by:** `init` criteria `check-contract`, `pre-commit-hook`, `verify-skill`, `baseline-ratchet`, and `init --prove` (the gate must go red on a planted defect); `kitchen integrate`; the nightly guard; the gardener reruns its verify steps before publishing; the `audit-verification` skill; the Skeptic lens of `second-opinion`.
+- **Enforced by:** the init playbook (every `bin/check` command run and seen to pass, the commit tier green twice and red on a planted defect in a file it runs); `kitchen integrate`; the nightly guard; the gardener reruns its verify steps before publishing; the `audit-verification` skill; the Skeptic lens of `second-opinion`.
 
 ## 2. Unknown is never green (`truthful-state`)
 
@@ -26,7 +26,7 @@ Never invent counts, freshness, progress or success. A read that failed is `unkn
 - **When:** every report, every status line, every automation you write.
 - **Includes (pstack):**
   - *Explain the Number*: before trusting a measured number, name what limits it and what else it could be measuring. Ask "why not double?" Keep run count and spread next to it.
-- **Enforced by:** `status` prints `unknown`, never `0` or `none`; the nightly records `incomplete` and is never green without steps; `init` reports `unknown`, never PASS, without `gh`; `integrate --recorded` reuses a PASS only on the same SHAs and check digest; `retro` prints its coverage line; `second-opinion` treats a missing review as a gap.
+- **Enforced by:** `status` prints `unknown`, never `0` or `none`; the nightly records `incomplete` and is never green without steps; `integrate --recorded` reuses a PASS only on the same SHAs and check digest; `retro` prints its coverage line; `second-opinion` treats a missing review as a gap.
 
 ## 3. No fallbacks; fail loud (`no-fallbacks`)
 
@@ -69,7 +69,7 @@ The owner's attention is the scarcest resource in the kitchen. On reversible wor
 - **When:** planning, reporting, designing any check or automation.
 - **Includes (pstack):**
   - *Never Block on the Human*: proceed on reversible work and let the owner correct afterwards. pstack lets external actions proceed; the kitchen does not: one-way doors (`doors`) and anything sent to people or published still wait for the owner's explicit request.
-- **Enforced by:** the kitchen stays off until the owner types `/chef-mode`, and `install` writes nothing every session reads; `status --exceptions` (prints only non-green, exits 1); notifications only for red, incomplete, blocked or decision; the nightly opens one issue while red and closes it when green; `init` asks only the questions it cannot answer from the repo. Reply format: rule only.
+- **Enforced by:** the kitchen stays off until the owner types `/chef-mode`, and `install` writes nothing every session reads; `status --exceptions` (prints only non-green, exits 1); notifications only for red, incomplete, blocked or decision; the nightly opens one issue while red and closes it when green; the init playbook asks the owner once, only about what the repo cannot answer. Reply format: rule only.
 
 ## 7. Know your doors (`doors`)
 
@@ -79,7 +79,7 @@ A two-way door is cheap to revert: walk through it. A one-way door is not: schem
 - **When:** before any action you could not undo with one command.
 - **Includes (pstack):**
   - *Exhaust the Design Space*: the options for a one-way door must differ in shape; "a second flavor of the first shape does not count".
-- **Enforced by:** the guards each project carries, `deny-shared-push`, `deny-no-verify`, `deny-recursive-rm` (move to the Trash instead); the rung rules of `chef-mode`; `init` criteria `branch-protection` and `secret-scan`, and `init` prints one-way doors such as rulesets, never runs them, and never pushes; the gardener only opens a PR, within a line budget and outside protected paths; `kitchen check` blocks private data in this public repo.
+- **Enforced by:** the guards each project carries, `deny-shared-push`, `deny-no-verify`, `deny-recursive-rm` (move to the Trash instead); the rung rules of `chef-mode`; the init playbook prints one-way doors such as rulesets as decisions, never runs them, and the owner merges its pull request; the gardener only opens a PR, within a line budget and outside protected paths; `kitchen check` blocks private data in this public repo.
 
 ## 8. Say how you know (`evidence`)
 
@@ -87,7 +87,7 @@ Label every claim: measured (you ran it; say what and what came out), inferred (
 
 - **Why:** the owner calibrates trust on the label; an inference presented as a measurement is how wrong decisions get made with confidence. The labels compress the deck's evidence ladder: reproduced it in the app, ran it, showed it cannot happen, pointed at the line, said it.
 - **When:** every report, review finding and handoff.
-- **Enforced by:** `second-opinion` findings carry measured or inferred evidence and the principle they touch; `init` prints the file or command behind each verdict. Otherwise rule only.
+- **Enforced by:** `second-opinion` findings carry measured or inferred evidence and the principle they touch; the init pull request carries each command and its output. Otherwise rule only.
 
 ## 9. Small, owned, short enough to read (`small-owned`)
 
@@ -100,7 +100,7 @@ Prefer the smallest change that does the job. Skills are workflows, not manuals:
   - *Subtract Before You Add*: remove complexity before building; no speculative guards; delete stubs with nothing in them.
   - *Minimize Reader Load*: can a new reader answer "where does X come from?" and "what can change X?" in under 30 seconds?
   - *Guard the Context Window*: route bulk to workers; keep summaries, not raw payloads.
-- **Enforced by:** `kitchen check` (`SKILL.md` at most 150 lines, one-line descriptions, folder name equals `name`); `init` criterion `agents-md` (under 200 lines); the Minimalist lens of `second-opinion`. Standard library only: rule only.
+- **Enforced by:** `kitchen check` (`SKILL.md` at most 150 lines, one-line descriptions, folder name equals `name`); the Minimalist lens of `second-opinion`. Standard library only: rule only.
 
 ## 10. Separate before you share (`isolate`)
 
@@ -111,7 +111,7 @@ Parallel work runs in separate worktrees or clones, one writer each. Shared stat
 - **Includes (pstack):**
   - *Separate Before Serializing Shared State*: remove the shared write target first; serialize only when sharing is a real invariant.
   - *Make Operations Idempotent*: what happens if it runs twice, or crashed halfway? If the answer depends on leftover state, add reconciliation.
-- **Enforced by:** `kitchen integrate` (disposable clone, exact SHA vector); the automation project lock; `install` reruns byte-identical; `init` never overwrites a file and moves its branch only from the expected SHA; tests use a throwaway repo and `HOME` and drop `GIT_*`.
+- **Enforced by:** `kitchen integrate` (disposable clone, exact SHA vector); the automation project lock; `install` and `kitchen guards` rerun byte-identical, and the guards run only in the project that carries them; the init playbook works in its own worktree; tests use a throwaway repo and `HOME` and drop `GIT_*`.
 
 ## 11. Another model checks the work, on a budget (`cross-review`)
 
@@ -127,7 +127,7 @@ Every brief stands alone: goal, scope, exact branch or SHA, how to verify, and a
 
 - **Why:** the next agent has no memory of this conversation, and asking a decision already made spends the owner's attention twice. Past transcripts are the process materialized (the video); the `retro` skill mines them.
 - **When:** delegating, ending a session, taking a decision.
-- **Enforced by:** `init` criteria `decisions`, `skills-linked` and `principles` (a copy of this file in the repo, named in its AGENTS.md, for agents that only have the repo); `status` shows owed decisions, checkpoints, and what an older install left in the global setup; the `handoff` skill.
+- **Enforced by:** the init playbook (`decisions.md`, and a `## Verify` section in the project's AGENTS.md); `status` shows owed decisions, checkpoints, and what an older install left in the global setup; the `handoff` skill.
 
 ## 13. Make the right thing the easy thing (`design`)
 

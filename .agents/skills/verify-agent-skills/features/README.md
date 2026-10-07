@@ -9,6 +9,7 @@ One file per `kitchen` command, in this order. `tests/test_feature_map.py` fails
 - [status](status.md)
 - [inventory](inventory.md)
 - [init](init.md)
+- [guards](guards.md)
 - [models](models.md)
 - [retro](retro.md)
 - [integrate](integrate.md)

@@ -37,6 +37,8 @@ EXAMPLES = """examples:
   kitchen check               everything, as integrate does
   kitchen status --since 7d   where every project stands
   kitchen integrate fix/a fix/b --base origin/dev
+  kitchen init ../some-repo   print the instructions your agent follows to set a repo up
+  kitchen guards .            put the kitchen's guards in this repo only
 
 run `kitchen <command> --help` for a command's options."""
 
@@ -155,7 +157,7 @@ def cmd_install(args: argparse.Namespace) -> int:
     set_hooks_path()
     print(f"installed  {len(repo_skills())} skills (chef-mode routes to the rest), {len(repo_agents())} agent definitions; "
           "nothing runs until you type /chef-mode (Claude Code) or $chef-mode (Codex)")
-    print("next:      kitchen init <repo>, in each repo you choose")
+    print("next:      in each repo you choose, type /chef-mode init (or run `kitchen init <repo>` for the instructions)")
     print("next:      kitchen models, to set which model reviews each author's work (each person sets their own)")
     print("next:      kitchen doctor")
     return 0
@@ -425,22 +427,25 @@ def cmd_inventory(args: argparse.Namespace) -> int:
 
 
 def cmd_init(args: argparse.Namespace) -> int:
-    from kitchen import init, propose, repocheck  # local import: keeps this subcommand out of the shared import line
+    repo = Path(args.path).resolve()
+    if not (repo / ".git").exists():
+        print(f"FAIL  {repo} is not the root of a git repository", file=sys.stderr)
+        return 1
+    playbook = REPO / "skills" / "chef-mode" / "playbooks" / "init.md"
+    print(f"kitchen init {repo}: the work is your agent's. In the repo, type `/chef-mode init` (Claude Code) or "
+          f"`$chef-mode init` (Codex); anywhere else, give an agent the instructions below ({playbook}).\n")
+    print(f"Repository: {repo}\nKitchen: {REPO} (templates under skills/chef-mode/playbooks/init/; guards with `kitchen guards`)\n")
+    print(playbook.read_text(encoding="utf-8"))
+    return 0
+
+
+def cmd_guards(args: argparse.Namespace) -> int:
+    from kitchen import guards  # local import: keeps this subcommand out of the shared import line
     try:
-        return init.run(Path(args.path), args.branch, args.check, args.yes, args.prove, args.base, args.json)
-    except repocheck.NotARepo as error:
-        print(f"FAIL  {error}", file=sys.stderr)
-        return repocheck.NOT_A_REPO
-    except (propose.ProposeError, init.InitError) as error:
+        return guards.run(Path(args.path).resolve(), REPO, args.check)
+    except guards.GuardsError as error:
         print(f"FAIL  {error}", file=sys.stderr)
         return 1
-    except propose.Interrupted as error:
-        print(f"FAIL  interrupted by {error}: stopped the running check's process group and removed the temporary worktree",
-              file=sys.stderr)
-        return 128 + error.signum
-    except EOFError:
-        print("FAIL  input ended before every question was answered; nothing more was written", file=sys.stderr)
-        return 2
 
 
 def cmd_models(args: argparse.Namespace) -> int:
@@ -525,17 +530,14 @@ def main() -> int:
     inv.add_argument("--json", action="store_true")
     inv.set_defaults(func=cmd_inventory)
 
-    init_cmd = sub.add_parser("init", help="set one repo up for a trustworthy agent loop: check, ask, then propose a branch and add it to your kitchen")
-    init_cmd.add_argument("path", help="repository to set up")
-    init_cmd.add_argument("--check", action="store_true",
-                          help="read-only: run no repository code, print PASS/FAIL/unknown per criterion; exit code = must-haves not PASS")
-    init_cmd.add_argument("--yes", action="store_true", help="take the recommended answers without asking (never runs repository code)")
-    init_cmd.add_argument("--prove", action="store_true",
-                          help="answer yes to proving the gate: RUNS REPOSITORY CODE in a temporary worktree (bin/check commit, a negative control, the hook)")
-    init_cmd.add_argument("--base", help="shared base branch for integrate.toml (default: origin/HEAD; asked when unknown)")
-    init_cmd.add_argument("--branch", help="shared branch to read for a required status (default: the GitHub default branch)")
-    init_cmd.add_argument("--json", action="store_true")
+    init_cmd = sub.add_parser("init", help="print the instructions your agent follows to set one repo up (the same as /chef-mode init)")
+    init_cmd.add_argument("path", nargs="?", default=".", help="repository to set up (default: the current directory)")
     init_cmd.set_defaults(func=cmd_init)
+
+    guards_cmd = sub.add_parser("guards", help="copy the kitchen's guards into one repo and run them there from .claude/settings.json and .codex/hooks.json")
+    guards_cmd.add_argument("path", nargs="?", default=".", help="repository (default: the current directory)")
+    guards_cmd.add_argument("--check", action="store_true", help="write nothing; fail while the repo's guards differ from this kitchen's")
+    guards_cmd.set_defaults(func=cmd_guards)
 
     mod = sub.add_parser("models", help="which model reviews each author's work (the reviewer second-opinion uses), in your own setup")
     mod_sub = mod.add_subparsers(dest="action")
@@ -572,8 +574,6 @@ def main() -> int:
     integ.set_defaults(func=cmd_integrate)
 
     args = parser.parse_args()
-    if args.command == "init" and args.check and (args.yes or args.prove or args.base):
-        init_cmd.error("--check only reads: it takes no --yes, --prove or --base")
     return args.func(args)
 
 

@@ -31,7 +31,7 @@ A feature can be in the inventory, driven, and still asserted by nothing. Report
 
 ## Pass
 
-0. **Locate** `.agents/skills/verify-*/`. None: stop and point to the template in this repo's `templates/verify/`. State the audited profile: environment, build or commit SHA, data set, account or role, and which verifier commands or flags. Every result below holds only for that profile.
+0. **Locate** `.agents/skills/verify-*/`. None: stop and point to the template in the chef-mode skill, `../chef-mode/playbooks/init/verify/`, and to its init playbook. State the audited profile: environment, build or commit SHA, data set, account or role, and which verifier commands or flags. Every result below holds only for that profile.
 1. **Inventory**: the map's README against its files; fix missing, extra or dead entries. For each feature file, compare entry points and routes with the code and cite drift with `file:line`. Sweep recent churn (`git log --since=<last audit>`) for user-facing surfaces missing from the map; require a concrete path before calling one missing.
 2. **Drives**: run the full proof; every feature is exercised at least once. Run the doctor before the first drive and after any failure. A feature is "unreachable" only with the concrete prerequisite and the route attempted.
 3. **Assertions**: for each feature, name the check that decides pass or fail. A drive whose only check is "no error" or "exit 0" is a gap.

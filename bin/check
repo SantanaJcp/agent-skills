@@ -1,9 +1,7 @@
 #!/bin/sh
-# bin/check: this project's one check contract, written by `kitchen init`. It is yours: edit it.
+# bin/check: this project's one check contract. It is yours: edit it.
 # Tiers: commit (the pre-commit hook), integrate (before a merge), nightly (on a schedule) and verify-tree
 # (a whole tree, as `kitchen integrate` checks it). `bin/check --list` prints them.
-# "unverified" marks a command found in a manifest that kitchen init never ran: it is a lead, not a fact.
-# `kitchen init --prove` runs the commit tier once and a negative control that must turn it red.
 # A tier with no command fails: an empty check is never green.
 set -eu
 cd "$(dirname "$0")/.."
@@ -11,7 +9,7 @@ cd "$(dirname "$0")/.."
 tier_commit() {
   # lint the skills, scan for private data and secrets, then the fast suites (about 20 s; no automation suite)
   bin/kitchen check --lint-only
-  python3 -m unittest -q tests.test_principles tests.test_kitchen tests.test_hooks tests.test_corpus tests.test_source_compat tests.test_feature_map
+  python3 -m unittest -q tests.test_principles tests.test_kitchen tests.test_hooks tests.test_corpus tests.test_source_compat tests.test_feature_map tests.test_guards
 }
 
 tier_integrate() {

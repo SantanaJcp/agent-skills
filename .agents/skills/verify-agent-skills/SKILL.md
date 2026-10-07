@@ -39,5 +39,5 @@ kitchen status --exceptions
 ## Not covered
 
 - Cloud sessions (Claude Code and Codex): never measured.
-- Codex project hooks: did not load in Codex 0.160, so `.kitchen/hooks` protects Claude Code sessions only.
+- Codex project hooks: load only in a trusted project after the person approves them in `/hooks`; the tests run the handlers by hand, not through Codex.
 - The scheduled jobs on a real schedule: `bin/check` runs their tests, not a night of launchd or systemd.
