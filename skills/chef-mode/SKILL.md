@@ -60,7 +60,7 @@ Match the request to one row and copy its steps into your todo list. A skill nam
 ## Delegation
 
 - Delegate when the work splits into independent pieces or needs a second opinion from the other model; not for its own sake.
-- A worker runs in chef mode too: spawn the `chef` agent (Claude Code and Codex both have it after `kitchen install`); elsewhere, start the brief with "Read the chef-mode skill's SKILL.md in full before any work".
+- A worker runs in chef mode too: start every brief with "Before any work, read the chef-mode skill's SKILL.md in full (`~/.claude/skills/chef-mode/SKILL.md`, or `~/.agents/skills/chef-mode/SKILL.md` in Codex) and follow it." The kitchen registers no agent of its own: Claude Code can pick a registered agent on its own, and chef mode starts only when the owner asks.
 - Every brief stands alone: goal, scope, exact branch, worktree or SHA, how to verify, and a report of PASS, ISSUES or BLOCKED with evidence.
 - Inspect each worker's core diff and evidence. Do not upgrade ISSUES, BLOCKED, or missing evidence to PASS.
 - Let machine gates handle reversible verification and integration. Resolve technical exceptions within the authorized scope; do not turn them into owner checkboxes.

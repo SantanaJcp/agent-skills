@@ -12,7 +12,6 @@ My personal agent kitchen: small, owned skills plus the tooling that keeps them 
 | `decisions.md` | Decisions about the kitchen that outlive a session |
 | `skills/chef-mode/` | The mode: the kitchen's rules, the trust ladder and the playbooks that route to the other skills |
 | `skills/<name>/` | One skill per folder: a short `SKILL.md`, plus scripts when a step is mechanical; all manual-only, reached through chef-mode or by name |
-| `agents/` | The `chef` worker for Claude Code (`chef.md`) and Codex (`chef.toml`): it reads chef-mode before any work |
 | `bin/kitchen` | The CLI: install, doctor, check, status, guards and the rest |
 | `hooks/` | Agent guards, copied into each project that wants them and run before every shell command there |
 | `automation/` | Scheduled jobs (nightly guard, weekly gardener) |
@@ -41,13 +40,13 @@ Or by hand:
 ```bash
 git clone https://github.com/SantanaJcp/agent-skills.git
 cd agent-skills
-bin/kitchen install   # links chef-mode, the skills and the chef agent for Claude Code and Codex
+bin/kitchen install   # links chef-mode and the skills for Claude Code and Codex
 bin/kitchen doctor    # proves the links, agent CLIs, automation tools and schedules
 ```
 
-`install` links each `skills/<name>` into `~/.claude/skills/` and `~/.agents/skills/`, `agents/chef.md` into `~/.claude/agents/` and `agents/chef.toml` into `~/.codex/agents/`, and `bin/kitchen` into `~/.local/bin/`. Every installed path is a symlink back into this repo, so a `git pull` updates them. It writes nothing that every session reads: no global rules file, no global hooks. Your `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md` are yours. It refuses to replace anything it does not manage; `--backup` moves those paths to `~/.kitchen-backups/` first.
+`install` links each `skills/<name>` into `~/.claude/skills/` and `~/.agents/skills/`, and `bin/kitchen` into `~/.local/bin/`. Every installed path is a symlink back into this repo, so a `git pull` updates them. It writes nothing that every session reads: no global rules file, no global hooks. Your `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md` are yours. It refuses to replace anything it does not manage; `--backup` moves those paths to `~/.kitchen-backups/` first.
 
-Every skill is manual-only (`disable-model-invocation: true` for Claude Code, `allow_implicit_invocation: false` for Codex; `kitchen check` fails when the two disagree). `/chef-mode` reads `PRINCIPLES.md`, switches the rules on for the session, and reads the other skills when a playbook step needs them. A worker it delegates to is the `chef` agent, which reads chef-mode first.
+Every skill is manual-only (`disable-model-invocation: true` for Claude Code, `allow_implicit_invocation: false` for Codex; `kitchen check` fails when the two disagree). `/chef-mode` reads `PRINCIPLES.md`, switches the rules on for the session, and reads the other skills when a playbook step needs them. A worker it delegates to gets a brief that starts by reading chef-mode. The kitchen registers no agent: Claude Code can delegate to a registered agent on its own, and chef mode starts only when you ask.
 
 Moving from an older install: `install` moves a rules file an older install generated (and the old `~/.config/kitchen/rules.txt`) to `~/.kitchen-backups/`, and removes the kitchen's guards from `~/.claude/settings.json` and `~/.codex/hooks.json`, keeping every other setting and hook. A hook file it cannot parse is refused; `--backup` moves it aside. `doctor` and `status --exceptions` fail while any of it is left.
 
