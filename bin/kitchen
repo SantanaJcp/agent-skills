@@ -3,7 +3,6 @@
 
 One source of truth for Claude Code and Codex, and nothing always on: the kitchen runs when you type /chef-mode.
   skills/<name>/      -> ~/.claude/skills/<name> and ~/.agents/skills/<name>   (chef-mode and the skills it routes to)
-  agents/chef.md      -> ~/.claude/agents/chef.md      agents/chef.toml -> ~/.codex/agents/chef.toml
   bin/kitchen         -> ~/.local/bin/kitchen
 Every installed path is an absolute symlink back into this repo. Guards are per project: `kitchen guards <repo>`.
 """
@@ -31,7 +30,7 @@ NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 LINK_RE = re.compile(r"\]\(([^)\s]+)\)")
 BLOCK_SCALARS = {">", "|", ">-", "|-", ">+", "|+"}
 EXAMPLES = """examples:
-  kitchen install             link chef-mode, the skills and the chef agent; then run `kitchen doctor`
+  kitchen install             link chef-mode and the skills; then run `kitchen doctor`
   kitchen doctor              prove links, agent CLIs and schedules on this machine
   kitchen check --fast        what the pre-commit hook runs: lint, safety scan, tests for the staged paths
   kitchen check               everything, as integrate does
@@ -65,19 +64,13 @@ def cli_link(h: Path) -> Path:
     return h / ".local" / "bin" / "kitchen"
 
 
-def agent_target_dirs(h: Path) -> dict[str, Path]:
-    """Where each tool reads personal custom agents, by the definition's file suffix."""
-    return {".md": h / ".claude" / "agents", ".toml": h / ".codex" / "agents"}
-
-
-def repo_agents() -> list[Path]:
-    folder = REPO / "agents"
-    return sorted(p for p in folder.iterdir() if p.suffix in (".md", ".toml")) if folder.is_dir() else []
+def old_agent_dirs(h: Path) -> list[Path]:
+    """Where an older install linked a `chef` agent; install removes those links (Claude Code could pick it unasked)."""
+    return [h / ".claude" / "agents", h / ".codex" / "agents"]
 
 
 def planned_links(h: Path) -> list[tuple[Path, Path]]:
     links = [(target / skill.name, skill) for skill in repo_skills() for target in skill_target_dirs(h)]
-    links += [(agent_target_dirs(h)[agent.suffix] / agent.name, agent) for agent in repo_agents()]
     links.append((cli_link(h), REPO / "bin" / "kitchen"))
     return links
 
@@ -92,7 +85,7 @@ def owned(link: Path) -> bool:
 
 
 def owned_links_in_targets(h: Path) -> list[Path]:
-    dirs = skill_target_dirs(h) + list(agent_target_dirs(h).values())
+    dirs = skill_target_dirs(h) + old_agent_dirs(h)
     found = [d / entry for d in dirs if d.is_dir() for entry in os.listdir(d)]
     found += [cli_link(h)]
     return [p for p in found if owned(p)]
@@ -155,7 +148,7 @@ def cmd_install(args: argparse.Namespace) -> int:
         print(line)
 
     set_hooks_path()
-    print(f"installed  {len(repo_skills())} skills (chef-mode routes to the rest), {len(repo_agents())} agent definitions; "
+    print(f"installed  {len(repo_skills())} skills (chef-mode routes to the rest); "
           "nothing runs until you type /chef-mode (Claude Code) or $chef-mode (Codex)")
     print("next:      in each repo you choose, type /chef-mode init (or run `kitchen init <repo>` for the instructions)")
     print("next:      kitchen models, to set which model reviews each author's work (each person sets their own)")
@@ -500,7 +493,7 @@ def main() -> int:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    install = sub.add_parser("install", help="link chef-mode, the skills and the chef agent for Claude Code and Codex; take out what older installs left")
+    install = sub.add_parser("install", help="link chef-mode and the skills for Claude Code and Codex; take out what older installs left")
     install.add_argument("--backup", action="store_true", help="move conflicting unmanaged paths to ~/.kitchen-backups/")
     install.set_defaults(func=cmd_install)
 
