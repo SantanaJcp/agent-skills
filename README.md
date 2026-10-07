@@ -10,11 +10,12 @@ My personal agent kitchen: small, owned skills plus the tooling that keeps them 
 |---|---|
 | `PRINCIPLES.md` | What we do and why: the 13 principles every rule, hook and check points at (pstack's 24 folded in) |
 | `decisions.md` | Decisions about the kitchen that outlive a session |
-| `skills/chef-mode/` | The mode: the kitchen's rules, the trust ladder and the playbooks that route to the other skills |
+| `skills/chef-mode/` | The mode: the kitchen's rules, the trust ladder and the playbooks (`playbooks/init.md` and its starting points) that route to the other skills |
 | `skills/<name>/` | One skill per folder: a short `SKILL.md`, plus scripts when a step is mechanical; all manual-only, reached through chef-mode or by name |
 | `bin/kitchen` | The CLI: install, doctor, check, status, guards and the rest |
 | `hooks/` | Agent guards, copied into each project that wants them and run before every shell command there |
-| `automation/` | Scheduled jobs (nightly guard, weekly gardener) |
+| `automation/` | Scheduled jobs (nightly guard, weekly gardener, weekly retro) |
+| `bin/check`, `.agents/skills/verify-kitchen-skills/` | This repo's own check contract and verify skill |
 | `tests/` | The repo verifies itself |
 
 Project-specific skills (deploy, verification for one app) stay in that project's `.agents/skills/`.
@@ -46,7 +47,7 @@ bin/kitchen doctor    # proves the links, agent CLIs, automation tools and sched
 
 `install` links each `skills/<name>` into `~/.claude/skills/` and `~/.agents/skills/`, and `bin/kitchen` into `~/.local/bin/`. Every installed path is a symlink back into this repo, so a `git pull` updates them. It writes nothing that every session reads: no global rules file, no global hooks. Your `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md` are yours. It refuses to replace anything it does not manage; `--backup` moves those paths to `~/.kitchen-backups/` first.
 
-Every skill is manual-only (`disable-model-invocation: true` for Claude Code, `allow_implicit_invocation: false` for Codex; `kitchen check` fails when the two disagree). `/chef-mode` reads `PRINCIPLES.md`, switches the rules on for the session, and reads the other skills when a playbook step needs them. A worker it delegates to gets a brief that starts by reading chef-mode. The kitchen registers no agent: Claude Code can delegate to a registered agent on its own, and chef mode starts only when you ask.
+Every skill is manual-only (`disable-model-invocation: true` for Claude Code, `allow_implicit_invocation: false` for Codex; `kitchen check` fails on a kitchen skill that is not, or when the two disagree). `/chef-mode` reads `PRINCIPLES.md`, switches the rules on for the session, and reads the other skills when a playbook step needs them. How far an agent may go on its own is the project's rung on the trust ladder, a line in its AGENTS.md: `Autonomy: propose` (you merge; the default), `merge` (it merges its own reversible pull requests once the check is green, the verify method passed and the other model's review left no P0/P1) or `ship` (it also lands stacks unattended and deploys outside production). One-way doors wait for you on every rung. A worker it delegates to gets a brief that starts by reading chef-mode. The kitchen registers no agent: Claude Code can delegate to a registered agent on its own, and chef mode starts only when you ask.
 
 Moving from an older install: `install` moves a rules file an older install generated (and the old `~/.config/kitchen/rules.txt`) to `~/.kitchen-backups/`, and removes the kitchen's guards from `~/.claude/settings.json` and `~/.codex/hooks.json`, keeping every other setting and hook. A hook file it cannot parse is refused; `--backup` moves it aside. `doctor` and `status --exceptions` fail while any of it is left.
 
@@ -54,7 +55,7 @@ Moving from an older install: `install` moves a rules file an older install gene
 
 ## Agent hooks
 
-Three rules that used to be text are now guards, per project: they run only in repos that carry them in `.kitchen/hooks/`, from that repo's `.claude/settings.json`. Each one blocks with a message that says what to do instead:
+Three rules that used to be text are now guards, per project: they run only in repos that carry them in `.kitchen/hooks/`, from that repo's `.claude/settings.json` and `.codex/hooks.json` (`kitchen guards <repo>` puts them there). Each one blocks with a message that says what to do instead:
 
 | Guard | Blocks |
 |---|---|
@@ -84,30 +85,29 @@ kitchen guards ../some-repo # put the kitchen's guards in that repo only; --chec
 
 `integrate` reads check commands from `~/.config/kitchen/integrate.toml` (`[projects.<repo folder>]` with `base`, `checks = [...]` and optional `path`), prints PASS or FAIL bound to the exact SHA vector, and records it in `~/.local/state/kitchen/integrate/` with a digest of everything that decides what runs (checks, `path`, the base and every other key of the project's entry except `gardener`). There is no default base: without `base` or `--base` it fails. `kitchen integrate <refs> --recorded` runs nothing and passes only if a recorded PASS matches the refs' current SHAs and that digest as configured now, so any moved HEAD or changed check configuration invalidates it. Nothing it runs inherits `GIT_*`.
 
-
-
-
-
 `status` starts with anything an older install left in your global setup (generated rules, global guards, `rules.txt`), as an exception for `--exceptions`, until `kitchen install` takes it out.
 
 `models` is each person's own setup, in `~/.config/kitchen/models.toml`. One role today, `reviewer`, set per author family (`--author claude` means the work is Claude's, so the reviewer runs on Codex), with provider, model (`default` for the tool's own), effort and tier; another role is added when a workflow reads it. An unset role fails with the command that sets it; a reviewer on the author's own provider is refused; `get --command` prints the `codex exec` or `claude -p` call. `second-opinion` takes its reviewer from here: through `delegate_task` in T3 Code, the other CLI elsewhere, BLOCKED where the other provider cannot be reached.
 
-Per-machine config lives outside the repo, in `~/.config/kitchen/`: `projects.txt` (one project path per line), `denylist.txt` and `models.toml`. State (journal, nightly history, retro reports) lives in `~/.local/state/kitchen/`.
+Scheduled jobs are installed per machine with `automation/bin/install-schedule`: `<project>` (nightly guard and weekly gardener), `--guard <project>` (the nightly guard alone), `--gardener <project>` (the gardener alone, for a machine that runs only it) or `--retro` (the weekly retro). launchd on macOS, systemd user timers on Linux; details in `automation/README.md`.
+
+Per-machine config lives outside the repo, in `~/.config/kitchen/`: `projects.txt` (one project path per line), `integrate.toml`, `models.toml`, `denylist.txt`, `shared-branches.txt` (optional) and `automation/<project>.env` for the scheduled jobs. State (journal, nightly history, integrate records, retro reports) lives in `~/.local/state/kitchen/`.
 
 ## Skills
 
-| Skill | Use it when | Invocation |
-|---|---|---|
-| `make-me-realize` | Before designing: settle open decisions through numbered questions | manual |
-| `feature-xray` | "Primero analicemos": read-only investigation that ends in decisions | automatic |
-| `find-the-cause` | Something is broken and the cause is unknown | automatic |
-| `second-opinion` | Before merging: cross-model review with triaged findings | automatic |
-| `handoff` | Passing work to another agent, tool or session | manual |
-| `retro` | Weekly: turn repeated corrections into environment fixes | manual |
-| `wait-what` | The last answer did not land | manual |
-| `audit-verification` | Periodically: prove a project's verify skill still tells the truth | manual |
+Every skill is manual: `/name` in Claude Code, `$name` in Codex, or read by chef-mode when one of its playbook steps needs it.
 
-Manual skills are invoked with `/name` in Claude Code and `$name` in Codex; `kitchen check` keeps that flag identical in both.
+| Skill | Use it when |
+|---|---|
+| `chef-mode` | Switching the kitchen on for a session; `/chef-mode init` sets a repo up |
+| `make-me-realize` | Before designing: settle open decisions through numbered questions |
+| `feature-xray` | "Primero analicemos": read-only investigation that ends in decisions |
+| `find-the-cause` | Something is broken and the cause is unknown |
+| `second-opinion` | Before merging: cross-model review with triaged findings |
+| `handoff` | Passing work to another agent, tool or session |
+| `retro` | Weekly: turn repeated corrections into environment fixes |
+| `wait-what` | The last answer did not land |
+| `audit-verification` | Periodically: prove a project's verify skill still tells the truth |
 
 ## Check
 
