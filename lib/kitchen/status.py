@@ -21,8 +21,9 @@ runs too. It is the owner's private config, which the jobs already execute every
 its output discarded and a deadline (KITCHEN_ENV_TIMEOUT_SECONDS, default 5). A non-zero exit or the deadline is
 `unknown`, never `not configured`.
 
-A project whose gardener runs on another host says so in integrate.toml, `gardener = "remote:<host-label>"`: its
-gardener line is then informational, `remote (<host-label>): not read here`. Never green, never an exception.
+A project whose gardener or nightly runs on another host says so in integrate.toml, `gardener = "remote:<host-label>"`
+or `nightly = "remote:<host-label>"`: that line is then informational, `remote (<host-label>): not read here`. Never
+green, never an exception.
 """
 from __future__ import annotations
 
@@ -140,17 +141,26 @@ def nightly(name: str) -> dict | None:
             "overdue": UNKNOWN if age is None else age > NIGHTLY_CADENCE.total_seconds()}
 
 
+def remote_setting(key: str, entry: dict) -> dict | None:
+    """{"remote": host} when the project's entry says this job runs on another host, a setting error when it says so
+    wrongly, None when it does not say."""
+    value = entry.get(key)
+    if value is None:
+        return None
+    remote = REMOTE.fullmatch(value) if isinstance(value, str) else None
+    if not remote:
+        return {"setting_error": f"{key} = {value!r} is not remote:<host-label> ({integrate.config_path()})"}
+    return {"remote": remote.group(1)}
+
+
 def gardener(name: str, entry: dict, error: str | None, env: dict) -> dict:
     """The gardener's last run as recorded on this machine, where it runs when that is another host, or that it is
     not configured for this project."""
     if error:
         return {"setting_error": error}
-    value = entry.get("gardener")
-    if value is not None:
-        remote = REMOTE.fullmatch(value) if isinstance(value, str) else None
-        if not remote:
-            return {"setting_error": f"gardener = {value!r} is not remote:<host-label> ({integrate.config_path()})"}
-        return {"remote": remote.group(1)}
+    remote = remote_setting("gardener", entry)
+    if remote is not None:
+        return remote
     if not env["exists"]:
         return {"not_configured": f"no {env['path']} and no gardener in {integrate.config_path()}"}
     if env["error"]:
@@ -310,15 +320,22 @@ def project(repo: Path, since) -> dict:
         "extra_worktrees": len(blocks) - prunable if blocks is not None else UNKNOWN,
         "prunable_worktrees": prunable,
         "pull_requests": pull_requests(repo),
-        "nightly": nightly_state(env, run, head, up, repo, base),
+        "nightly": nightly_state(env, run, head, up, repo, base, entry, config_error),
         "gardener": gardener(name, entry, config_error, env),
         "journal": journal.read(since=since, project=common_dir, repo=toplevel),
         "decisions": decisions(repo, base),
     }
 
 
-def nightly_state(env: dict, run: dict | None, head: str | None, up, repo: Path, base: dict) -> dict:
-    """The nightly's last run, or that it is configured with no run recorded, or that it is not configured at all."""
+def nightly_state(env: dict, run: dict | None, head: str | None, up, repo: Path, base: dict, entry: dict,
+                  error: str | None) -> dict:
+    """The nightly's last run, where it runs when that is another host, or that it is configured with no run recorded,
+    or that it is not configured at all."""
+    if error:
+        return {"setting_error": error}
+    remote = remote_setting("nightly", entry)
+    if remote is not None:
+        return remote
     if not env["exists"]:
         return {"not_configured": f"no {env['path']}"}
     if env["error"]:
@@ -360,6 +377,8 @@ def header_green(p: dict) -> bool:
 
 
 def nightly_line(run: dict) -> str:
+    if "remote" in run:
+        return f"nightly    remote ({run['remote']}): not read here"
     if "not_configured" in run:
         return f"nightly    not configured ({run['not_configured']})"
     if "no_record" in run:
@@ -389,8 +408,8 @@ def nightly_green(run: dict) -> bool:
 
 
 def nightly_exception(run: dict) -> bool:
-    """A nightly that is not configured is not read: neither green nor an exception."""
-    return not nightly_green(run) and "not_configured" not in run
+    """A nightly that is not configured, or runs on another host, is not read: neither green nor an exception."""
+    return not nightly_green(run) and "not_configured" not in run and "remote" not in run
 
 
 def gardener_line(run: dict) -> str:
