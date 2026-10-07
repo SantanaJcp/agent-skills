@@ -1,10 +1,10 @@
-"""The verify-agent-skills feature map covers every `kitchen` command: a new command without a feature file fails here."""
+"""The verify-kitchen-skills feature map covers every `kitchen` command: a new command without a feature file fails here."""
 import re
 import unittest
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-FEATURES = REPO / ".agents" / "skills" / "verify-agent-skills" / "features"
+FEATURES = REPO / ".agents" / "skills" / "verify-kitchen-skills" / "features"
 COMMAND = re.compile(r'\bsub\.add_parser\("([a-z-]+)"')
 
 

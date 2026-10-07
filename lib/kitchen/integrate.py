@@ -7,7 +7,7 @@ SHA vector (base first, then each branch) and to a digest of everything that dec
 `path`, the base and every other key of the project's entry), so a PASS says nothing once any of those changes.
 
 Check commands and the base live outside the repo, in ~/.config/kitchen/integrate.toml:
-  [projects.agent-skills]
+  [projects.kitchen-skills]
   base = "origin/main"
   checks = ["bin/kitchen check"]
 There is no default base: without `base` there or --base, integrate fails.

@@ -1,4 +1,4 @@
-# agent-skills
+# kitchen-skills
 
 My personal agent kitchen: small, owned skills plus the tooling that keeps them honest, shared by Claude Code and Codex from one source. Nothing is always on: type `/chef-mode` (Claude Code) or `$chef-mode` (Codex) and the agent works the kitchen's way for that session.
 
@@ -33,13 +33,13 @@ The automation tests need `srt` too: without it `kitchen check` stops with that 
 
 The shortest way: tell any agent
 
-> Install the kitchen from https://github.com/SantanaJcp/agent-skills: clone it to `~/Development/agent-skills` (or pull it if it is already there), run `bin/kitchen install`, then `bin/kitchen doctor`, and show me both outputs.
+> Install the kitchen from https://github.com/SantanaJcp/kitchen-skills: clone it to `~/Development/kitchen-skills` (or pull it if it is already there), run `bin/kitchen install`, then `bin/kitchen doctor`, and show me both outputs.
 
 Or by hand:
 
 ```bash
-git clone https://github.com/SantanaJcp/agent-skills.git
-cd agent-skills
+git clone https://github.com/SantanaJcp/kitchen-skills.git
+cd kitchen-skills
 bin/kitchen install   # links chef-mode and the skills for Claude Code and Codex
 bin/kitchen doctor    # proves the links, agent CLIs, automation tools and schedules
 ```
