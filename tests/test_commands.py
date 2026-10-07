@@ -473,8 +473,17 @@ class LogAndStatusTests(ProjectFixture):
                 self.configure_automation(text=text)
                 self.assertIn(expected, self.kitchen("status").stdout)
 
+    @staticmethod
+    def empty_array_is_unbound():
+        """bash before 4.4 (macOS /bin/bash 3.2) stops on "${A[@]}" of an unset array under set -u; bash 4.4 and later
+        expand it to nothing. Status and the jobs share this host's bash, so status must report what this bash does."""
+        probe = subprocess.run(["bash", "--noprofile", "--norc", "-uc", 'x=("${A[@]}")'], capture_output=True,
+                               env={"PATH": "/usr/bin:/bin"})
+        return probe.returncode != 0
+
     def test_the_nightly_is_configured_only_by_a_guard_steps_array_with_a_step_as_bash_reads_it(self):
         configured, absent, unknown = self.NIGHTLY_CONFIGURED, self.NIGHTLY_ABSENT, self.NIGHTLY_UNKNOWN
+        old_bash = self.empty_array_is_unbound()
         self.assert_nightly({
             "": absent,                                                                    # 0
             "GUARD_LABEL=\"nightly-guard\"\n": absent,                                    # 0
@@ -491,9 +500,9 @@ class LogAndStatusTests(ProjectFixture):
             'GUARD_STEPS=("tests|make test DIR=$HOME")\n': configured,                      # 1
             "GUARD_STEPS=\n": configured,                                                  # 1: a scalar is one element
             "GUARD_STEPS=(`printf x`)\n": configured,                                      # 1
-            'GUARD_STEPS=("${COMMON[@]}" "tests|true")\n': unknown,                         # exit 1: COMMON unbound under set -u
-            "GUARD_STEPS=($STEPS)\n": unknown,                                             # exit 1: STEPS unbound
-            'GUARD_STEPS=("${COMMON[@]}")\n': unknown,                                      # exit 1
+            'GUARD_STEPS=("${COMMON[@]}" "tests|true")\n': unknown if old_bash else configured,  # bash 3.2: exit 1; 4.4+: 1
+            "GUARD_STEPS=($STEPS)\n": unknown,                                             # exit 1: STEPS unbound, every bash
+            'GUARD_STEPS=("${COMMON[@]}")\n': unknown if old_bash else absent,               # bash 3.2: exit 1; 4.4+: 0
         })
 
     def test_the_env_is_read_as_the_jobs_source_it_not_as_text(self):
