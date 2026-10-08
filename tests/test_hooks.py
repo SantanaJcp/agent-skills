@@ -104,6 +104,56 @@ class HookCorpusTests(HookFixture):
                     self.assertEqual((result.returncode, result.stderr), (0, ""), f"{case['command']!r} was blocked")
 
 
+class SharedPushConfigTests(HookFixture):
+    """Config the corpus cannot express: where a push without a refspec goes besides remote.origin.push."""
+
+    def configure(self, *pairs):
+        path = self.repo("feat/x")
+        for name, value in pairs:
+            subprocess.run(["git", "-C", str(path), "config", name, value], check=True, env=clean_env())
+        return path
+
+    def test_mirror_remote_is_denied(self):
+        path = self.configure(("remote.origin.mirror", "true"))
+        result = self.run_guard("deny-shared-push", self.payload("git push", path))
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("remote.origin.mirror", result.stderr)
+
+    def deny(self, path, command, expect, **env):
+        payload = json.dumps(self.payload(command, path))
+        result = subprocess.run([str(HOOKS / "deny-shared-push")], input=payload, capture_output=True, text=True,
+                                env={**self.env(), **env}, timeout=30)
+        self.assertEqual(result.returncode, 2, f"{command!r} was allowed")
+        self.assertIn(expect, result.stderr)
+
+    def test_configured_tag_is_a_branch_not_the_tag_shorthand(self):
+        path = self.configure(("remote.origin.push", "tag"))
+        subprocess.run(["git", "-C", str(path), "config", "--add", "remote.origin.push", "main"], check=True, env=clean_env())
+        self.deny(path, "git push origin", "`main`")
+
+    def test_every_remote_is_read_not_only_origin(self):
+        # A sole non-origin remote and --repo both make git pick `fork`.
+        path = self.configure(("remote.fork.url", "https://example.test/fork.git"), ("remote.fork.push", "HEAD:refs/heads/main"))
+        self.deny(path, "git push", "remote.fork.push")
+        self.deny(path, "git push --repo=fork", "remote.fork.push")
+
+    def test_abbreviated_destination_is_resolved(self):
+        path = self.configure(("remote.origin.push", "HEAD:heads/main"))
+        self.deny(path, "git push origin", "heads/main")
+
+    def test_inherited_config_is_not_trusted(self):
+        path = self.repo("feat/x")
+        self.deny(path, "git push origin", "GIT_CONFIG_COUNT",
+                  GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="remote.origin.push", GIT_CONFIG_VALUE_0="HEAD:refs/heads/main")
+
+    def test_push_remote_refspec_is_read(self):
+        path = self.configure(("remote.fork.url", "https://example.test/fork.git"), ("branch.feat/x.pushRemote", "fork"),
+                              ("remote.fork.push", "HEAD:refs/heads/main"))
+        result = self.run_guard("deny-shared-push", self.payload("git push", path))
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("remote.fork.push", result.stderr)
+
+
 class HookPayloadTests(HookFixture):
     def test_codex_payload_with_an_argv_command_is_checked(self):
         payload = {"session_id": "s", "turn_id": "t", "model": "gpt", "cwd": str(self.home), "hook_event_name": "PreToolUse",
