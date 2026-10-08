@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""PreToolUse guard: deny `git push` whose destination is dev, main, master or a configured shared branch.
+"""PreToolUse guard: deny `git push` whose destination is dev, main, master or a configured shared branch,
+including a push without a refspec that remote.<name>.push or remote.<name>.mirror sends to one.
 
 Extra shared branches (names or shell globs, one per line) live in ~/.config/kitchen/shared-branches.txt.
 Principles: `doors` (a shared branch changes only on the owner's explicit request)."""
@@ -60,6 +61,17 @@ def current_branch(call):
     return branch, upstream
 
 
+def push_remote(call, positionals, branch):
+    """The remote a push goes to: the first positional, else the one git picks from config."""
+    if positionals:
+        return positionals[0].value
+    for key in ([f"branch.{branch}.pushRemote"] if branch else []) + ["remote.pushDefault"] + ([f"branch.{branch}.remote"] if branch else []):
+        value = shellparse.run_git(call, "config", "--get", key)
+        if value:
+            return value
+    return "origin"
+
+
 def parse_push(args):
     """(long options seen, short options seen, positionals) of a push command line."""
     longs, shorts, positionals, i = [], set(), [], 0
@@ -112,11 +124,19 @@ def destinations(call, patterns):
     if positionals and positionals[0].dynamic:
         return ["cannot tell where this push goes: the remote is a variable or a command output. " + BY_HAND]
     refspecs = positionals[1:]
-    reasons = []
     deleting = "d" in shorts or any(abbreviates(name, "--delete") for name in longs)
     if not refspecs:
-        default = shellparse.run_git(call, "config", "--get", "push.default")
         branch, upstream = current_branch(call)
+        # Without a refspec on the command line git uses remote.<name>.mirror, then remote.<name>.push, then push.default.
+        remote = push_remote(call, positionals, branch)
+        if shellparse.run_git(call, "config", "--bool", "--get", f"remote.{remote}.mirror") == "true":
+            return [f"remote.{remote}.mirror is set, so `git push` mirrors every local branch, shared ones included."]
+        configured = shellparse.run_git(call, "config", "--get-all", f"remote.{remote}.push")
+        if configured:
+            specs = [shellparse.Arg(line) for line in configured.splitlines() if line.strip()]
+            return [f"remote.{remote}.push is set: {reason}" for reason in refspec_reasons(call, specs, False, patterns)]
+        reasons = []
+        default = shellparse.run_git(call, "config", "--get", "push.default")
         if default == "matching":
             return ["push.default is `matching`, so a bare `git push` updates every branch the remote also has, shared ones included."]
         if branch is None:
@@ -126,6 +146,12 @@ def destinations(call, patterns):
             if name and shared(name, patterns):
                 reasons.append(f"`git push` from branch `{branch}` updates the shared branch `{name.replace('refs/heads/', '', 1)}`.")
         return reasons[:1]
+    return refspec_reasons(call, refspecs, deleting, patterns)
+
+
+def refspec_reasons(call, refspecs, deleting, patterns):
+    """Reasons these refspecs would, or might, update a shared branch."""
+    reasons = []
     skip_tag = False
     for spec in refspecs:
         if skip_tag:

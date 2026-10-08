@@ -104,6 +104,29 @@ class HookCorpusTests(HookFixture):
                     self.assertEqual((result.returncode, result.stderr), (0, ""), f"{case['command']!r} was blocked")
 
 
+class SharedPushConfigTests(HookFixture):
+    """Config the corpus cannot express: where a push without a refspec goes besides remote.origin.push."""
+
+    def configure(self, *pairs):
+        path = self.repo("feat/x")
+        for name, value in pairs:
+            subprocess.run(["git", "-C", str(path), "config", name, value], check=True, env=clean_env())
+        return path
+
+    def test_mirror_remote_is_denied(self):
+        path = self.configure(("remote.origin.mirror", "true"))
+        result = self.run_guard("deny-shared-push", self.payload("git push", path))
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("remote.origin.mirror", result.stderr)
+
+    def test_push_remote_refspec_is_read(self):
+        path = self.configure(("remote.fork.url", "https://example.test/fork.git"), ("branch.feat/x.pushRemote", "fork"),
+                              ("remote.fork.push", "HEAD:refs/heads/main"))
+        result = self.run_guard("deny-shared-push", self.payload("git push", path))
+        self.assertEqual(result.returncode, 2, result.stderr)
+        self.assertIn("remote.fork.push", result.stderr)
+
+
 class HookPayloadTests(HookFixture):
     def test_codex_payload_with_an_argv_command_is_checked(self):
         payload = {"session_id": "s", "turn_id": "t", "model": "gpt", "cwd": str(self.home), "hook_event_name": "PreToolUse",

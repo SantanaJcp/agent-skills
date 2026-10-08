@@ -676,12 +676,57 @@
     {
       "id": "remote-push-config",
       "guard": "deny-shared-push",
-      "kind": "known-limit",
+      "kind": "positive",
       "command": "git push",
+      "expect": "deny",
+      "branch": "feat/x",
+      "push_config": "HEAD:refs/heads/dev"
+    },
+    {
+      "id": "remote-push-config-named-remote",
+      "guard": "deny-shared-push",
+      "kind": "positive",
+      "command": "git push origin",
+      "expect": "deny",
+      "branch": "feat/x",
+      "upstream": "feat/x",
+      "push_config": "HEAD:refs/heads/main"
+    },
+    {
+      "id": "remote-push-config-wildcard",
+      "guard": "deny-shared-push",
+      "kind": "positive",
+      "command": "git push origin",
+      "expect": "deny",
+      "branch": "feat/x",
+      "push_config": "refs/heads/*:refs/heads/*"
+    },
+    {
+      "id": "remote-push-config-matching",
+      "guard": "deny-shared-push",
+      "kind": "positive",
+      "command": "git push",
+      "expect": "deny",
+      "branch": "feat/x",
+      "push_config": ":"
+    },
+    {
+      "id": "remote-push-config-own-branch",
+      "guard": "deny-shared-push",
+      "kind": "negative",
+      "command": "git push origin",
       "expect": "allow",
       "branch": "feat/x",
-      "push_config": "HEAD:refs/heads/dev",
-      "limit": "remote.<name>.push refspecs from git config are not read."
+      "push_config": "HEAD:refs/heads/feat/x"
+    },
+    {
+      "id": "remote-push-config-ignored-by-refspec",
+      "guard": "deny-shared-push",
+      "kind": "negative",
+      "command": "git push origin feat/x",
+      "expect": "allow",
+      "branch": "feat/x",
+      "push_config": "HEAD:refs/heads/dev"
     },
     {
       "id": "git-alias",
