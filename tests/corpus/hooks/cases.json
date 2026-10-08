@@ -729,6 +729,14 @@
       "push_config": "HEAD:refs/heads/dev"
     },
     {
+      "id": "head-to-abbreviated-main",
+      "guard": "deny-shared-push",
+      "kind": "bypass",
+      "command": "git push origin HEAD:heads/main",
+      "expect": "deny",
+      "review": "kitchen-skills#63 round 1"
+    },
+    {
       "id": "git-alias",
       "guard": "deny-shared-push",
       "kind": "known-limit",
