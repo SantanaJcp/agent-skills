@@ -124,17 +124,27 @@ HOOK
 
 # Starts Docker Desktop on macOS when it is not running. Called before the supervisor lists the processes that
 # predate the job: started from inside the job, Docker's VM would count as the job's own and be killed when the
-# job ends (issue #61). It only starts Docker; the job's docker phase (docker_ready) decides whether it is usable.
+# job ends (issue #61). It only starts Docker and notes in KITCHEN_DOCKER whether it was ready before the job
+# began; the job's docker phase (docker_ready) decides.
 start_docker() {
-  docker info >/dev/null 2>&1 && return 0
+  export KITCHEN_DOCKER=unavailable
+  if docker info >/dev/null 2>&1; then KITCHEN_DOCKER=ready; return 0; fi
   [ "$(uname)" = Darwin ] || return 0
   log "docker not running; starting Docker Desktop"
   if ! open -a Docker >/dev/null 2>&1; then log "open -a Docker failed"; return 0; fi
-  for _ in $(seq 1 "${DOCKER_WAIT_TRIES:-60}"); do docker info >/dev/null 2>&1 && return 0; sleep "${DOCKER_WAIT_SECONDS:-5}"; done
+  for _ in $(seq 1 "${DOCKER_WAIT_TRIES:-60}"); do
+    if docker info >/dev/null 2>&1; then KITCHEN_DOCKER=ready; return 0; fi
+    sleep "${DOCKER_WAIT_SECONDS:-5}"
+  done
 }
 
-# Never pretends: returns 1, and says so, when Docker is not usable.
+# Never pretends: returns 1, and says so, when Docker is not usable. A Docker that only became usable after the
+# job began does not count: its VM may be younger than the job, and the supervisor would stop it with the job.
 docker_ready() {
+  if [ "$DOCKER_BEFORE_JOB" != ready ]; then
+    log "docker was not usable before the job started"
+    return 1
+  fi
   docker info >/dev/null 2>&1 && return 0
   log "docker is not available"
   return 1
@@ -172,4 +182,5 @@ if [ -z "${KITCHEN_LOCK_STATE:-}" ]; then
 fi
 LOCK_STATE="$KITCHEN_LOCK_STATE"
 RUN_ID="$KITCHEN_RUN_ID"
-unset KITCHEN_LOCK_STATE KITCHEN_RUN_ID
+DOCKER_BEFORE_JOB="${KITCHEN_DOCKER:-}"
+unset KITCHEN_LOCK_STATE KITCHEN_RUN_ID KITCHEN_DOCKER

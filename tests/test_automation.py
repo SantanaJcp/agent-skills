@@ -605,23 +605,25 @@ class NightlyGuardTests(AutomationFixture):
         self.assertEqual([r["status"] for r in self.nightly()], ["green", "green"])
 
     def holder_script(self):
-        """A daemon, not the job's: it waits for the clone, holds a file in it, and keeps its pid in argv[1]."""
+        """A daemon: it keeps its pid in argv[1], waits for the clone (argv[2]) and for argv[3] when given, then
+        holds a file in the clone."""
         return self.write_script("holder.py", """\
             import os, sys, time
             if os.fork() == 0:
                 os.setsid()
-                clone = sys.argv[2]
-                while not os.path.exists(os.path.join(clone, ".git", "HEAD")):
+                clone, ready = sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else sys.argv[2]
+                open(sys.argv[1], "w").write(str(os.getpid()))
+                while not (os.path.exists(os.path.join(clone, ".git", "HEAD")) and os.path.exists(ready)):
                     time.sleep(0.01)
                 os.chdir(clone)
                 held = open(os.path.join(".git", "HEAD"))
-                open(sys.argv[1], "w").write(str(os.getpid()))
                 time.sleep(60)
                 os._exit(0)
             """)
 
     def assert_alive(self, pid):
-        os.kill(pid, 0)  # raises ProcessLookupError when the sweep killed it
+        state = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, text=True).stdout.strip()
+        self.assertTrue(state and not state.startswith("Z"), f"process {pid} was stopped (ps stat: {state!r})")
 
     def test_a_process_older_than_the_job_holding_the_clone_is_left_alone(self):
         # Docker Desktop's VM, running before the job, opens the clone's files for the job's containers and keeps them
@@ -661,6 +663,42 @@ class NightlyGuardTests(AutomationFixture):
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.nightly()[-1]["status"], "green")
+
+    def test_docker_that_was_not_ready_before_the_job_fails_the_run(self):
+        # Docker Desktop that only comes up once the job runs has a VM younger than the job: the sweep would stop it.
+        self.configure(["ok|true"], needs_docker=1)
+        self.fake("uname", "echo Darwin")
+        self.fake("open", "exit 0")
+        self.fake("docker", 'case "$PWD" in */shop/clone) exit 0;; esac; exit 1')  # usable only once the job is in its clone
+
+        result = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")
+
+        run = self.nightly()[-1]
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertEqual((run["status"], run["failed_step"]), ("red", "docker"))
+
+    def test_after_a_supervisor_died_mid_job_its_leftovers_are_not_spared(self):
+        self.configure(["ok|true"])
+        self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1")  # the clone and the list of older processes exist
+        pidfile, go = Path(self.tmp.name) / "leftover.pid", Path(self.tmp.name) / "go"
+        clone = self.state / "automation" / "shop" / "clone"
+        # A process of the job whose supervisor died: idle while the next job acquires, then back in the clone.
+        subprocess.run(["python3", str(self.holder_script()), str(pidfile), str(clone), str(go)], check=True)
+        leftover = int(self.wait_for(pidfile))
+        dead = subprocess.Popen(["true"])
+        dead.wait()
+        (self.state / "automation" / "shop" / "job.lock").write_text(f"{dead.pid}\n")  # the group it left recorded
+        self.configure([f"wake|touch {go}; sleep 1"])
+        try:
+            result = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1", KITCHEN_STOP_GRACE_SECONDS="1")
+            self.assert_dead(leftover)
+        finally:
+            try:
+                os.kill(leftover, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_survivors_that_cannot_be_stopped_keep_the_project_busy_and_mark_the_run(self):
         pidfile = Path(self.tmp.name) / "respawner.pid"

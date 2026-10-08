@@ -9,7 +9,7 @@ clone, the gardener's work dirs). A process group cannot contain a descendant th
 property that matters, nothing of the job still touching the clone, is checked directly with lsof.
 A process that already ran when the job started is not the job's: no descendant can be older than the
 job. Just before starting it, the supervisor lists the processes that exist (<lock-file>.before) and
-leaves them alone; Docker Desktop's VM keeps the clone's bind-mounted files open after its containers
+leaves them alone (after a supervisor that died mid-job, only those that also predated that job); Docker Desktop's VM keeps the clone's bind-mounted files open after its containers
 are gone, and killing it broke Docker until someone reset it by hand (issue #61).
 Busy past the wait: runs the command with KITCHEN_LOCK_STATE=busy, so the job records the skip itself.
 Acquired: runs it with KITCHEN_LOCK_STATE=held in a new session. When its main process exits, or the
@@ -190,6 +190,8 @@ def main() -> int:
         os.close(fd)
         os.execvpe(command[0], command, {**os.environ, "KITCHEN_LOCK_STATE": "busy"})
     before = processes()  # listed while the job does not exist yet: none of these can be its descendant
+    if recorded_group(fd):  # the last supervisor died before its job was cleaned up: what that job left is not
+        before &= load_before(before_file)  # exempt either (empty when it left no list: then nothing is)
     save_before(before_file, before)  # the next acquire tells this job's leftovers from older processes with it
     job = subprocess.Popen(command, env={**os.environ, "KITCHEN_LOCK_STATE": "held"}, start_new_session=True)
     record_group(fd, job.pid)
