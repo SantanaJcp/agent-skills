@@ -4,13 +4,17 @@
   supervise.py <lock-file> <wait-seconds> <poll-seconds> [--watch DIR]... [--record FILE --run-id ID] -- <command...>
 
 The project is free only when nobody holds the flock, the process group of the previous job is gone,
-AND no process has its working directory or an open file inside a --watch directory (the clone, the
-gardener's work dirs). A process group cannot contain a descendant that calls setsid(), so the property
-that matters, nothing still touching the clone, is checked directly with lsof.
+AND no process of that job has its working directory or an open file inside a --watch directory (the
+clone, the gardener's work dirs). A process group cannot contain a descendant that calls setsid(), so the
+property that matters, nothing of the job still touching the clone, is checked directly with lsof.
+A process that already ran when the job started is not the job's: no descendant can be older than the
+job. Just before starting it, the supervisor lists the processes that exist (<lock-file>.before) and
+leaves them alone; Docker Desktop's VM keeps the clone's bind-mounted files open after its containers
+are gone, and killing it broke Docker until someone reset it by hand (issue #61).
 Busy past the wait: runs the command with KITCHEN_LOCK_STATE=busy, so the job records the skip itself.
 Acquired: runs it with KITCHEN_LOCK_STATE=held in a new session. When its main process exits, or the
 supervisor is told to stop (the signal is forwarded to the group first), the group is terminated, then
-every process still holding files in the watched dirs gets TERM, then KILL. Any that survive keep the
+every process of the job still holding files in the watched dirs gets TERM, then KILL. Any that survive keep the
 project busy; the run's record (--record/--run-id) is marked incomplete with their pids.
 """
 import fcntl
@@ -37,8 +41,31 @@ def group_alive(pgid: int) -> bool:
         return False
 
 
-def holders(dirs: list[str]) -> dict[int, str]:
-    """pid -> one path it holds (cwd or open file) inside the watched dirs; this supervisor excluded."""
+def processes() -> frozenset[str]:
+    """The running processes as "pid start" lines: with its start time, a pid names one process even once reused."""
+    listing = subprocess.run(["ps", "-A", "-o", "pid=,lstart="], capture_output=True, text=True, check=False,
+                             env={**os.environ, "LC_ALL": "C"})
+    if listing.returncode != 0 or not listing.stdout:
+        raise RuntimeError(f"ps failed ({listing.returncode}): {listing.stderr.strip()[:200]}")
+    return frozenset(" ".join(line.split()) for line in listing.stdout.splitlines() if line.strip())
+
+
+def save_before(path: str, before: frozenset[str]) -> None:
+    Path(path + ".tmp").write_text("".join(f"{line}\n" for line in sorted(before)))
+    os.replace(path + ".tmp", path)
+
+
+def load_before(path: str) -> frozenset[str]:
+    """What the last job's supervisor listed before starting it; empty when no job has run yet."""
+    try:
+        return frozenset(Path(path).read_text().splitlines())
+    except FileNotFoundError:
+        return frozenset()
+
+
+def holders(dirs: list[str], before: frozenset[str] = frozenset()) -> dict[int, str]:
+    """pid -> one path it holds (cwd or open file) inside the watched dirs; this supervisor and the processes
+    in `before` (they predate the job) excluded."""
     if not dirs:
         return {}
     roots = [os.path.realpath(d) for d in dirs if os.path.exists(d)]
@@ -54,13 +81,16 @@ def holders(dirs: list[str]) -> dict[int, str]:
             name = line[1:]
             if any(name == root or name.startswith(root + "/") for root in roots):
                 found.setdefault(pid, name)
+    if found and before:
+        running = {int(line.split(" ", 1)[0]): line for line in processes()}
+        found = {pid: name for pid, name in found.items() if running.get(pid) not in before}
     return found
 
 
-def sweep(dirs: list[str], grace: float) -> dict[int, str]:
-    """TERM, then KILL, every process still holding files in the watched dirs; returns the survivors."""
+def sweep(dirs: list[str], grace: float, before: frozenset[str]) -> dict[int, str]:
+    """TERM, then KILL, every process of the job still holding files in the watched dirs; returns the survivors."""
     for sig, wait in ((signal.SIGTERM, grace), (signal.SIGKILL, 3.0)):
-        found = holders(dirs)
+        found = holders(dirs, before)
         if not found:
             return {}
         for pid in found:
@@ -69,9 +99,9 @@ def sweep(dirs: list[str], grace: float) -> dict[int, str]:
             except (ProcessLookupError, PermissionError):
                 pass
         end = time.monotonic() + wait
-        while holders(dirs) and time.monotonic() < end:
+        while holders(dirs, before) and time.monotonic() < end:
             time.sleep(0.1)
-    return holders(dirs)
+    return holders(dirs, before)
 
 
 def recorded_group(fd: int) -> int:
@@ -87,12 +117,12 @@ def record_group(fd: int, pgid: int | None) -> None:
         os.write(fd, f"{pgid}\n".encode())
 
 
-def acquire(fd: int, wait: float, poll: float, dirs: list[str]) -> bool:
+def acquire(fd: int, wait: float, poll: float, dirs: list[str], before_file: str) -> bool:
     deadline = time.monotonic() + wait
     while True:
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            if not group_alive(recorded_group(fd)) and not holders(dirs):
+            if not group_alive(recorded_group(fd)) and not holders(dirs, load_before(before_file)):
                 return True
             fcntl.flock(fd, fcntl.LOCK_UN)
         except BlockingIOError:
@@ -155,9 +185,12 @@ def mark_survivors(record: str | None, run_id: str | None, survivors: dict[int, 
 def main() -> int:
     lock_file, wait, poll, dirs, record, run_id, command = parse(sys.argv[1:])
     fd = os.open(lock_file, os.O_RDWR | os.O_CREAT, 0o644)  # not inherited by the job
-    if not acquire(fd, wait, poll, dirs):
+    before_file = lock_file + ".before"
+    if not acquire(fd, wait, poll, dirs, before_file):
         os.close(fd)
         os.execvpe(command[0], command, {**os.environ, "KITCHEN_LOCK_STATE": "busy"})
+    before = processes()  # listed while the job does not exist yet: none of these can be its descendant
+    save_before(before_file, before)  # the next acquire tells this job's leftovers from older processes with it
     job = subprocess.Popen(command, env={**os.environ, "KITCHEN_LOCK_STATE": "held"}, start_new_session=True)
     record_group(fd, job.pid)
 
@@ -171,7 +204,7 @@ def main() -> int:
         signal.signal(sig, forward)
     code = job.wait()
     stop_group(job.pid, GRACE)
-    survivors = sweep(dirs, GRACE)
+    survivors = sweep(dirs, GRACE, before)
     if survivors:
         mark_survivors(record, run_id, survivors)
         code = code if code > 0 else 1

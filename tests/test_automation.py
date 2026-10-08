@@ -604,6 +604,64 @@ class NightlyGuardTests(AutomationFixture):
         self.assertEqual((first.returncode, second.returncode), (0, 0), first.stdout + second.stdout)
         self.assertEqual([r["status"] for r in self.nightly()], ["green", "green"])
 
+    def holder_script(self):
+        """A daemon, not the job's: it waits for the clone, holds a file in it, and keeps its pid in argv[1]."""
+        return self.write_script("holder.py", """\
+            import os, sys, time
+            if os.fork() == 0:
+                os.setsid()
+                clone = sys.argv[2]
+                while not os.path.exists(os.path.join(clone, ".git", "HEAD")):
+                    time.sleep(0.01)
+                os.chdir(clone)
+                held = open(os.path.join(".git", "HEAD"))
+                open(sys.argv[1], "w").write(str(os.getpid()))
+                time.sleep(60)
+                os._exit(0)
+            """)
+
+    def assert_alive(self, pid):
+        os.kill(pid, 0)  # raises ProcessLookupError when the sweep killed it
+
+    def test_a_process_older_than_the_job_holding_the_clone_is_left_alone(self):
+        # Docker Desktop's VM, running before the job, opens the clone's files for the job's containers and keeps them
+        # open after the containers are gone (issue #61).
+        self.configure(["ok|true"])
+        pidfile = Path(self.tmp.name) / "holder.pid"
+        clone = self.state / "automation" / "shop" / "clone"
+        subprocess.run(["python3", str(self.holder_script()), str(pidfile), str(clone)], check=True)
+        try:
+            ended = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1", KITCHEN_STOP_GRACE_SECONDS="1")
+            holder = int(self.wait_for(pidfile))
+            self.assert_alive(holder)
+            following = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1", LOCK_WAIT_SECONDS="1", LOCK_POLL_SECONDS="0.1")
+            self.assert_alive(holder)
+        finally:
+            if pidfile.exists() and pidfile.read_text().strip():
+                os.kill(int(pidfile.read_text()), signal.SIGKILL)
+
+        self.assertEqual((ended.returncode, following.returncode), (0, 0), ended.stdout + ended.stderr + following.stdout)
+        self.assertEqual([r["status"] for r in self.nightly()], ["green", "green"])
+
+    def test_docker_desktop_started_for_the_job_outlives_it(self):
+        # On macOS the job starts Docker Desktop through LaunchServices, not as its descendant; its VM then holds the clone.
+        self.configure(["ok|true"], needs_docker=1)
+        pidfile, up = Path(self.tmp.name) / "vm.pid", Path(self.tmp.name) / "docker-up"
+        clone = self.state / "automation" / "shop" / "clone"
+        self.fake("uname", "echo Darwin")
+        self.fake("docker", f'[ -f "{up}" ]')
+        self.fake("open", f'touch "{up}"; python3 {self.holder_script()} "{pidfile}" "{clone}" </dev/null >/dev/null 2>&1')
+        try:
+            result = self.run_job("nightly-guard", "shop", GUARD_NO_REPORT="1", KITCHEN_STOP_GRACE_SECONDS="1")
+            vm = int(self.wait_for(pidfile))
+            self.assert_alive(vm)
+        finally:
+            if pidfile.exists() and pidfile.read_text().strip():
+                os.kill(int(pidfile.read_text()), signal.SIGKILL)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.nightly()[-1]["status"], "green")
+
     def test_survivors_that_cannot_be_stopped_keep_the_project_busy_and_mark_the_run(self):
         pidfile = Path(self.tmp.name) / "respawner.pid"
         script = self.write_script("respawn.py", """\
