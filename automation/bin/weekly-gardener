@@ -312,7 +312,7 @@ git -C "$AGENT_CLONE" update-ref "refs/remotes/origin/$BRANCH" "$BASE_SHA"
 project_hooks="$(git -C "$CLONE_DIR" config --get kitchen.projectHooksPath || true)"
 [ -z "$project_hooks" ] || git -C "$AGENT_CLONE" config kitchen.projectHooksPath "$project_hooks"
 CLONE_DIR="$AGENT_CLONE" install_push_guard
-if [ "${NEEDS_DOCKER:-0}" = 1 ] && ! ensure_docker; then
+if [ "${NEEDS_DOCKER:-0}" = 1 ] && ! docker_ready; then
   stop "Docker is required and not available; the gardener could not verify its change"
 fi
 if [ ${#GARDENER_VERIFY_STEPS[@]} -gt 0 ] && [ ! -x "$SRT" ]; then

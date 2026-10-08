@@ -34,24 +34,6 @@ TOOL_PATH="${EXTRA_PATH:-}:$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:/us
 export KITCHEN_REAL_GH="${KITCHEN_REAL_GH:-$(PATH="$TOOL_PATH" command -v gh || true)}"
 export PATH="$KITCHEN_AUTOMATION/shims:$TOOL_PATH"
 
-# Every job runs under lib/supervise.py: one job at a time per project (the guard and the gardener share
-# the clone that sync_clone resets), in its own process group that is stopped as a whole before the lock
-# is released. The supervisor re-runs this script with KITCHEN_LOCK_STATE=held, or =busy when the lock
-# stayed taken for LOCK_WAIT_SECONDS (default 3600); the job then only logs the skip: no job writes its
-# record without holding the lock.
-# The supervisor also refuses to release the project while any process still has files open in the clone
-# or the gardener's work dirs (see lib/supervise.py); such survivors mark this run's line in its own record
-# ($JOB_RECORD) incomplete.
-if [ -z "${KITCHEN_LOCK_STATE:-}" ]; then
-  export KITCHEN_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
-  exec python3 "$KITCHEN_AUTOMATION/lib/supervise.py" "$STATE_DIR/job.lock" "${LOCK_WAIT_SECONDS:-3600}" "${LOCK_POLL_SECONDS:-5}" \
-    --watch "$CLONE_DIR" --watch "$STATE_DIR/gardener" --watch "$STATE_DIR/gardener-job" --record "$JOB_RECORD" --run-id "$KITCHEN_RUN_ID" \
-    -- "$BASH" "$0" "$PROJECT"
-fi
-LOCK_STATE="$KITCHEN_LOCK_STATE"
-RUN_ID="$KITCHEN_RUN_ID"
-unset KITCHEN_LOCK_STATE KITCHEN_RUN_ID
-
 # A step is name|command with both parts non-blank. An empty command would pass for free: `bash -c ""`
 # exits 0, so a step list holding one proves nothing. Prints each malformed entry, one per line.
 malformed_steps() { # entries...
@@ -140,15 +122,30 @@ HOOK
   git -C "$CLONE_DIR" config core.hooksPath "$hooks_dir"
 }
 
-# Starts Docker Desktop on macOS when needed. Never pretends: returns 1 when Docker is not usable.
-ensure_docker() {
-  docker info >/dev/null 2>&1 && return 0
-  if [ "$(uname)" = Darwin ]; then
-    log "docker not running; starting Docker Desktop"
-    if open -a Docker >/dev/null 2>&1; then
-      for _ in $(seq 1 "${DOCKER_WAIT_TRIES:-60}"); do docker info >/dev/null 2>&1 && return 0; sleep "${DOCKER_WAIT_SECONDS:-5}"; done
-    fi
+# Starts Docker Desktop on macOS when it is not running. Called before the supervisor lists the processes that
+# predate the job: started from inside the job, Docker's VM would count as the job's own and be killed when the
+# job ends (issue #61). It only starts Docker and notes in KITCHEN_DOCKER whether it was ready before the job
+# began; the job's docker phase (docker_ready) decides.
+start_docker() {
+  export KITCHEN_DOCKER=unavailable
+  if docker info >/dev/null 2>&1; then KITCHEN_DOCKER=ready; return 0; fi
+  [ "$(uname)" = Darwin ] || return 0
+  log "docker not running; starting Docker Desktop"
+  if ! open -a Docker >/dev/null 2>&1; then log "open -a Docker failed"; return 0; fi
+  for _ in $(seq 1 "${DOCKER_WAIT_TRIES:-60}"); do
+    if docker info >/dev/null 2>&1; then KITCHEN_DOCKER=ready; return 0; fi
+    sleep "${DOCKER_WAIT_SECONDS:-5}"
+  done
+}
+
+# Never pretends: returns 1, and says so, when Docker is not usable. A Docker that only became usable after the
+# job began does not count: its VM may be younger than the job, and the supervisor would stop it with the job.
+docker_ready() {
+  if [ "$DOCKER_BEFORE_JOB" != ready ]; then
+    log "docker was not usable before the job started"
+    return 1
   fi
+  docker info >/dev/null 2>&1 && return 0
   log "docker is not available"
   return 1
 }
@@ -167,3 +164,23 @@ record_gardener() { # status detail run_id log started [warning...]
 close_stale_records() { # current-run-id [record, default the nightly's]
   python3 "$KITCHEN_AUTOMATION/lib/record.py" "${2:-$NIGHTLY_RECORD}" close-stale "$1"
 }
+
+# Every job runs under lib/supervise.py: one job at a time per project (the guard and the gardener share
+# the clone that sync_clone resets), in its own process group that is stopped as a whole before the lock
+# is released. The supervisor re-runs this script with KITCHEN_LOCK_STATE=held, or =busy when the lock
+# stayed taken for LOCK_WAIT_SECONDS (default 3600); the job then only logs the skip: no job writes its
+# record without holding the lock.
+# The supervisor also refuses to release the project while any process of the job still has files open in
+# the clone or the gardener's work dirs (see lib/supervise.py); such survivors mark this run's line in its own record
+# ($JOB_RECORD) incomplete.
+if [ -z "${KITCHEN_LOCK_STATE:-}" ]; then
+  [ "${NEEDS_DOCKER:-0}" != 1 ] || start_docker
+  export KITCHEN_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-$$"
+  exec python3 "$KITCHEN_AUTOMATION/lib/supervise.py" "$STATE_DIR/job.lock" "${LOCK_WAIT_SECONDS:-3600}" "${LOCK_POLL_SECONDS:-5}" \
+    --watch "$CLONE_DIR" --watch "$STATE_DIR/gardener" --watch "$STATE_DIR/gardener-job" --record "$JOB_RECORD" --run-id "$KITCHEN_RUN_ID" \
+    -- "$BASH" "$0" "$PROJECT"
+fi
+LOCK_STATE="$KITCHEN_LOCK_STATE"
+RUN_ID="$KITCHEN_RUN_ID"
+DOCKER_BEFORE_JOB="${KITCHEN_DOCKER:-}"
+unset KITCHEN_LOCK_STATE KITCHEN_RUN_ID KITCHEN_DOCKER

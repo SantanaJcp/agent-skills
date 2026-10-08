@@ -177,7 +177,7 @@ SHA="$(git rev-parse HEAD)"
 log "testing $SHA"
 
 PHASE="docker"
-if [ "${NEEDS_DOCKER:-0}" = 1 ] && ! ensure_docker; then
+if [ "${NEEDS_DOCKER:-0}" = 1 ] && ! docker_ready; then
   FAILED="docker"
   FAILED_LOG="$LOG_DIR/guard-$RUN_ID-docker.log"
   echo "Docker is required by this project and is not available." > "$FAILED_LOG"
